@@ -14,4 +14,8 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     // Kiểm tra số điện thoại đã đăng ký chưa
     boolean existsByPhone(String phone);
+
+    Optional<Member> findByUserUsername(String username);
+
 }
+

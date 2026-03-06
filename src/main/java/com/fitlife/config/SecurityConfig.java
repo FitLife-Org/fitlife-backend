@@ -29,19 +29,24 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                .csrf(AbstractHttpConfigurer::disable) //
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) //
                 .authorizeHttpRequests(auth -> auth
+                        // CHỈ CẦN THẾ NÀY: Spring sẽ tự hiểu nó nằm sau /api/v1
                         .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+
+                        // Phân quyền cho Sức khỏe (Bỏ /api/v1)
+                        .requestMatchers("/health/**").hasAnyRole("MEMBER", "STAFF", "ADMIN")
+
                         .requestMatchers(HttpMethod.POST, "/packages/**").hasAnyRole("ADMIN", "STAFF")
                         .requestMatchers("/checkin/**").hasAnyRole("ADMIN", "STAFF")
-                        // Mở khóa cho Swagger UI
-                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider)
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class); //
 
         return http.build();
     }
