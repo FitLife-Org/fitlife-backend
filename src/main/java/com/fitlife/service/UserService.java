@@ -6,6 +6,7 @@ import com.fitlife.entity.Role;
 import com.fitlife.entity.User;
 import com.fitlife.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -13,18 +14,22 @@ import org.springframework.stereotype.Service;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public UserResponse createUser(UserCreationRequest request) {
         // 1. Check if user already exists
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new RuntimeException("Username already exists"); // Sẽ học Global Exception sau
         }
+        // 2. Hash password
+        String hashedPassword = passwordEncoder.encode(request.getPassword());
 
         // 2. Map DTO to Entity (Tạm thời lưu password gốc, BCrypt sẽ học ở bài Security)
         User newUser = User.builder()
                 .username(request.getUsername())
-                .passwordHash(request.getPassword())
-                .role(Role.valueOf(request.getRole().toUpperCase()))
+                .password(hashedPassword)
+                .role(request.getRole())
+                .status("ACTIVE") // Mặc định tạo user là ACTIVE
                 .build();
 
         // 3. Save to Database
@@ -34,7 +39,8 @@ public class UserService {
         return UserResponse.builder()
                 .id(savedUser.getId())
                 .username(savedUser.getUsername())
-                .role(savedUser.getRole().name())
+                .role(savedUser.getRole())
+                .status(savedUser.getStatus())
                 .build();
     }
 }
