@@ -9,6 +9,10 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.List;
 
+/**
+ * Entity đại diện cho người dùng hệ thống.
+ * Triển khai UserDetails để tích hợp sâu với Spring Security.
+ */
 @Entity
 @Table(name = "users")
 @Getter
@@ -16,7 +20,6 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-// THÊM CHỮ NÀY: implements UserDetails
 public class User implements UserDetails {
 
     @Id
@@ -42,7 +45,7 @@ public class User implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         // Spring Security yêu cầu các quyền phải có tiền tố "ROLE_"
-        // Ví dụ: ADMIN -> ROLE_ADMIN
+        // Ví dụ: DB lưu "MEMBER" -> Trả về "ROLE_MEMBER"
         return List.of(new SimpleGrantedAuthority("ROLE_" + this.role));
     }
 

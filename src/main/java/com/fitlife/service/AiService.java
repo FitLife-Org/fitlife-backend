@@ -136,7 +136,7 @@ public class AiService {
                 for (JsonNode exNode : exercisesNode) {
                     // 4. Tạo chi tiết bài tập từ JSON
                     WorkoutDetail detail = WorkoutDetail.builder()
-                            .exerciseName(exNode.path("name").asText())
+                            .exercise_name(exNode.path("name").asText())
                             .sets(exNode.path("sets").asInt())
                             .reps(exNode.path("reps").asText())
                             .notes(exNode.path("notes").asText())

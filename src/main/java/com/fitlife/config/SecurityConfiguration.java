@@ -32,15 +32,16 @@ public class SecurityConfiguration {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Spring Security tự động bóc tách context-path (/api/v1)
-                        // Nên các matcher dưới đây chỉ cần bắt đầu từ /...
-
+                        // 1. Công khai
                         .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers("/ai/**").permitAll() // Cho phép tất cả API AI để test
+                        .requestMatchers("/ai/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
 
-                        // Các API yêu cầu Role cụ thể
+                        // 2. Nghiệp vụ tập luyện - SỬ DỤNG hasAnyRole
+                        .requestMatchers("/workout/**").hasAnyRole("MEMBER", "STAFF", "ADMIN")
                         .requestMatchers("/health/**").hasAnyRole("MEMBER", "STAFF", "ADMIN")
+
+                        // 3. Quản trị - SỬ DỤNG hasAnyRole
                         .requestMatchers(HttpMethod.POST, "/packages/**").hasAnyRole("ADMIN", "STAFF")
                         .requestMatchers("/checkin/**").hasAnyRole("ADMIN", "STAFF")
 
@@ -56,7 +57,8 @@ public class SecurityConfiguration {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:5173"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        // Đảm bảo có PATCH trong danh sách Allowed Methods
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
         configuration.setAllowCredentials(true);
 

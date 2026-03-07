@@ -1,5 +1,7 @@
 package com.fitlife.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 import java.util.List;
@@ -24,8 +26,10 @@ public class WorkoutSession {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "plan_id")
     @ToString.Exclude // Tránh lỗi vòng lặp khi log dữ liệu
+    @JsonBackReference
     private WorkoutPlan workoutPlan;
 
     @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
     private List<WorkoutDetail> details;
 }

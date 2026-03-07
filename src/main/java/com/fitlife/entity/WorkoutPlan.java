@@ -1,5 +1,6 @@
 package com.fitlife.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -30,6 +31,7 @@ public class WorkoutPlan {
     private PlanStatus status; // ACTIVE, COMPLETED, CANCELLED
 
     @OneToMany(mappedBy = "workoutPlan", cascade = CascadeType.ALL)
+    @JsonManagedReference
     private List<WorkoutSession> sessions;
 
     public enum PlanStatus {
