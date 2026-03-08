@@ -10,9 +10,16 @@ import java.util.Optional;
 
 @Repository
 public interface HealthMetricRepository extends JpaRepository<HealthMetric, Long> {
-    // Find all health metrics for a member, ordered by recorded date descending
-    List<HealthMetric> findByMemberIdOrderByRecordedDateDesc(Long memberId);
 
-    Optional<HealthMetric> findFirstByMemberOrderByRecordedDateDesc(Member member);
+    /**
+     * Lấy chỉ số sức khỏe mới nhất của một hội viên để AI phân tích.
+     * Tên hàm phải kết thúc bằng RecordedAtDesc để khớp với biến recordedAt trong Entity.
+     */
+    Optional<HealthMetric> findFirstByMemberOrderByRecordedAtDesc(Member member);
 
+    /**
+     * Lấy danh sách lịch sử chỉ số sức khỏe của hội viên.
+     * (Đây là hàm gây lỗi trong log của em, anh đã sửa Date -> At).
+     */
+    List<HealthMetric> findByMemberIdOrderByRecordedAtDesc(Long memberId);
 }

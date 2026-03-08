@@ -2,32 +2,25 @@ package com.fitlife.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "check_in_history")
-@Getter
-@Setter
+@Table(name = "check_in_history") // ĐẢM BẢO CÓ 2 DẤU GẠCH DƯỚI Ở ĐÂY
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class CheckInHistory {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Who checked in?
-    @ManyToOne
-    @JoinColumn(name = "member_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_id")
     private Member member;
 
-    // When did they check in?
-    @Column(name = "check_in_time", nullable = false)
+    @Column(name = "check_in_time")
     private LocalDateTime checkInTime;
 
-    // What was the result of the check-in attempt?
-    @Column(name = "status", nullable = false, length = 50)
-    private String status; // VD: "SUCCESS", "FAILED_NO_ACTIVE_PACKAGE"
+    private String status;
 }

@@ -51,7 +51,7 @@ public class AiService {
         Member member = memberRepository.findById(request.getMemberId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy hội viên"));
 
-        HealthMetric latestMetric = healthMetricRepository.findFirstByMemberOrderByRecordedDateDesc(member)
+        HealthMetric latestMetric = healthMetricRepository.findFirstByMemberOrderByRecordedAtDesc(member)
                 .orElseThrow(() -> new RuntimeException("Hội viên chưa có chỉ số BMI. Hãy đo trước khi tư vấn AI."));
 
         String prompt = buildPrompt(member, latestMetric, request);

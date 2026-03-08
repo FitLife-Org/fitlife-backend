@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -37,7 +38,7 @@ public class HealthMetricService {
                 .weight(request.getWeight())
                 .height(request.getHeight())
                 .bmi(bmi)
-                .recordedDate(LocalDate.now())
+                .recordedAt(LocalDateTime.now())
                 .build();
 
         return healthMetricRepository.save(metric);
@@ -46,6 +47,6 @@ public class HealthMetricService {
     public List<HealthMetric> getMemberHistory(String username) {
         Member member = memberRepository.findByUserUsername(username)
                 .orElseThrow(() -> new RuntimeException("Hội viên không tồn tại"));
-        return healthMetricRepository.findByMemberIdOrderByRecordedDateDesc(member.getId());
+        return healthMetricRepository.findByMemberIdOrderByRecordedAtDesc(member.getId());
     }
 }

@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -27,6 +28,6 @@ public class HealthMetric {
     private double height;
     private double bmi;
 
-    @Column(name = "recorded_date")
-    private LocalDate recordedDate;
+    @Column(name = "recorded_at")
+    private LocalDateTime recordedAt;
 }
