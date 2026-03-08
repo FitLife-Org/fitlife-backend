@@ -24,7 +24,7 @@ public class HealthController {
     public ResponseEntity<ApiResponse<HealthMetric>> addMetric(
             @Valid @RequestBody HealthMetricRequest request,
             Principal principal) {
-        // principal.getName() lấy username từ JWT Token
+        // principal.getName() get username from JWT token
         HealthMetric savedMetric = healthMetricService.addHealthMetric(principal.getName(), request);
         return ResponseEntity.ok(ApiResponse.<HealthMetric>builder()
                 .message("Cập nhật chỉ số sức khỏe thành công")

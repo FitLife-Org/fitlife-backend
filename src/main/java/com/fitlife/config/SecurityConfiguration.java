@@ -32,16 +32,16 @@ public class SecurityConfiguration {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // 1. Công khai
+                        // 1. Public
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/ai/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
 
-                        // 2. Nghiệp vụ tập luyện - SỬ DỤNG hasAnyRole
+                        // 2. Business workout & health
                         .requestMatchers("/workout/**").hasAnyRole("MEMBER", "STAFF", "ADMIN")
                         .requestMatchers("/health/**").hasAnyRole("MEMBER", "STAFF", "ADMIN")
 
-                        // 3. Quản trị - SỬ DỤNG hasAnyRole
+                        // 3. Administration
                         .requestMatchers(HttpMethod.POST, "/packages/**").hasAnyRole("ADMIN", "STAFF")
                         .requestMatchers("/checkin/**").hasAnyRole("ADMIN", "STAFF")
 
@@ -57,7 +57,6 @@ public class SecurityConfiguration {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:5173"));
-        // Đảm bảo có PATCH trong danh sách Allowed Methods
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
         configuration.setAllowCredentials(true);

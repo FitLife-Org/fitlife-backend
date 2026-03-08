@@ -17,19 +17,19 @@ public class GymPackage {
     private Long id;
 
     @Column(name = "name", nullable = false, unique = true, length = 100)
-    private String name; // Ví dụ: "Gói Vàng 6 Tháng"
+    private String name;
 
     @Column(name = "price", nullable = false)
     private Double price;
 
     @Column(name = "duration_months", nullable = false)
-    private Integer durationMonths; // Số tháng của gói
+    private Integer durationMonths;
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
     @Column(name = "status", nullable = false, length = 20)
-    private String status = "ACTIVE"; // "ACTIVE" hoặc "INACTIVE"
+    private String status = "ACTIVE";
 
     @Column(name = "thumbnail_url")
     private String thumbnailUrl;

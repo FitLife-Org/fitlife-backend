@@ -24,7 +24,7 @@ public class AiRecommendation {
     private Member member;
 
     @Column(name = "generated_plan_json", columnDefinition = "TEXT")
-    private String generatedPlanJson; // Lưu trữ JSON phác đồ tập luyện
+    private String generatedPlanJson;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

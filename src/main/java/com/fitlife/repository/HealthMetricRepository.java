@@ -10,7 +10,7 @@ import java.util.Optional;
 
 @Repository
 public interface HealthMetricRepository extends JpaRepository<HealthMetric, Long> {
-    // Truy xuất lịch sử sức khỏe của hội viên, sắp xếp ngày mới nhất lên đầu
+    // Find all health metrics for a member, ordered by recorded date descending
     List<HealthMetric> findByMemberIdOrderByRecordedDateDesc(Long memberId);
 
     Optional<HealthMetric> findFirstByMemberOrderByRecordedDateDesc(Member member);

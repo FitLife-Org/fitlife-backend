@@ -7,8 +7,8 @@ import org.springframework.web.client.RestTemplate;
 @Configuration
 public class RestTemplateConfig {
 
-    // Khởi tạo công cụ RestTemplate và giao cho Spring Boot quản lý (Bean)
-    // Từ giờ, bất cứ Service nào cần gọi API bên ngoài chỉ cần @RequiredArgsConstructor là dùng được ngay.
+    // Initialize the RestTemplate tool and assign it to Spring Boot to manage (Bean)
+    // From now on, any Service that needs to call an external API just needs @RequiredArgsConstructor to use it immediately.
     @Bean
     public RestTemplate restTemplate() {
         return new RestTemplate();

@@ -8,7 +8,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/checkin")
@@ -24,7 +27,7 @@ public class CheckInController {
         CheckInResponse result = checkInService.processCheckIn(request);
 
         ApiResponse<CheckInResponse> response = ApiResponse.<CheckInResponse>builder()
-                .code(HttpStatus.OK.value()) // Dùng 200 OK cho kết quả quẹt thẻ
+                .code(HttpStatus.OK.value())
                 .message("Check-in processed")
                 .data(result)
                 .build();

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.util.List;
 
 /**
@@ -20,12 +21,12 @@ public class WorkoutSession {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String dayOfWeek; // Thứ 2, Thứ 3...
-    private String focusArea; // Ngực, Tay sau...
+    private String dayOfWeek; // Monday, Tuesday...
+    private String focusArea; // Push, Triceps...
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "plan_id")
-    @ToString.Exclude // Tránh lỗi vòng lặp khi log dữ liệu
+    @ToString.Exclude // Avoid bug loop when print log
     @JsonBackReference
     private WorkoutPlan workoutPlan;
 

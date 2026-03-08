@@ -10,8 +10,8 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Entity đại diện cho người dùng hệ thống.
- * Triển khai UserDetails để tích hợp sâu với Spring Security.
+ * Entity represents a system user
+ * Implements UserDetails for Spring Security integration
  */
 @Entity
 @Table(name = "users")
@@ -38,37 +38,33 @@ public class User implements UserDetails {
     @Column(name = "status", nullable = false, length = 20)
     private String status; // "ACTIVE", "INACTIVE"
 
-    // ====================================================================
-    // CÁC HÀM BẮT BUỘC CỦA SPRING SECURITY (USERDETAILS INTERFACE)
-    // ====================================================================
-
+    // Functions to implement UserDetails interface for Spring Security
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Spring Security yêu cầu các quyền phải có tiền tố "ROLE_"
-        // Ví dụ: DB lưu "MEMBER" -> Trả về "ROLE_MEMBER"
+        // Spring Security requires roles to be prefixed with "ROLE_". Example: "ADMIN" -> "ROLE_ADMIN"
         return List.of(new SimpleGrantedAuthority("ROLE_" + this.role));
     }
 
-    // getPassword() và getUsername() đã được Lombok @Getter tự động sinh ra ở trên!
+    // getPassword() and getUsername() are already provided by Lombok's @Getter
 
     @Override
     public boolean isAccountNonExpired() {
-        return true; // Tài khoản không bao giờ hết hạn
+        return true; // Account is not expired
     }
 
     @Override
     public boolean isAccountNonLocked() {
-        return true; // Tài khoản không bị khóa
+        return true; // Account is not locked
     }
 
     @Override
     public boolean isCredentialsNonExpired() {
-        return true; // Mật khẩu không hết hạn
+        return true; // Password is expired
     }
 
     @Override
     public boolean isEnabled() {
-        // Chỉ cho phép đăng nhập nếu status là ACTIVE
+        // User is enabled if status is "ACTIVE"
         return "ACTIVE".equals(this.status);
     }
 }

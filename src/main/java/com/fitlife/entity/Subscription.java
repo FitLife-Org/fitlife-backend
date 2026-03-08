@@ -18,12 +18,10 @@ public class Subscription {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Quan hệ N-1: Nhiều lượt đăng ký thuộc về 1 Member
     @ManyToOne
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
-    // Quan hệ N-1: Nhiều lượt đăng ký dùng chung 1 loại GymPackage
     @ManyToOne
     @JoinColumn(name = "package_id", nullable = false)
     private GymPackage gymPackage;
@@ -34,7 +32,7 @@ public class Subscription {
     @Column(name = "end_date", nullable = false)
     private LocalDate endDate;
 
-    // Trạng thái: "ACTIVE", "EXPIRED", "CANCELLED"
+    // Status: "ACTIVE", "EXPIRED", "CANCELLED"
     @Column(name = "status", nullable = false, length = 20)
     private String status;
 }

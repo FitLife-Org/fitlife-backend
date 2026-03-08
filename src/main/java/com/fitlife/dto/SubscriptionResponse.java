@@ -13,7 +13,7 @@ public class SubscriptionResponse {
     private Long id;
     private Long memberId;
     private Long packageId;
-    private String packageName; // Trả về thêm tên gói cho Frontend dễ hiển thị
+    private String packageName;
     private LocalDate startDate;
     private LocalDate endDate;
     private String status;

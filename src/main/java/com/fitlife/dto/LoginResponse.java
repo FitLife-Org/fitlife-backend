@@ -8,7 +8,7 @@ import lombok.Setter;
 @Setter
 @Builder
 public class LoginResponse {
-    private String token; // Chuỗi JWT loằng ngoằng chính là ở đây
+    private String token;
     private String username;
     private String role;
 }

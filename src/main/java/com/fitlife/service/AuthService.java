@@ -1,6 +1,8 @@
 package com.fitlife.service;
 
-import com.fitlife.dto.*;
+import com.fitlife.dto.LoginRequest;
+import com.fitlife.dto.LoginResponse;
+import com.fitlife.dto.RegisterRequest;
 import com.fitlife.entity.Member;
 import com.fitlife.entity.User;
 import com.fitlife.repository.MemberRepository;
@@ -8,7 +10,7 @@ import com.fitlife.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.crypto.password.PasswordEncoder; // Thêm cái này để băm pass
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

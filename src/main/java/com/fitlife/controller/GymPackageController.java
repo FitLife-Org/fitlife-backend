@@ -8,7 +8,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/packages")
@@ -18,11 +21,9 @@ public class GymPackageController {
     private final GymPackageService gymPackageService;
 
     @PostMapping
-    // Đổi kiểu trả về thành ApiResponse<GymPackageResponse>
     public ResponseEntity<ApiResponse<GymPackageResponse>> createPackage(@Valid @RequestBody GymPackageCreationRequest request) {
         GymPackageResponse result = gymPackageService.createPackage(request);
 
-        // Bọc kết quả vào trong ApiResponse
         ApiResponse<GymPackageResponse> response = ApiResponse.<GymPackageResponse>builder()
                 .code(HttpStatus.CREATED.value()) // 201
                 .message("Package created successfully")

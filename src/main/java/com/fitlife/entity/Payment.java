@@ -21,7 +21,7 @@ public class Payment {
 
     @OneToOne
     @JoinColumn(name = "subscription_id", nullable = false)
-    private Subscription subscription; // 1 thanh toán cho 1 lần đăng ký
+    private Subscription subscription;
 
     private double amount;
 

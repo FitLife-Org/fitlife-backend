@@ -14,5 +14,5 @@ public class CheckInResponse {
     private String memberName;
     private LocalDateTime checkInTime;
     private String status; // "ACCESS_GRANTED" hoặc "ACCESS_DENIED"
-    private String message; // Lý do cụ thể
+    private String message; // Reason details
 }

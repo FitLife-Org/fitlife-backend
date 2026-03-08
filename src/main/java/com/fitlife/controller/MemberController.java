@@ -1,7 +1,6 @@
 package com.fitlife.controller;
 
 import com.fitlife.dto.ApiResponse;
-import com.fitlife.dto.GymPackageResponse;
 import com.fitlife.dto.MemberCreationRequest;
 import com.fitlife.dto.MemberResponse;
 import com.fitlife.service.MemberService;

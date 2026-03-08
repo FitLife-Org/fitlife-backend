@@ -10,10 +10,13 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/auth") // Thêm prefix để đồng bộ với các API khác
+@RequestMapping("/auth")
 @RequiredArgsConstructor
 @Tag(name = "Authentication", description = "Các API xác thực và đăng ký")
 public class AuthController {
@@ -24,7 +27,7 @@ public class AuthController {
     public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse result = authService.login(request);
 
-        return ResponseEntity.ok( // Trả về HTTP 200 thực tế
+        return ResponseEntity.ok(
                 ApiResponse.<LoginResponse>builder()
                         .code(200)
                         .message("Đăng nhập thành công")
@@ -37,7 +40,7 @@ public class AuthController {
     public ResponseEntity<ApiResponse<String>> register(@Valid @RequestBody RegisterRequest request) {
         String result = authService.register(request);
 
-        return ResponseEntity.status(HttpStatus.CREATED) // Trả về HTTP 201 thực tế
+        return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.<String>builder()
                         .code(201)
                         .message("Đăng ký tài khoản thành công")

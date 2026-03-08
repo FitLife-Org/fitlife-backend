@@ -17,11 +17,12 @@ public class AiWorkoutRequest {
     @NotBlank(message = "Trình độ không được để trống (VD: Beginner, Intermediate)")
     private String fitnessLevel;
 
-    @Min(1) @Max(7)
+    @Min(1)
+    @Max(7)
     private int daysPerWeek;
 
-    // Các trường Nâng cao (Có thể null)
-    private String injuries;       // Chấn thương (VD: Đau lưng dưới)
-    private String equipment;      // Thiết bị (VD: Chỉ có tạ đơn)
-    private String dietPreference; // Ăn kiêng (VD: Ăn chay, Keto)
+    // Advanded fields (optional null)
+    private String injuries;
+    private String equipment;
+    private String dietPreference;
 }

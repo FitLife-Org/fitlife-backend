@@ -9,10 +9,10 @@ import java.util.Optional;
 @Repository
 public interface MemberRepository extends JpaRepository<Member, Long> {
 
-    // Tìm kiếm khách hàng theo số điện thoại
+    // Find member by phone number
     Optional<Member> findByPhone(String phone);
 
-    // Kiểm tra số điện thoại đã đăng ký chưa
+    // Check if a member exists by phone number
     boolean existsByPhone(String phone);
 
     Optional<Member> findByUserUsername(String username);

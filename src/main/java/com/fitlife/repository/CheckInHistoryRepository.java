@@ -7,6 +7,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface CheckInHistoryRepository extends JpaRepository<CheckInHistory, Long> {
 
-    // (Tuỳ chọn sau này) Tìm tất cả lịch sử quẹt thẻ của một người
+    // (Optional) Method to find check-in history by member ID, ordered by check-in time descending
     // List<CheckInHistory> findByMemberIdOrderByCheckInTimeDesc(Long memberId);
 }

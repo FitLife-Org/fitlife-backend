@@ -2,7 +2,6 @@ package com.fitlife.service;
 
 import com.fitlife.dto.UserCreationRequest;
 import com.fitlife.dto.UserResponse;
-import com.fitlife.entity.Role;
 import com.fitlife.entity.User;
 import com.fitlife.repository.UserRepository;
 import lombok.RequiredArgsConstructor;

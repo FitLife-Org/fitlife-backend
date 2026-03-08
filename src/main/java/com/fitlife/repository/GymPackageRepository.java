@@ -7,6 +7,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface GymPackageRepository extends JpaRepository<GymPackage, Long> {
 
-    // Kiểm tra xem tên gói tập đã tồn tại chưa (tránh tạo 2 gói trùng tên)
+    // Check if a package with the given name already exists
     boolean existsByName(String name);
 }

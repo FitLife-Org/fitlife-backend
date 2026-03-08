@@ -6,5 +6,4 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
-    // Tạm thời để trống, Spring Data JPA sẽ tự lo các hàm CRUD cơ bản
 }

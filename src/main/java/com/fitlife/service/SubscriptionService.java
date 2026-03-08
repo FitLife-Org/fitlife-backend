@@ -4,15 +4,15 @@ import com.fitlife.dto.SubscriptionCreationRequest;
 import com.fitlife.dto.SubscriptionResponse;
 import com.fitlife.entity.GymPackage;
 import com.fitlife.entity.Member;
-import com.fitlife.entity.Payment; // <-- Import Payment
+import com.fitlife.entity.Payment;
 import com.fitlife.entity.Subscription;
 import com.fitlife.repository.GymPackageRepository;
 import com.fitlife.repository.MemberRepository;
-import com.fitlife.repository.PaymentRepository; // <-- Import Payment Repo
+import com.fitlife.repository.PaymentRepository;
 import com.fitlife.repository.SubscriptionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional; // <-- Import Transactional
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

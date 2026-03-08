@@ -36,7 +36,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String jwt;
         final String username;
 
-        // 1. Kiểm tra Header có chứa Bearer không
+        // 1. Check header exists and starts with "Bearer "
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
@@ -60,9 +60,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
         } catch (Exception e) {
-            // Nếu Token bị Malformed (sai định dạng), không để server văng 500
+            // If token is invalid, expired, or any error occurs during parsing/validation
             log.error("JWT Error: {}", e.getMessage());
-            // Có thể bỏ qua để security tự trả về 403 hoặc 401
+            // Can be omitted so that security automatically returns 403 or 401
         }
 
         filterChain.doFilter(request, response);

@@ -1,7 +1,11 @@
 package com.fitlife.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -21,7 +25,7 @@ public class AiWorkoutPlan {
 
     private String goal;
 
-    @Column(columnDefinition = "LONGTEXT") // Để chứa được cục JSON rất dài của AI
+    @Column(columnDefinition = "LONGTEXT")  // Store the AI-generated workout plan as a JSON string or plain text
     private String planData;
 
     private LocalDateTime createdAt;

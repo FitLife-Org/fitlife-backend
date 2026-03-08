@@ -13,9 +13,10 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * Controller quản lý các tính năng liên quan đến Trí tuệ nhân tạo (Gemini AI)
- * Tích hợp tạo phác đồ, lưu trữ lịch sử và kích hoạt lịch tập nghiệp vụ.
- */
+ * Controller manage AI-related features (Gemini AI integration)
+ * Handles workout plan generation, history storage, and activation of plans.
+*/
+
 @RestController
 @RequestMapping("/ai")
 @RequiredArgsConstructor
@@ -25,9 +26,10 @@ public class AiController {
 
     /**
      * Endpoint: POST /api/v1/ai/workout-plan
-     * Chức năng: Gọi AI phân tích chỉ số sức khỏe và mục tiêu để tạo phác đồ.
-     * Kết quả được lưu tự động vào bảng ai_workout_plans dưới dạng JSON.
+     * Function: Call AI to analyze health metrics and goals to create a workout plan.
+     * The result is automatically saved in the ai_workout_plans table as JSON.
      */
+
     @PostMapping("/workout-plan")
     public ResponseEntity<ApiResponse<JsonNode>> generatePlan(@Valid @RequestBody AiWorkoutRequest request) {
         JsonNode aiPlan = aiService.generateWorkoutPlan(request);
@@ -42,8 +44,9 @@ public class AiController {
 
     /**
      * Endpoint: GET /api/v1/ai/history/{memberId}
-     * Chức năng: Lấy danh sách các phác đồ cũ mà AI đã từng tư vấn cho hội viên.
+     * Function: Retrieve the list of past AI-generated workout plans for a member.
      */
+
     @GetMapping("/history/{memberId}")
     public ResponseEntity<ApiResponse<List<AiWorkoutPlan>>> getHistory(@PathVariable Long memberId) {
         List<AiWorkoutPlan> history = aiService.getMemberHistory(memberId);
@@ -58,7 +61,7 @@ public class AiController {
 
     /**
      * Endpoint: POST /api/v1/ai/activate/{planId}
-     * Chức năng: Bóc tách dữ liệu JSON từ phác đồ AI và đẩy vào bảng WorkoutPlan/WorkoutSession/WorkoutDetail chính thức.
+     * Function: Activate a specific AI-generated workout plan by its ID. This will set the chosen plan as the member's current active workout plan, replacing any existing active plan.
      */
     @PostMapping("/activate/{planId}")
     public ResponseEntity<ApiResponse<String>> activatePlan(@PathVariable Long planId) {

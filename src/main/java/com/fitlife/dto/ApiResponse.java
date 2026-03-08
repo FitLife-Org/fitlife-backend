@@ -10,7 +10,7 @@ import lombok.Setter;
 @Setter
 @Builder
 @AllArgsConstructor
-// Nếu trường nào null (ví dụ data bị null khi có lỗi), Jackson sẽ không in ra JSON
+// If data is null, it won't be included in the JSON response
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ApiResponse<T> {
     private int code;
@@ -18,5 +18,6 @@ public class ApiResponse<T> {
     private T data;
 
     // Default constructor cho Jackson
-    public ApiResponse() {}
+    public ApiResponse() {
+    }
 }

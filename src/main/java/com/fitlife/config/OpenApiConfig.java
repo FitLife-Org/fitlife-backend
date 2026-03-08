@@ -17,7 +17,7 @@ import org.springframework.context.annotation.Configuration;
                 description = "Tài liệu API cho hệ thống quản lý phòng Gym FitLife. Tích hợp JWT Security.",
                 contact = @Contact(name = "Huy Developer", email = "huy@example.com")
         ),
-        // Áp dụng ổ khóa (security) cho toàn bộ API
+        // Apply security to the entire API
         security = @SecurityRequirement(name = "bearerAuth")
 )
 @SecurityScheme(
@@ -29,5 +29,5 @@ import org.springframework.context.annotation.Configuration;
         in = SecuritySchemeIn.HEADER
 )
 public class OpenApiConfig {
-    // File này chỉ chứa Annotation để cấu hình UI, không cần code logic
+    // This file only contains Annotation to configure the UI, no logical code is needed
 }
