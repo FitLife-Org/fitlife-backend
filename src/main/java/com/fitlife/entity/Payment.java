@@ -25,11 +25,16 @@ public class Payment {
 
     private double amount;
 
-    @Column(name = "payment_date")
+    // SỬA Ở ĐÂY: Đảm bảo nullable = true (mặc định là true nhưng mình ghi rõ ra cho chắc)
+    @Column(name = "payment_date", nullable = true)
     private LocalDateTime paymentDate;
 
     @Column(name = "payment_method")
     private String paymentMethod;
 
     private String status; // PENDING, COMPLETED, FAILED
+
+    private String vnpTransactionNo;
+    private String vnpResponseCode;
+    private String vnpOrderInfo;
 }

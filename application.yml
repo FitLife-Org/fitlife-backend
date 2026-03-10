@@ -27,8 +27,13 @@ cloudinary:
   api-key: "548378961766311"
   api-secret: "GqtAOdXDUzX9sY5Eqg6LWrb_oKU"
 
-# Cấu hình Gemini chuẩn xác dựa trên kết quả PowerShell của emmembers
 gemini:
   api-key: "AIzaSyDxDDuK3_-S0GHPgr7lkqL1fCcHLybux8Q"
-  # SỬ DỤNG v1beta và gemini-2.5-flash (đúng như danh sách model em list được)
   api-url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+
+# ĐÃ KÉO RA NGOÀI CÙNG LỀ TRÁI NGANG VỚI GEMINI
+vnpay:
+  tmn-code: BSHJNZHW
+  hash-secret: SG3U8HBZ5KDAH3UN7PDIA4DY3GFNKQF3
+  pay-url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+  return-url: http://localhost:8080/api/v1/payment/vnpay-return
