@@ -1,7 +1,7 @@
 package com.fitlife.controller;
 
 import com.fitlife.dto.ApiResponse;
-import com.fitlife.dto.AdminDashboardResponse; // ĐỔI SANG DÙNG DTO ADMIN
+import com.fitlife.dto.AdminDashboardResponse;
 import com.fitlife.repository.CheckInHistoryRepository;
 import com.fitlife.repository.MemberRepository;
 import com.fitlife.repository.PaymentRepository;
@@ -26,8 +26,7 @@ public class AdminStatisticsController {
     private final CheckInHistoryRepository checkInHistoryRepository;
 
     @GetMapping("/dashboard")
-    @PreAuthorize("hasAuthority('ADMIN')")
-    // SỬA: Đổi DashboardResponse -> AdminDashboardResponse
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ADMIN')")
     public ResponseEntity<ApiResponse<AdminDashboardResponse>> getDashboardData() {
 
         Double totalRev = paymentRepository.getTotalRevenue();
@@ -40,12 +39,11 @@ public class AdminStatisticsController {
             }
         }
 
-        // SỬA: Dùng AdminDashboardResponse.builder()
         AdminDashboardResponse dashboard = AdminDashboardResponse.builder()
-                .totalMembers(memberRepository.count()) // JpaRepository có sẵn hàm count()
+                .totalMembers(memberRepository.count())
                 .activeMembers(memberRepository.countByStatus("ACTIVE"))
                 .totalRevenue(totalRev != null ? totalRev : 0.0)
-                .totalCheckinsToday(checkInHistoryRepository.countCheckinsToday()) // Thêm hàm này vào Repo nếu chưa có
+                .totalCheckinsToday(checkInHistoryRepository.countCheckinsToday())
                 .revenueByMonth(revenueMap)
                 .build();
 
