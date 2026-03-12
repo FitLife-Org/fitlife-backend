@@ -23,6 +23,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
 
     // Logic Register: Create User + Member
     @Transactional
@@ -49,6 +50,11 @@ public class AuthService {
                 .avatarUrl(null)
                 .build();
         memberRepository.save(member);
+
+        if (request.getEmail() != null && !request.getEmail().isEmpty()) {
+            emailService.sendWelcomeEmail(request.getEmail(), request.getFullName());
+            System.out.println("Đã đẩy lệnh gửi email chào mừng vào luồng chạy ngầm cho: " + request.getEmail());
+        }
 
         return "Đăng ký thành công!";
     }
