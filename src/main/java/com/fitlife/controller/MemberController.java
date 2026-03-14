@@ -61,7 +61,7 @@ public class MemberController {
     }
 
     // API get dashboard personal
-    @GetMapping("/dashboard")
+    @GetMapping("me/dashboard")
     @PreAuthorize("hasAnyAuthority('MEMBER', 'ROLE_MEMBER')")
     public ResponseEntity<ApiResponse<DashboardResponse>> getPersonalDashboard(Authentication auth) {
 
