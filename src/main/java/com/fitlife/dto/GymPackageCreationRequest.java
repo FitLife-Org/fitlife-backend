@@ -10,15 +10,15 @@ import lombok.Setter;
 @Setter
 public class GymPackageCreationRequest {
 
-    @NotBlank(message = "Package name is required and cannot be empty")
+    @NotBlank(message = "Tên gói tập không được để trống")
     private String name;
 
-    @NotNull(message = "Price is required")
-    @Min(value = 0, message = "Price cannot be negative")
+    @NotNull(message = "Giá tiền không được để trống")
+    @Min(value = 0, message = "Giá tiền không được nhỏ hơn 0")
     private Double price;
 
-    @NotNull(message = "Duration in months is required")
-    @Min(value = 1, message = "Duration must be at least 1 month")
+    @NotNull(message = "Thời hạn không được để trống")
+    @Min(value = 1, message = "Thời hạn phải ít nhất 1 tháng")
     private Integer durationMonths;
 
     private String description;
