@@ -147,4 +147,41 @@ public class MemberServiceImpl implements MemberService {
         memberRepository.save(member);
         userRepository.save(user);
     }
+
+    @Override
+    public MemberResponse getMemberById(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hội viên ID: " + memberId));
+        return mapToMemberResponse(member);
+    }
+
+    @Transactional
+    @Override
+    public MemberResponse updateMemberByAdmin(Long memberId, MemberCreationRequest request) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hội viên ID: " + memberId));
+
+        // Cập nhật thông tin
+        member.setFullName(request.getFullName());
+        member.setPhone(request.getPhone());
+        member.setEmail(request.getEmail());
+
+        memberRepository.save(member);
+        return mapToMemberResponse(member);
+    }
+
+    @Transactional
+    @Override
+    public void deleteMember(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hội viên ID: " + memberId));
+
+        User user = member.getUser();
+
+        // Xóa hội viên trước, xóa user sau (tùy thuộc vào thiết kế khóa ngoại của em)
+        memberRepository.delete(member);
+        if (user != null) {
+            userRepository.delete(user);
+        }
+    }
 }

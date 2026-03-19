@@ -16,4 +16,10 @@ public interface MemberService {
     PageResponse<MemberResponse> getAllMembers(int page, int size, String sortBy, String sortDir, String keyword);
 
     void toggleMemberLock(Long memberId);
+
+    MemberResponse getMemberById(Long memberId);
+
+    MemberResponse updateMemberByAdmin(Long memberId, MemberCreationRequest request);
+
+    void deleteMember(Long memberId);
 }
