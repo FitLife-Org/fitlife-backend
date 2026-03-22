@@ -6,5 +6,5 @@ import lombok.Data;
 @Data
 public class GoogleLoginRequest {
     @NotBlank(message = "Google Token không được để trống")
-    private String token; // Đây là ID Token do React gửi xuống
+    private String token;
 }

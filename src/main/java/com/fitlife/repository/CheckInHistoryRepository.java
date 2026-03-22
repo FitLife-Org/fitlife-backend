@@ -33,4 +33,6 @@ public interface CheckInHistoryRepository extends JpaRepository<CheckInHistory, 
 
     @Query("SELECT COUNT(c) FROM CheckInHistory c WHERE c.checkInTime >= CURRENT_DATE AND c.status = 'ACCESS_GRANTED'")
     long countCheckinsToday();
+
+
 }
