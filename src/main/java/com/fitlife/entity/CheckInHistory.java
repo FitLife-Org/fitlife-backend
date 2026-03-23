@@ -20,10 +20,14 @@ public class CheckInHistory {
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "gym_branch_id", nullable = false)
+    private GymBranch gymBranch;
+
     @Column(name = "check_in_time")
     private LocalDateTime checkInTime;
 
-    @Column(name = " check_out_time")
+    @Column(name = "check_out_time")
     private LocalDateTime checkOutTime;
 
     @Column(name = "status", nullable = false, length = 20)

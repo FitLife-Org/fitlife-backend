@@ -8,7 +8,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class GymPackageCreationRequest {
+public class GymPackageRequest {
 
     @NotBlank(message = "Tên gói tập không được để trống")
     private String name;

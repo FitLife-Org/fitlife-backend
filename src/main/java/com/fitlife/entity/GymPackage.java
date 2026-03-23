@@ -2,6 +2,7 @@ package com.fitlife.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "packages") // Tên class là GymPackage, nhưng DB vẫn là bảng packages
@@ -20,7 +21,7 @@ public class GymPackage {
     private String name;
 
     @Column(name = "price", nullable = false)
-    private Double price;
+    private BigDecimal price;
 
     @Column(name = "duration_months", nullable = false)
     private Integer durationMonths;

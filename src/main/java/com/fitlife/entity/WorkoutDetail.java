@@ -16,7 +16,8 @@ public class WorkoutDetail {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String exercise_name;
+    @Column(name = "exercise_name", nullable = false)
+    private String exerciseName;
     private Integer sets;
     private String reps;
 

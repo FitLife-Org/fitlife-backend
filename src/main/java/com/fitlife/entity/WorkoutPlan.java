@@ -47,8 +47,7 @@ public class WorkoutPlan {
     private LocalDateTime startDate;
     private LocalDateTime endDate;
 
-    @Enumerated(EnumType.STRING)
-    private PlanStatus status; // ACTIVE, COMPLETED, CANCELLED
+    private String status; // ACTIVE, COMPLETED, CANCELLED
 
     @OneToMany(mappedBy = "workoutPlan", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @Builder.Default

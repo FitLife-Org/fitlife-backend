@@ -35,12 +35,15 @@ public class User implements UserDetails {
     @Column(name = "status", nullable = false, length = 20)
     private String status; // "ACTIVE", "INACTIVE"
 
+    @Column(name = "fit_coin")
+    @Builder.Default
+    private Integer fitCoin = 0;
+
     @Column(name = "reset_token", length = 10)
     private String resetToken;
 
     @Column(name = "reset_token_expiry")
     private LocalDateTime resetTokenExpiry;
-
 
     @OneToOne(mappedBy = "user", fetch = FetchType.LAZY)
     @com.fasterxml.jackson.annotation.JsonIgnore

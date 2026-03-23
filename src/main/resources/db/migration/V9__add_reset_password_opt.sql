@@ -1,2 +1,0 @@
-ALTER TABLE users ADD COLUMN reset_token VARCHAR(10) NULL;
-ALTER TABLE users ADD COLUMN reset_token_expiry DATETIME NULL;
