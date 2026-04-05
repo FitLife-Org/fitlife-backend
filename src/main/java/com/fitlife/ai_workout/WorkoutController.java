@@ -1,5 +1,6 @@
 package com.fitlife.ai_workout;
 
+import com.fitlife.ai_workout.entity.WorkoutPlan;
 import com.fitlife.core.response.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;

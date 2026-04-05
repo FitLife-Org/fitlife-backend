@@ -1,4 +1,4 @@
-package com.fitlife.ai_workout;
+package com.fitlife.ai_workout.entity;
 
 import com.fitlife.member.entity.Member;
 import jakarta.persistence.*;

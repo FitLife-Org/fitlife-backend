@@ -8,7 +8,7 @@ import com.fitlife.member.HealthMetricRepository;
 import com.fitlife.member.entity.HealthMetric;
 import com.fitlife.member.entity.Member;
 import com.fitlife.subscription.Subscription;
-import com.fitlife.ai_workout.WorkoutPlan;
+import com.fitlife.ai_workout.entity.WorkoutPlan;
 import com.fitlife.subscription.SubscriptionRepository;
 import com.fitlife.progress_tracking.dto.MemberProgressSummaryResponse;
 import lombok.RequiredArgsConstructor;

@@ -2,6 +2,7 @@ package com.fitlife.ai_workout;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fitlife.ai_workout.dto.AiWorkoutRequest;
+import com.fitlife.ai_workout.entity.AiWorkoutPlan;
 
 import java.util.List;
 

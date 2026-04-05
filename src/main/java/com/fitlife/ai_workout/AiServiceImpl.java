@@ -4,6 +4,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fitlife.ai_workout.dto.AiWorkoutRequest;
+import com.fitlife.ai_workout.entity.AiWorkoutPlan;
+import com.fitlife.ai_workout.entity.WorkoutDetail;
+import com.fitlife.ai_workout.entity.WorkoutPlan;
+import com.fitlife.ai_workout.entity.WorkoutSession;
 import com.fitlife.member.entity.HealthMetric;
 import com.fitlife.member.entity.Member;
 import com.fitlife.member.HealthMetricRepository;
@@ -29,7 +33,7 @@ public class AiServiceImpl implements AiService {
 
     private final MemberRepository memberRepository;
     private final HealthMetricRepository healthMetricRepository;
-    private final AiPlanRepository aiPlanRepository;
+    private final AiWorkoutPlanRepository aiWorkoutPlanRepository;
     private final WorkoutPlanRepository workoutPlanRepository;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
@@ -78,7 +82,7 @@ public class AiServiceImpl implements AiService {
                     .createdAt(LocalDateTime.now())
                     .build();
 
-            planHistory = aiPlanRepository.save(planHistory);
+            planHistory = aiWorkoutPlanRepository.save(planHistory);
 
             log.info("===> Đã lưu phác đồ AI vào lịch sử thành công.");
 
@@ -101,7 +105,7 @@ public class AiServiceImpl implements AiService {
     @Transactional
     @Override
     public void activatePlan(Long aiPlanId) {
-        AiWorkoutPlan aiPlanRecord = aiPlanRepository.findById(aiPlanId)
+        AiWorkoutPlan aiPlanRecord = aiWorkoutPlanRepository.findById(aiPlanId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy phác đồ AI trong lịch sử"));
 
         Member member = aiPlanRecord.getMember();
@@ -171,7 +175,7 @@ public class AiServiceImpl implements AiService {
     public List<AiWorkoutPlan> getMemberHistory(String username) {
         Member member = memberRepository.findByUserUsername(username)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy hội viên"));
-        return aiPlanRepository.findByMemberOrderByCreatedAtDesc(member);
+        return aiWorkoutPlanRepository.findByMemberOrderByCreatedAtDesc(member);
     }
 
     // --- CÁC HÀM HỖ TRỢ (HELPERS) ---
