@@ -1,4 +1,4 @@
-package com.fitlife.ai_workout;
+package com.fitlife.ai_workout.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fitlife.ai_workout.dto.AiWorkoutRequest;

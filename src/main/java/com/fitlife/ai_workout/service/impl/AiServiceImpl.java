@@ -1,13 +1,16 @@
-package com.fitlife.ai_workout;
+package com.fitlife.ai_workout.service.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fitlife.ai_workout.repository.AiWorkoutPlanRepository;
+import com.fitlife.ai_workout.repository.WorkoutPlanRepository;
 import com.fitlife.ai_workout.dto.AiWorkoutRequest;
 import com.fitlife.ai_workout.entity.AiWorkoutPlan;
 import com.fitlife.ai_workout.entity.WorkoutDetail;
 import com.fitlife.ai_workout.entity.WorkoutPlan;
 import com.fitlife.ai_workout.entity.WorkoutSession;
+import com.fitlife.ai_workout.service.AiService;
 import com.fitlife.member.entity.HealthMetric;
 import com.fitlife.member.entity.Member;
 import com.fitlife.member.HealthMetricRepository;

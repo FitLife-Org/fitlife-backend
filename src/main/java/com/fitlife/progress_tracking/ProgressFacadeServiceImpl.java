@@ -1,7 +1,7 @@
 package com.fitlife.progress_tracking;
 
-import com.fitlife.ai_workout.WorkoutDetailRepository;
-import com.fitlife.ai_workout.WorkoutPlanRepository;
+import com.fitlife.ai_workout.repository.WorkoutDetailRepository;
+import com.fitlife.ai_workout.repository.WorkoutPlanRepository;
 import com.fitlife.attendance.CheckInHistoryRepository;
 import com.fitlife.member.MemberRepository;
 import com.fitlife.member.HealthMetricRepository;

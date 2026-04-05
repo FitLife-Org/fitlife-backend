@@ -1,7 +1,10 @@
-package com.fitlife.ai_workout;
+package com.fitlife.ai_workout.service.impl;
 
 import com.fitlife.ai_workout.entity.WorkoutDetail;
 import com.fitlife.ai_workout.entity.WorkoutPlan;
+import com.fitlife.ai_workout.repository.WorkoutDetailRepository;
+import com.fitlife.ai_workout.repository.WorkoutPlanRepository;
+import com.fitlife.ai_workout.service.WorkoutService;
 import com.fitlife.member.entity.Member;
 import com.fitlife.member.MemberRepository;
 import lombok.RequiredArgsConstructor;

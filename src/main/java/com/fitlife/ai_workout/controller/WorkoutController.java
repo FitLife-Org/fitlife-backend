@@ -1,5 +1,6 @@
-package com.fitlife.ai_workout;
+package com.fitlife.ai_workout.controller;
 
+import com.fitlife.ai_workout.service.WorkoutService;
 import com.fitlife.ai_workout.entity.WorkoutPlan;
 import com.fitlife.core.response.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;

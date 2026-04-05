@@ -1,4 +1,4 @@
-package com.fitlife.ai_workout;
+package com.fitlife.ai_workout.repository;
 
 import com.fitlife.ai_workout.entity.WorkoutPlan;
 import com.fitlife.member.entity.Member;
