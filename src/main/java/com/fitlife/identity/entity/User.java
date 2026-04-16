@@ -31,53 +31,57 @@ public class User implements UserDetails {
     private String password;
 
     @Column(name = "role", nullable = false, length = 20)
-    private String role; // "ADMIN", "MEMBER", "STAFF"
+    private String role;
 
     @Column(name = "status", nullable = false, length = 20)
-    private String status; // "ACTIVE", "INACTIVE"
+    private String status;
 
     @Column(name = "fit_coin")
     @Builder.Default
     private Integer fitCoin = 0;
 
-    @Column(name = "reset_token", length = 10)
+    @Column(name = "reset_token", length = 255)
     private String resetToken;
 
     @Column(name = "reset_token_expiry")
     private LocalDateTime resetTokenExpiry;
+
+    @Column(name = "is_deleted")
+    @Builder.Default
+    private Boolean isDeleted = false;
+
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     @OneToOne(mappedBy = "user", fetch = FetchType.LAZY)
     @com.fasterxml.jackson.annotation.JsonIgnore
     @lombok.ToString.Exclude
     private Member member;
 
-    // Functions to implement UserDetails interface for Spring Security
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Spring Security requires roles to be prefixed with "ROLE_". Example: "ADMIN" -> "ROLE_ADMIN"
         return List.of(new SimpleGrantedAuthority("ROLE_" + this.role));
     }
-
-    // getPassword() and getUsername() are already provided by Lombok's @Getter
-
     @Override
-    public boolean isAccountNonExpired() {
-        return true; // Account is not expired
-    }
-
+    public boolean isAccountNonExpired() { return true; }
     @Override
-    public boolean isAccountNonLocked() {
-        return true; // Account is not locked
-    }
-
+    public boolean isAccountNonLocked() { return true; }
     @Override
-    public boolean isCredentialsNonExpired() {
-        return true; // Password is expired
-    }
-
+    public boolean isCredentialsNonExpired() { return true; }
     @Override
-    public boolean isEnabled() {
-        // User is enabled if status is "ACTIVE"
-        return "ACTIVE".equals(this.status);
-    }
+    public boolean isEnabled() { return "ACTIVE".equals(this.status) && !this.isDeleted; }
 }

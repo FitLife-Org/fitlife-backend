@@ -21,10 +21,23 @@ public class HealthMetric {
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
+    @Column(nullable = false)
     private Double weight;
+
+    @Column(nullable = false)
     private Double height;
+
     private Double bmi;
 
-    @Column(name = "recorded_at")
-    private LocalDateTime recordedAt;
+    @Column(name = "recorded_at", nullable = false)
+    @Builder.Default
+    private LocalDateTime recordedAt = LocalDateTime.now();
+
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+    }
 }

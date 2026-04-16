@@ -1,6 +1,7 @@
 package com.fitlife.attendance.entity;
 
 import com.fitlife.facility.entity.GymBranch;
+import com.fitlife.facility.entity.Locker; // Cần import Locker
 import com.fitlife.member.entity.Member;
 import jakarta.persistence.*;
 import lombok.*;
@@ -26,12 +27,33 @@ public class CheckInHistory {
     @JoinColumn(name = "gym_branch_id", nullable = false)
     private GymBranch gymBranch;
 
-    @Column(name = "check_in_time")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "locker_id")
+    private Locker locker;
+
+    @Column(name = "check_in_time", nullable = false)
     private LocalDateTime checkInTime;
 
     @Column(name = "check_out_time")
     private LocalDateTime checkOutTime;
 
-    @Column(name = "status", nullable = false, length = 20)
+    @Column(name = "status", nullable = false, length = 30)
     private String status;
+
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
 }
