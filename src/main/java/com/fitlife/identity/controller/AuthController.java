@@ -24,51 +24,30 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse result = authService.login(request);
-
         return ResponseEntity.ok(ApiResponse.success(result, "Đăng nhập thành công"));
     }
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<String>> register(@Valid @RequestBody RegisterRequest request) {
         String result = authService.register(request);
-
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.<String>builder()
-                        .code(201)
-                        .message("Đăng ký tài khoản thành công")
-                        .data(result)
-                        .build()
-                );
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(result, "Đăng ký tài khoản thành công"));
     }
 
     @PostMapping("/forgot-password")
     public ResponseEntity<ApiResponse<String>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         String result = authService.forgotPassword(request);
-        return ResponseEntity.ok(ApiResponse.<String>builder()
-                .code(200)
-                .message("Thành công")
-                .data(result)
-                .build());
+        return ResponseEntity.ok(ApiResponse.success(result, "Yêu cầu đặt lại mật khẩu đã được gửi thành công"));
     }
 
     @PostMapping("/reset-password")
     public ResponseEntity<ApiResponse<String>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         String result = authService.resetPassword(request);
-        return ResponseEntity.ok(ApiResponse.<String>builder()
-                .code(200)
-                .message("Thành công")
-                .data(result)
-                .build());
+        return ResponseEntity.ok(ApiResponse.success(result, "Đặt lại mật khẩu thành công"));
     }
 
     @PostMapping("/google")
     public ResponseEntity<ApiResponse<LoginResponse>> googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
         LoginResponse response = authService.googleLogin(request.getToken());
-
-        return ResponseEntity.ok(ApiResponse.<LoginResponse>builder()
-                .code(200)
-                .message("Đăng nhập bằng Google thành công")
-                .data(response)
-                .build());
+        return ResponseEntity.ok(ApiResponse.success(response, "Đăng nhập bằng Google thành công"));
     }
 }

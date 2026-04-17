@@ -32,12 +32,7 @@ public class HealthController {
 
         // principal.getName() lấy username từ JWT token đã qua bộ lọc JwtAuthenticationFilter
         HealthMetric savedMetric = healthMetricService.addHealthMetric(principal.getName(), request);
-
-        return ResponseEntity.ok(ApiResponse.<HealthMetric>builder()
-                .code(200)
-                .message("Cập nhật chỉ số sức khỏe thành công!")
-                .data(savedMetric)
-                .build());
+        return ResponseEntity.ok(ApiResponse.success(savedMetric, "Cập nhật chỉ số sức khỏe thành công!"));
     }
 
     /**
@@ -47,11 +42,6 @@ public class HealthController {
     @GetMapping("/history")
     public ResponseEntity<ApiResponse<List<HealthMetric>>> getHistory(Principal principal) {
         List<HealthMetric> history = healthMetricService.getMemberHistory(principal.getName());
-
-        return ResponseEntity.ok(ApiResponse.<List<HealthMetric>>builder()
-                .code(200)
-                .message("Lấy lịch sử sức khỏe thành công")
-                .data(history)
-                .build());
+        return ResponseEntity.ok(ApiResponse.success(history, "Lấy lịch sử sức khỏe thành công!"));
     }
 }

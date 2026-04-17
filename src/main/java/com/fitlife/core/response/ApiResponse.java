@@ -47,4 +47,12 @@ public class ApiResponse<T> {
                 .data(data)
                 .build();
     }
+
+    public static <T> ApiResponse<T> created(T data, String message) {
+        return ApiResponse.<T>builder()
+                .code(201)
+                .message(message)
+                .data(data)
+                .build();
+    }
 }

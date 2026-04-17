@@ -4,7 +4,6 @@ import com.fitlife.core.response.ApiResponse;
 import com.fitlife.core.response.PageResponse;
 import com.fitlife.member.dto.MemberCreationRequest;
 import com.fitlife.member.dto.MemberProfileResponse;
-import com.fitlife.identity.repository.UserRepository; // Lưu ý: Tương lai nên chuyển việc gọi DB này xuống tầng Service
 import com.fitlife.member.service.MemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,9 +22,7 @@ import java.security.Principal;
 @RequiredArgsConstructor
 public class MemberController {
 
-    // Tiêm Interface thay vì Impl để đúng chuẩn thiết kế SOLID
     private final MemberService memberService;
-    private final UserRepository userRepository;
 
     // ==========================================
     // 1. LUỒNG DÀNH CHO HỘI VIÊN (USER)
@@ -34,11 +31,8 @@ public class MemberController {
     @PostMapping
     public ResponseEntity<ApiResponse<MemberProfileResponse>> createMember(@Valid @RequestBody MemberCreationRequest request) {
         MemberProfileResponse result = memberService.createMember(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.<MemberProfileResponse>builder()
-                .code(HttpStatus.CREATED.value())
-                .message("Member created successfully")
-                .data(result)
-                .build());
+        // Tái sử dụng hàm static created() vừa viết, code cực kỳ Clean!
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(result, "Member created successfully"));
     }
 
     @PostMapping(value = "/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -46,90 +40,61 @@ public class MemberController {
             @RequestParam("file") MultipartFile file,
             Principal principal) throws IOException {
         String avatarUrl = memberService.updateAvatar(principal.getName(), file);
-        return ResponseEntity.ok(ApiResponse.<String>builder()
-                .code(200)
-                .message("Cập nhật ảnh đại diện thành công")
-                .data(avatarUrl)
-                .build());
+        return ResponseEntity.ok(ApiResponse.success(avatarUrl, "Cập nhật ảnh đại diện thành công"));
     }
-
 
     // ==========================================
     // 2. LUỒNG DÀNH CHO QUẢN TRỊ VIÊN (ADMIN)
-    // Bổ sung tiền tố /admin vào đường dẫn để tách biệt API
     // ==========================================
 
     @GetMapping("/admin")
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'STAFF', 'ROLE_ADMIN', 'ROLE_STAFF')")
+    // Dùng hasRole('ADMIN') -> Spring Security tự động hiểu là cần tìm chữ "ROLE_ADMIN" trong Token
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<PageResponse<MemberProfileResponse>>> getAllMembers(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "DESC") String sortDir,
-            @RequestParam(required = false) String keyword
-    ) {
+            @RequestParam(required = false) String keyword) {
+
         PageResponse<MemberProfileResponse> result = memberService.getAllMembers(page, size, sortBy, sortDir, keyword);
-        return ResponseEntity.ok(ApiResponse.<PageResponse<MemberProfileResponse>>builder()
-                .code(HttpStatus.OK.value())
-                .message("Lấy danh sách hội viên thành công")
-                .data(result)
-                .build());
+        return ResponseEntity.ok(ApiResponse.success(result, "Lấy danh sách hội viên thành công"));
     }
 
     @PostMapping("/admin")
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN')")
-    public ResponseEntity<ApiResponse<MemberProfileResponse>> createMemberByAdmin(@RequestBody MemberCreationRequest request) {
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<MemberProfileResponse>> createMemberByAdmin(@Valid @RequestBody MemberCreationRequest request) {
         MemberProfileResponse result = memberService.createMemberByAdmin(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.<MemberProfileResponse>builder()
-                .code(HttpStatus.CREATED.value())
-                .message("Thêm hội viên và tạo tài khoản thành công")
-                .data(result)
-                .build());
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(result, "Thêm hội viên và tạo tài khoản thành công"));
     }
 
     @PatchMapping("/admin/{id}/toggle-lock")
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<String>> toggleMemberLock(@PathVariable Long id) {
         memberService.toggleMemberLock(id);
-        return ResponseEntity.ok(ApiResponse.<String>builder()
-                .code(HttpStatus.OK.value())
-                .message("Cập nhật trạng thái tài khoản thành công")
-                .data(null)
-                .build());
+        return ResponseEntity.ok(ApiResponse.success(null, "Cập nhật trạng thái tài khoản thành công"));
     }
 
     @GetMapping("/admin/{id}")
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<MemberProfileResponse>> getMemberById(@PathVariable Long id) {
         MemberProfileResponse result = memberService.getMemberById(id);
-        return ResponseEntity.ok(ApiResponse.<MemberProfileResponse>builder()
-                .code(HttpStatus.OK.value())
-                .message("Lấy thông tin hội viên thành công")
-                .data(result)
-                .build());
+        return ResponseEntity.ok(ApiResponse.success(result, "Lấy thông tin hội viên thành công"));
     }
 
     @PutMapping("/admin/{id}")
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<MemberProfileResponse>> updateMemberByAdmin(
             @PathVariable Long id,
             @Valid @RequestBody MemberCreationRequest request) {
         MemberProfileResponse result = memberService.updateMemberByAdmin(id, request);
-        return ResponseEntity.ok(ApiResponse.<MemberProfileResponse>builder()
-                .code(HttpStatus.OK.value())
-                .message("Cập nhật thông tin hội viên thành công")
-                .data(result)
-                .build());
+        return ResponseEntity.ok(ApiResponse.success(result, "Cập nhật thông tin hội viên thành công"));
     }
 
     @DeleteMapping("/admin/{id}")
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<String>> deleteMember(@PathVariable Long id) {
         memberService.deleteMember(id);
-        return ResponseEntity.ok(ApiResponse.<String>builder()
-                .code(HttpStatus.OK.value())
-                .message("Đã xóa vĩnh viễn hội viên khỏi hệ thống")
-                .data(null)
-                .build());
+        return ResponseEntity.ok(ApiResponse.success(null, "Đã xóa hội viên khỏi hệ thống"));
     }
 }

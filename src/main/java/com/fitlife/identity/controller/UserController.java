@@ -23,13 +23,6 @@ public class UserController {
     @PostMapping
     public ResponseEntity<ApiResponse<UserResponse>> createUser(@Valid @RequestBody UserCreationRequest request) {
         UserResponse result = userService.createUser(request);
-
-        ApiResponse<UserResponse> response = ApiResponse.<UserResponse>builder()
-                .code(HttpStatus.CREATED.value())
-                .message("User created successfully")
-                .data(result)
-                .build();
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(result, "User created successfully"));
     }
 }
