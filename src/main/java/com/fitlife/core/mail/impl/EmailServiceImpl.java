@@ -1,5 +1,6 @@
-package com.fitlife.core.mail;
+package com.fitlife.core.mail.impl;
 
+import com.fitlife.core.mail.EmailService;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;

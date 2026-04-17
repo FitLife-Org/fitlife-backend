@@ -20,4 +20,9 @@ public interface GymPackageRepository extends JpaRepository<GymPackage, Long> {
 
     // Nếu không có keyword, chỉ lấy gói ACTIVE
     Page<GymPackage> findByStatus(String status, Pageable pageable);
+
+    Page<GymPackage> findByNameContainingIgnoreCaseAndIsDeletedFalse(String trim, Pageable pageable);
+
+
+    Page<GymPackage> findByIsDeletedFalse(Pageable pageable);
 }

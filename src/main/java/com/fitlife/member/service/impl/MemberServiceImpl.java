@@ -6,7 +6,7 @@ import com.fitlife.member.dto.MemberCreationRequest;
 import com.fitlife.member.dto.MemberProfileResponse;
 import com.fitlife.member.entity.Member;
 import com.fitlife.identity.repository.UserRepository;
-import com.fitlife.core.storage.CloudinaryServiceImpl;
+import com.fitlife.core.storage.impl.CloudinaryServiceImpl;
 import com.fitlife.member.repository.MemberRepository;
 import com.fitlife.member.service.MemberService;
 import lombok.RequiredArgsConstructor;
@@ -213,10 +213,19 @@ public class MemberServiceImpl implements MemberService {
 
         User user = member.getUser();
 
-        // Xóa hội viên trước, xóa user sau (tùy thuộc vào thiết kế khóa ngoại của em)
-        memberRepository.delete(member);
+        // THỰC THI SOFT DELETE CHUẨN MỰC
+        member.setIsDeleted(true);
+        member.setStatus("INACTIVE"); // Khóa luôn trạng thái cho an toàn
+
         if (user != null) {
-            userRepository.delete(user);
+            user.setIsDeleted(true);
+            user.setStatus("INACTIVE");
+            userRepository.save(user); // Lưu user
         }
+
+        memberRepository.save(member); // Lưu member
+
+        // Lưu ý: Không cần cascade (xóa lan) isDeleted sang các bảng lịch sử (checkin, orders).
+        // Lịch sử là bất biến.
     }
 }

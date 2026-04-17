@@ -116,20 +116,21 @@ public class AiServiceImpl implements AiService {
         try {
             JsonNode root = objectMapper.readTree(aiPlanRecord.getPlanData());
 
-            // FIX 1: Đổi Enum thành chuỗi "ACTIVE"
-            workoutPlanRepository.findByMemberAndStatus(member, "ACTIVE")
-                    .ifPresent(p -> {
-                        // FIX 2: Đổi Enum thành chuỗi "CANCELLED"
-                        p.setStatus("CANCELLED");
-                        workoutPlanRepository.save(p);
-                    });
+            // FIX DATA INTEGRITY: Quét và hủy TOÀN BỘ các lịch đang ACTIVE của member này
+            List<WorkoutPlan> activePlans = workoutPlanRepository.findByMemberAndStatus(member, "ACTIVE");
+            if (!activePlans.isEmpty()) {
+                activePlans.forEach(p -> {
+                    p.setStatus("CANCELLED");
+                    // Không cần lưu isDeleted = true vì đây chỉ là đổi trạng thái lịch tập
+                });
+                workoutPlanRepository.saveAll(activePlans); // Dùng saveAll cho tối ưu hiệu năng
+            }
 
             WorkoutPlan officialPlan = WorkoutPlan.builder()
                     .name("Lịch tập AI: " + aiPlanRecord.getGoal())
                     .description(root.path("advice").asText())
                     .member(member)
                     .startDate(LocalDateTime.now())
-                    // FIX 3: Đổi Enum thành chuỗi "ACTIVE"
                     .status("ACTIVE")
                     .build();
 

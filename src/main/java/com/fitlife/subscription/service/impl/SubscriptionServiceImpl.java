@@ -38,6 +38,11 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             throw new RuntimeException("Hội viên này đang có một gói tập đang hoạt động (ACTIVE).");
         }
 
+        boolean hasPendingSub = subscriptionRepository.existsByMemberAndStatus(member, "PENDING");
+        if (hasPendingSub) {
+            throw new RuntimeException("Bạn đang có một hóa đơn chờ thanh toán. Vui lòng thanh toán hoặc hủy hóa đơn cũ trước.");
+        }
+
         // 3. Map DTO -> Entity (Trạng thái PENDING chờ VNPay)
         Subscription newSubscription = Subscription.builder()
                 .member(member)

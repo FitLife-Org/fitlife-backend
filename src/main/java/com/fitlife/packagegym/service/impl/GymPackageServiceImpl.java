@@ -22,12 +22,12 @@ public class GymPackageServiceImpl implements GymPackageService {
 
     private final GymPackageRepository gymPackageRepository;
 
-    // Create Package
     @Transactional
     @Override
     public GymPackageResponse createPackage(GymPackageRequest request) {
+        // Business Validation: Kiểm tra trùng tên (Chỉ Service mới làm được)
         if (gymPackageRepository.existsByName(request.getName())) {
-            throw new RuntimeException("Package name already exists: " + request.getName());
+            throw new RuntimeException("Tên gói tập đã tồn tại: " + request.getName());
         }
 
         GymPackage newPackage = GymPackage.builder()
@@ -36,40 +36,32 @@ public class GymPackageServiceImpl implements GymPackageService {
                 .durationMonths(request.getDurationMonths())
                 .description(request.getDescription())
                 .status("ACTIVE")
+                // isDeleted đã được @Builder.Default gán false trong Entity
                 .build();
 
-        GymPackage savedPackage = gymPackageRepository.save(newPackage);
-
-        return mapToResponse(savedPackage);
+        return mapToResponse(gymPackageRepository.save(newPackage));
     }
 
-    // Get List Pagination
     @Transactional(readOnly = true)
     @Override
     public PageResponse<GymPackageResponse> getAllPackages(int page, int size, String sortBy, String sortDir, String keyword) {
-
-        // 1. Config sort
         Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name())
                 ? Sort.by(sortBy).ascending()
                 : Sort.by(sortBy).descending();
 
-        // 2. Config pagination (Đảm bảo page không bị âm)
         Pageable pageable = PageRequest.of(Math.max(0, page - 1), size, sort);
 
-        // 3. Query Database
         Page<GymPackage> packagePage;
         if (keyword != null && !keyword.trim().isEmpty()) {
-            packagePage = gymPackageRepository.findByNameContainingIgnoreCase(keyword.trim(), pageable);
+            packagePage = gymPackageRepository.findByNameContainingIgnoreCaseAndIsDeletedFalse(keyword.trim(), pageable);
         } else {
-            packagePage = gymPackageRepository.findAll(pageable);
+            packagePage = gymPackageRepository.findByIsDeletedFalse(pageable);
         }
 
-        // 4. Entity -> DTO
         List<GymPackageResponse> content = packagePage.getContent().stream()
-                .map(this::mapToResponse) // Gọi hàm phụ trợ cho gọn
+                .map(this::mapToResponse)
                 .toList();
 
-        // 5. Pack
         return PageResponse.<GymPackageResponse>builder()
                 .currentPage(page)
                 .totalPages(packagePage.getTotalPages())
@@ -79,22 +71,31 @@ public class GymPackageServiceImpl implements GymPackageService {
                 .build();
     }
 
-    // Lấy chi tiết 1 gói tập
     @Transactional(readOnly = true)
     @Override
     public GymPackageResponse getPackageById(Long id) {
         GymPackage gymPackage = gymPackageRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy gói tập với ID: " + id));
+
+        // Chặn không cho xem gói đã xóa
+        if (Boolean.TRUE.equals(gymPackage.getIsDeleted())) {
+            throw new RuntimeException("Gói tập này đã bị xóa khỏi hệ thống!");
+        }
+
         return mapToResponse(gymPackage);
     }
 
-    // Cập nhật thông tin gói tập
     @Transactional
     @Override
     public GymPackageResponse updatePackage(Long id, GymPackageRequest request) {
         GymPackage gymPackage = gymPackageRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy gói tập với ID: " + id));
 
+        if (Boolean.TRUE.equals(gymPackage.getIsDeleted())) {
+            throw new RuntimeException("Không thể cập nhật gói tập đã bị xóa!");
+        }
+
+        // Kiểm tra trùng tên nhưng bỏ qua tên hiện tại của chính nó
         if (!gymPackage.getName().equals(request.getName()) && gymPackageRepository.existsByName(request.getName())) {
             throw new RuntimeException("Tên gói tập đã tồn tại: " + request.getName());
         }
@@ -104,27 +105,22 @@ public class GymPackageServiceImpl implements GymPackageService {
         gymPackage.setPrice(request.getPrice());
         gymPackage.setDurationMonths(request.getDurationMonths());
 
-        GymPackage updatedPackage = gymPackageRepository.save(gymPackage);
-        return mapToResponse(updatedPackage);
+        return mapToResponse(gymPackageRepository.save(gymPackage));
     }
 
-    // Xóa mềm (Đổi trạng thái ACTIVE/INACTIVE)
+    // ĐÃ SỬA THÀNH ĐÚNG BẢN CHẤT CỦA SOFT DELETE
     @Transactional
     @Override
     public void togglePackageStatus(Long id) {
         GymPackage gymPackage = gymPackageRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy gói tập với ID: " + id));
 
-        if ("ACTIVE".equals(gymPackage.getStatus())) {
-            gymPackage.setStatus("INACTIVE");
-        } else {
-            gymPackage.setStatus("ACTIVE");
-        }
-
+        // Soft Delete: Gắn cờ isDeleted = true thay vì gọi repository.delete()
+        gymPackage.setIsDeleted(true);
+        gymPackage.setStatus("INACTIVE"); // Kèm theo dừng bán
         gymPackageRepository.save(gymPackage);
     }
 
-    // Function sp
     private GymPackageResponse mapToResponse(GymPackage pkg) {
         return GymPackageResponse.builder()
                 .id(pkg.getId())

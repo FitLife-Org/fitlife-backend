@@ -1,7 +1,8 @@
-package com.fitlife.core.storage;
+package com.fitlife.core.storage.impl;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
+import com.fitlife.core.storage.CloudinaryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;

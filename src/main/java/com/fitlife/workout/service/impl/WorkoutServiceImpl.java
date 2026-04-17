@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class WorkoutServiceImpl implements WorkoutService {
@@ -25,13 +27,19 @@ public class WorkoutServiceImpl implements WorkoutService {
     @Transactional(readOnly = true)
     @Override
     public WorkoutPlan getCurrentPlanByUsername(String username) {
-        // Tìm hội viên bằng username để đảm bảo bảo mật
         Member member = memberRepository.findByUserUsername(username)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin hội viên"));
 
-        // FIX: Truyền chuỗi "ACTIVE" thay vì dùng Enum
-        return workoutPlanRepository.findByMemberAndStatus(member, "ACTIVE")
-                .orElseThrow(() -> new RuntimeException("Bạn hiện không có lịch tập nào đang kích hoạt."));
+        // Lấy danh sách lịch tập ACTIVE
+        List<WorkoutPlan> activePlans = workoutPlanRepository.findByMemberAndStatus(member, "ACTIVE");
+
+        // Kiểm tra List có rỗng không (thay thế cho .orElseThrow)
+        if (activePlans.isEmpty()) {
+            throw new RuntimeException("Bạn hiện không có lịch tập nào đang kích hoạt.");
+        }
+
+        // Trả về lịch tập đầu tiên tìm thấy
+        return activePlans.get(0);
     }
 
     /**

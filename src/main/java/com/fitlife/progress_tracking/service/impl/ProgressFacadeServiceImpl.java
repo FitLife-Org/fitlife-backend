@@ -19,6 +19,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -91,12 +92,14 @@ public class ProgressFacadeServiceImpl implements ProgressFacadeService {
         int checkins = checkInHistoryRepository.countCheckinsInPeriod(memberId, startOfMonth, endOfMonth);
         response.totalCheckinsThisMonth(checkins);
 
-        // ==========================================
         // 4. TÍNH CALO VÀ BÀI TẬP HOÀN THÀNH
-        Optional<WorkoutPlan> currentPlan = workoutPlanRepository.findByMemberAndStatus(member, "ACTIVE");
+        // Sửa Option thành List để đồng bộ với Repository
+        List<WorkoutPlan> currentPlans = workoutPlanRepository.findByMemberAndStatus(member, "ACTIVE");
 
-        if (currentPlan.isPresent()) {
-            int completedEx = workoutDetailRepository.countCompletedExercisesByPlanId(currentPlan.get().getId());
+        if (!currentPlans.isEmpty()) {
+            // Lấy lịch tập đầu tiên đang active
+            WorkoutPlan activePlan = currentPlans.get(0);
+            int completedEx = workoutDetailRepository.countCompletedExercisesByPlanId(activePlan.getId());
             response.completedExercises(completedEx);
             response.estimatedCaloriesBurned(completedEx * 45);
         } else {
