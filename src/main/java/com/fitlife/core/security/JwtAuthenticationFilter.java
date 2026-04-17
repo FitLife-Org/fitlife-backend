@@ -1,5 +1,6 @@
 package com.fitlife.core.security;
 
+import com.fitlife.core.security.impl.JwtServiceImpl;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

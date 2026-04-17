@@ -6,9 +6,9 @@
 -- 1. INSERT USERS (Tạo 3 Role: Admin, Staff, Member)
 -- Mã Hash BCrypt của chuỗi "123456"
 INSERT INTO users (username, password, role, status) VALUES
-                                                         ('admin', '$2a$10$o6RcNs8xWvtnKVuia5IZ7eg2Km6yhbsdJxvVQAZ9lVidgUJPa8PMe', 'ADMIN', 'ACTIVE'),
-                                                         ('staff01', '$2a$10$o6RcNs8xWvtnKVuia5IZ7eg2Km6yhbsdJxvVQAZ9lVidgUJPa8PMe', 'STAFF', 'ACTIVE'),
-                                                         ('huy30_member', '$2a$10$o6RcNs8xWvtnKVuia5IZ7eg2Km6yhbsdJxvVQAZ9lVidgUJPa8PMe', 'MEMBER', 'ACTIVE');
+                                                         ('admin', '$2a$10$o6RcNs8xWvtnKVuia5IZ7eg2Km6yhbsdJxvVQAZ9lVidgUJPa8PMe', 'ROLE_ADMIN', 'ACTIVE'),
+                                                         ('staff01', '$2a$10$o6RcNs8xWvtnKVuia5IZ7eg2Km6yhbsdJxvVQAZ9lVidgUJPa8PMe', 'ROLE_STAFF', 'ACTIVE'),
+                                                         ('huy30_member', '$2a$10$o6RcNs8xWvtnKVuia5IZ7eg2Km6yhbsdJxvVQAZ9lVidgUJPa8PMe', 'ROLE_MEMBER', 'ACTIVE');
 
 -- 2. INSERT MEMBERS (Hồ sơ của user số 3 - huy30_member)
 INSERT INTO members (user_id, full_name, phone, email, height, weight, status) VALUES

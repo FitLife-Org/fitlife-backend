@@ -7,7 +7,7 @@ import com.fitlife.member.entity.Member;
 import com.fitlife.identity.entity.User;
 import com.fitlife.member.repository.MemberRepository;
 import com.fitlife.core.mail.EmailService;
-import com.fitlife.core.security.JwtServiceImpl;
+import com.fitlife.core.security.impl.JwtServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
