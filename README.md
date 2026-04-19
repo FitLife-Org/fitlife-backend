@@ -1,81 +1,59 @@
-<h1 align="center">🏋️‍♂️ FITLIFE - Backend Service (Spring Boot)</h1>
+# ⚙️ FitLife Backend - Core API & Business Logic
 
-<div align="center">
-  <img src="https://img.shields.io/badge/Java-17-ED8B00?style=for-the-badge&logo=java&logoColor=white" alt="Java 17"/>
-  <img src="https://img.shields.io/badge/Spring_Boot-3.3.x-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white" alt="Spring Boot"/>
-  <img src="https://img.shields.io/badge/MySQL-8.0-4479A1?style=for-the-badge&logo=mysql&logoColor=white" alt="MySQL"/>
-  <img src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis"/>
-  <img src="https://img.shields.io/badge/Google_Gemini_AI-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Gemini AI"/>
-</div>
+[![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.3-6DB33F?logo=spring)]()
+[![Java](https://img.shields.io/badge/Java-17-ED8B00?logo=java)]()
+[![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql)]()
+[![Redis](https://img.shields.io/badge/Redis-Cache-DC382D?logo=redis)]()
 
-<p align="center">
-  <strong>Comprehensive Digital Transformation Solution for Modern Fitness Centers</strong><br>
-  👉 <em>Looking for the Client-side? Visit the <a href="https://github.com/lqhuy03/fitlife-frontend">FitLife Frontend Repository</a>.</em>
-</p>
+> The robust core engine of FitLife. Architected for high performance, strict data integrity, and seamless third-party integrations.
 
-## 📑 Table of Contents
-- [Executive Summary](#-executive-summary)
-- [System Architecture](#-system-architecture)
-- [Killer Features](#-killer-features)
-- [Database Schema (ERD)](#-database-schema-erd)
-- [Getting Started](#-getting-started)
-- [API Documentation](#-api-documentation)
-- [Contact & License](#-contact--license)
+## 🏗️ Architectural Patterns & Principles
+As a foundational step towards scalable enterprise systems, this backend strictly adheres to:
+- **N-Tier Architecture:** Clear separation of Controllers, Services, and Repositories.
+- **Data Transfer Object (DTO) Pattern:** Powered by **MapStruct** to ensure Entities are never exposed to the presentation layer.
+- **Global Exception Handling:** Utilizing `@RestControllerAdvice` to guarantee a unified `ApiResponse<T>` JSON contract across all endpoints.
 
-## 📖 Executive Summary
-This is the core RESTful API service for the **FitLife Smart Gym Ecosystem**. It handles complex business logic including membership subscriptions, VNPay cashless transactions, IoT Smart Locker assignments, and Generative AI workout generation.
-
-## 🏛 System Architecture
-![FitLife System Architecture](docs/images/system_architecture.png)
-
-## ✨ Killer Features
-- **Security & IAM:** JWT authentication, RBAC, Google OAuth2.0, and Email OTP recovery.
-- **Generative AI Engine:** Integration with Google Gemini 2.5 API for personalized NASM-standard workout routines.
-- **Payment Gateway:** VNPay Sandbox integration with 2-layer Hash Checksum verification.
-- **High-Performance IoT Logic:** Redis caching for ultra-fast (<100ms) QR check-ins and Smart Locker allocation.
-- **Automated CRM:** Spring `@Scheduled` CronJobs for sending subscription expiry reminders.
+## 🔥 Key Technical Implementations
+- **AI-Driven Personalization:** Integrated **Google Gemini API** using custom prompts to generate strict JSON-locked workout and nutrition plans. Built-in fallback mechanisms handle AI hallucination risks.
+- **Secure E-Commerce:** Implemented **VNPay** gateway integration. Secured the IPN Webhook using **HMAC SHA-512** checksum validation to prevent URL tampering and ensure financial integrity.
+- **High-Speed Check-in (<100ms):** Leveraged **Redis** to cache user subscription states, bypassing slow RDBMS disk reads during peak hours.
+- **Database Optimization:** Eliminated Hibernate **N+1 Query** anomalies by strategically applying `FetchType.LAZY` and custom `@Query` with JOIN FETCH. Implemented global Soft Delete (`is_deleted = true`).
 
 ## 🗄️ Database Schema (ERD)
-Strictly version-controlled using **Flyway**, comprising 18 normalized tables:
-![FitLife Database ERD](docs/images/erd_final.png)
+![ERD Diagram](./docs/erd_diagram.png)
 
-## 🚀 Getting Started
+## 🧪 Testing & Quality Assurance
+- **Unit Testing:** Comprehensive test coverage for critical business logic (e.g., VNPay Checksum Validation, JWT Parsing) using **JUnit 5**.
+- **Mocking:** Isolated external dependencies (Gemini API, Database calls) using **Mockito**.
+- **API Testing:** Automated testing scripts maintained via **IntelliJ HTTP Client** (`/test-requests` directory).
 
-### Prerequisites
-- JDK 17+ | Maven 3.8+ | MySQL 8.0+ | Redis Server (Port `6379`)
+## 🚀 Getting Started (Local Development)
 
-### Installation & Setup
-1. **Clone the repository:**
-   ```bash
-   git clone [https://github.com/](https://github.com/)[your-username]/fitlife-backend.git
-   cd fitlife-backend
-    ```
-   
-2. **Configure Environment Variables (`application.yml`):**
-   ```YAML
-   spring.datasource.url: jdbc:mysql://localhost:3306/fitlife_db
-   spring.datasource.username: root
-   spring.datasource.password: your_password
-   jwt.secret: YOUR_JWT_SECRET
-   gemini.api-key: YOUR_GEMINI_KEY
-   vnpay.tmn-code: YOUR_VNPAY_CODE
-   vnpay.hash-secret: YOUR_VNPAY_SECRET
-   ```
-   
-3. **Run the Application:**
-
-```Bash
+### 1. Infrastructure Setup (Docker)
+Ensure Docker is running, then spin up the MySQL and Redis containers:
+```bash
+docker-compose up -d
+```
+### 2. Environment Configuration
+Create an `application-dev.yml` in `src/main/resources`:
+```yaml
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/fitlife_db
+    username: root
+    password: rootpassword
+    
+# Third-party Keys
+gemini.api.key: YOUR_GEMINI_KEY
+vnpay.tmn.code: YOUR_VNPAY_CODE
+vnpay.hash.secret: YOUR_VNPAY_SECRET
+jwt.secret: YOUR_JWT_SECRET
+```
+### 3. Build & Run
+```bash
+mvn clean install
 mvn spring-boot:run
 ```
-## 📚 API Documentation
-Interactive API documentation is generated via Swagger/OpenAPI 3.0.
-Explore endpoints at: 👉 `http://localhost:8080/swagger-ui.html`
-
-## 📞 Contact & License
-**Author:** Le Quang Huy
-
-**Email:** quanghuy.le.dev@gmail.com
-
-**LinkedIn:** [linkedin.com/in/huy-le-java](https://www.linkedin.com/in/huy-le-java/)
-
-License: Distributed under the MIT License.
+## 📖 API Documentation(Open API 3.0)
+The API contract is auto-generated and interactive. Once the server is running, visit:
+- Local: `http://localhost:8080/swagger-ui.html`
