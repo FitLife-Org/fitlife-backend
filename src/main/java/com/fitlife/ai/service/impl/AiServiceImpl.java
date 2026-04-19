@@ -1,13 +1,8 @@
-<<<<<<<< HEAD:src/main/java/com/fitlife/ai/service/impl/AiServiceImpl.java
 package com.fitlife.ai.service.impl;
-========
-package com.fitlife.ai_workout.service.impl;
->>>>>>>> origin/main:src/main/java/com/fitlife/ai_workout/service/impl/AiServiceImpl.java
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-<<<<<<<< HEAD:src/main/java/com/fitlife/ai/service/impl/AiServiceImpl.java
 import com.fitlife.ai.dto.AiWorkoutRequest;
 import com.fitlife.ai.entity.AiWorkoutPlan;
 import com.fitlife.workout.entity.WorkoutDetail;
@@ -16,16 +11,7 @@ import com.fitlife.workout.entity.WorkoutSession;
 import com.fitlife.ai.repository.AiWorkoutPlanRepository;
 import com.fitlife.workout.repository.WorkoutPlanRepository;
 import com.fitlife.ai.service.AiService;
-========
-import com.fitlife.ai_workout.repository.AiWorkoutPlanRepository;
-import com.fitlife.ai_workout.repository.WorkoutPlanRepository;
-import com.fitlife.ai_workout.dto.AiWorkoutRequest;
-import com.fitlife.ai_workout.entity.AiWorkoutPlan;
-import com.fitlife.ai_workout.entity.WorkoutDetail;
-import com.fitlife.ai_workout.entity.WorkoutPlan;
-import com.fitlife.ai_workout.entity.WorkoutSession;
-import com.fitlife.ai_workout.service.AiService;
->>>>>>>> origin/main:src/main/java/com/fitlife/ai_workout/service/impl/AiServiceImpl.java
+
 import com.fitlife.member.entity.HealthMetric;
 import com.fitlife.member.entity.Member;
 import com.fitlife.member.repository.HealthMetricRepository;
