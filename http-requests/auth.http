@@ -1,6 +1,16 @@
-### ==========================================
-### ĐĂNG NHẬP (LOGIN) VÀ LƯU TOKEN TỰ ĐỘNG
-### ==========================================
+### 1. Đăng ký tài khoản mới (Standard Registration)
+POST {{host}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "test_member",
+  "password": "password123",
+  "fullName": "Nguyễn Văn Chiến Binh",
+  "phone": "0987654321",
+  "email": "chienbinh@gmail.com"
+}
+
+### 2. Đăng nhập & TỰ ĐỘNG BẮT TOKEN (Auto-capture JWT)
 POST {{host}}/auth/login
 Content-Type: application/json
 
@@ -10,34 +20,46 @@ Content-Type: application/json
 }
 
 > {%
-    // Kịch bản (Script) chạy ngay sau khi có Response trả về
-    if (response.status === 200) {
-        // Tùy thuộc vào DTO LoginResponse của em.
-        // Nếu trả về thẳng { "token": "..." } thì dùng response.body.token
-        // Nếu bọc trong data { "data": { "token": "..." } } thì dùng response.body.data.token
-        let token = response.body.token || response.body.data?.token || response.body.accessToken;
+    // Kịch bản chạy sau khi có Response
+    client.test("Login successful", function() {
+        client.assert(response.status === 200, "Phải trả về 200 OK");
+    });
 
-        if(token) {
-            client.global.set("jwt_token", token);
-            client.log("✅ Đã lưu JWT Token thành công: " + token);
-        } else {
-            client.log("⚠️ Không tìm thấy token trong response body!");
-        }
-    } else {
-        client.log("❌ Đăng nhập thất bại. Status: " + response.status);
+    // Bóc tách JSON ApiResponse để lấy token và lưu vào biến môi trường
+    if(response.body && response.body.data && response.body.data.token) {
+        client.global.set("auth_token", response.body.data.token);
+        client.log("🔥 Đã bắt được Token: " + client.global.get("auth_token"));
     }
 %}
 
-### ==========================================
-### ĐĂNG KÝ (REGISTER) - DÙNG ĐỂ TẠO ADMIN MỚI NẾU CẦN
-### ==========================================
-POST {{host}}/auth/register
+
+### 3. Yêu cầu Quên Mật Khẩu (OTP Flow - Step 1)
+# Sẽ gửi 1 email chứa mã OTP 6 số đến email này (Check console log hoặc thư mục rác email)
+POST {{host}}/auth/forgot-password
 Content-Type: application/json
 
 {
-  "username": "superadmin",
-  "password": "password123",
-  "email": "admin@fitlife.com",
-  "fullName": "Super Admin",
-  "phone": "0988888888"
+  "email": "chienbinh@gmail.com"
+}
+
+
+### 4. Đặt lại Mật Khẩu với OTP (OTP Flow - Step 2)
+# Thay "123456" bằng mã OTP thực tế em nhận được từ Mail/Console
+POST {{host}}/auth/reset-password
+Content-Type: application/json
+
+{
+  "email": "chienbinh@gmail.com",
+  "otp": "123456",
+  "newPassword": "new_password_456"
+}
+
+
+### 5. Đăng nhập bằng Google OAuth2
+# LƯU Ý: Để test API này, em cần 1 Access Token thực tế từ Google OAuth2 Playground hoặc từ Frontend React gửi lên.
+POST {{host}}/auth/google
+Content-Type: application/json
+
+{
+  "token": "MÃ_GOOGLE_TOKEN_THỰC_TẾ_CỦA_EM"
 }

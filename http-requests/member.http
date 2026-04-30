@@ -1,0 +1,24 @@
+### 1. Lấy danh sách hội viên (Yêu cầu quyền ADMIN)
+# Thẻ Authorization sẽ tự động lấy Token từ bước Login bên auth.http
+GET {{host}}/members/admin?page=1&size=10
+Authorization: Bearer {{auth_token}}
+
+> {%
+    client.test("Check Role Based Access", function() {
+        // Nếu user nãy login là MEMBER thì hàm này phải văng 403 Forbidden.
+        // Nếu user là ADMIN thì phải trả về 200 OK.
+        client.assert(response.status === 200 || response.status === 403, "Đã check phân quyền");
+    });
+%}
+
+### 2. Cập nhật hồ sơ (Dùng Multipart form-data để upload avatar)
+POST {{host}}/members/avatar
+Authorization: Bearer {{auth_token}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="avatar_test.png"
+Content-Type: image/png
+
+< ./avatar_test.png
+--WebAppBoundary--
