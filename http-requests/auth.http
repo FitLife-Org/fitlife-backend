@@ -15,7 +15,7 @@ POST {{host}}/auth/login
 Content-Type: application/json
 
 {
-  "username": "admin",
+  "username": "test_member",
   "password": "password123"
 }
 
@@ -50,7 +50,7 @@ Content-Type: application/json
 
 {
   "email": "chienbinh@gmail.com",
-  "otp": "123456",
+  "otp": "932087",
   "newPassword": "new_password_456"
 }
 
@@ -61,5 +61,5 @@ POST {{host}}/auth/google
 Content-Type: application/json
 
 {
-  "token": "MÃ_GOOGLE_TOKEN_THỰC_TẾ_CỦA_EM"
+  "token": "ya29.DÁN_TOKEN_VÀO_ĐÂY"
 }

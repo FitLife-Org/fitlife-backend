@@ -15,6 +15,4 @@ public interface AuthService {
 
     // Stream reset password (Check OTP and reset new password)
     String resetPassword(ResetPasswordRequest request);
-
-    LoginResponse googleLogin(String token);
 }

@@ -3,6 +3,7 @@ package com.fitlife.identity.controller;
 import com.fitlife.core.response.ApiResponse;
 import com.fitlife.identity.dto.*;
 import com.fitlife.identity.service.AuthService;
+import com.fitlife.identity.service.OAuth2Service;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final OAuth2Service oAuth2Service;
 
     @PostMapping("/login")
     @Operation(summary = "Đăng nhập", description = "Xác thực tài khoản bằng username và password để nhận JWT token.")
@@ -55,7 +57,7 @@ public class AuthController {
     @PostMapping("/google")
     @Operation(summary = "Đăng nhập bằng Google", description = "Đăng nhập bằng Google ID token để tạo hoặc xác thực tài khoản FitLife.")
     public ResponseEntity<ApiResponse<LoginResponse>> googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
-        LoginResponse response = authService.googleLogin(request.getToken());
+        LoginResponse response = oAuth2Service.googleLogin(request.getToken());
         return ResponseEntity.ok(ApiResponse.success(response, "Đăng nhập bằng Google thành công"));
     }
 }

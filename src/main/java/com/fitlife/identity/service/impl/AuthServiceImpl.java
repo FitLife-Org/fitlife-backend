@@ -3,6 +3,7 @@ package com.fitlife.identity.service.impl;
 import com.fitlife.identity.dto.*;
 import com.fitlife.identity.repository.UserRepository;
 import com.fitlife.identity.service.AuthService;
+import com.fitlife.identity.service.OAuth2Service;
 import com.fitlife.member.entity.Member;
 import com.fitlife.identity.entity.User;
 import com.fitlife.member.repository.MemberRepository;
@@ -34,6 +35,7 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final OAuth2Service oAuth2Service;
 
     // Logic Register: Create User + Member
     @Transactional
@@ -145,66 +147,5 @@ public class AuthServiceImpl implements AuthService {
 
     private static final String GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
 
-    @Transactional
-    @Override
-    public LoginResponse googleLogin(String token) {
-        // 1. Bring Token to the Google server to ask for User information
-        RestTemplate restTemplate = new RestTemplate();
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(token);
-        HttpEntity<String> entity = new HttpEntity<>("", headers);
 
-        ResponseEntity<Map> response;
-        try {
-            response = restTemplate.exchange(
-                    "https://www.googleapis.com/oauth2/v3/userinfo",
-                    HttpMethod.GET,
-                    entity,
-                    Map.class
-            );
-        } catch (Exception e) {
-            throw new RuntimeException("Token Google không hợp lệ hoặc đã hết hạn!");
-        }
-
-        Map<String, Object> payload = response.getBody();
-        if (payload == null || !payload.containsKey("email")) {
-            throw new RuntimeException("Không lấy được email từ Google");
-        }
-
-        String email = (String) payload.get("email");
-        String name = (String) payload.get("name");
-        String picture = (String) payload.get("picture");
-
-        // 2. Check Email have in the Database or not
-        User user = userRepository.findByUsername(email).orElse(null);
-
-        if (user == null) {
-            // 3. If don't have one -> Automatically register a new account for guests
-            user = User.builder()
-                    .username(email)
-                    .password(passwordEncoder.encode(UUID.randomUUID().toString()))
-                    .role("ROLE_MEMBER")
-                    .status("ACTIVE")
-                    .build();
-            user = userRepository.save(user);
-
-            Member member = Member.builder()
-                    .user(user)
-                    .fullName(name)
-                    .email(email)
-                    .avatarUrl(picture)
-                    .status("ACTIVE")
-                    .build();
-            memberRepository.save(member);
-        }
-
-        // 4. If you already have (or just created) -> Give them your system's JWT Token
-        String jwtToken = jwtServiceImpl.generateToken(user);
-
-        return LoginResponse.builder()
-                .token(jwtToken)
-                .username(user.getUsername())
-                .role(user.getRole())
-                .build();
-    }
 }
