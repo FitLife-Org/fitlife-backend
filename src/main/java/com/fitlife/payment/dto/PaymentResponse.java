@@ -8,14 +8,14 @@ import lombok.Setter;
 @Getter
 @Setter
 @Builder
-@Schema(name = "PaymentResponse", description = "Thông tin link thanh toán VNPay")
+@Schema(name = "PaymentResponse", description = "ThĂ´ng tin link thanh toĂ¡n VNPay")
 public class PaymentResponse {
-    @Schema(description = "Trạng thái tạo thanh toán", example = "SUCCESS")
+    @Schema(description = "Tráº¡ng thĂ¡i táº¡o thanh toĂ¡n", example = "SUCCESS")
     private String status;
-    @Schema(description = "Thông điệp trả về", example = "Tạo link thanh toán thành công")
+    @Schema(description = "ThĂ´ng Ä‘iá»‡p tráº£ vá»", example = "Táº¡o link thanh toĂ¡n thĂ nh cĂ´ng")
     private String message;
-    @Schema(description = "URL thanh toán", example = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?...")
+    @Schema(description = "URL thanh toĂ¡n", example = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?...")
     private String paymentUrl;
-    @Schema(description = "Mô tả đơn hàng", example = "Thanh toan goi tap 12 thang")
+    @Schema(description = "MĂ´ táº£ Ä‘Æ¡n hĂ ng", example = "Thanh toan goi tap 12 thang")
     private String orderInfo;
 }

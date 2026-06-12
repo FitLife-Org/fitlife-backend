@@ -18,7 +18,7 @@ public class AiWorkoutResponse {
     private int estimatedDurationWeeks;
     private String fitnessLevel;
 
-    // Danh sách các buổi tập trong tuần (VD: Push Day, Pull Day)
+    // Danh sĂ¡ch cĂ¡c buá»•i táº­p trong tuáº§n (VD: Push Day, Pull Day)
     private List<Session> sessions;
 
     @Data

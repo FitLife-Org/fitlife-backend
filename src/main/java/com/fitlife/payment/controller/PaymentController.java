@@ -1,6 +1,6 @@
 package com.fitlife.payment.controller;
 
-import com.fitlife.core.response.ApiResponse;
+import com.fitlife.common.response.ApiResponse;
 import com.fitlife.payment.dto.PaymentResponse;
 import com.fitlife.payment.mapper.PaymentMapper;
 import com.fitlife.payment.service.PaymentService;
@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/payment")
 @RequiredArgsConstructor
-@Tag(name = "Payment Management", description = "Tạo link thanh toán và xử lý callback VNPay")
+@Tag(name = "Payment Management", description = "Táº¡o link thanh toĂ¡n vĂ  xá»­ lĂ½ callback VNPay")
 public class PaymentController {
 
     private final PaymentService paymentService;
@@ -25,30 +25,30 @@ public class PaymentController {
 
     @PostMapping("/create-payment")
     @PreAuthorize("hasAnyAuthority('MEMBER', 'ROLE_MEMBER')")
-    @Operation(summary = "Tạo link thanh toán VNPay", description = "Sinh URL thanh toán cho subscription đã tạo của hội viên.")
+    @Operation(summary = "Táº¡o link thanh toĂ¡n VNPay", description = "Sinh URL thanh toĂ¡n cho subscription Ä‘Ă£ táº¡o cá»§a há»™i viĂªn.")
     public ResponseEntity<ApiResponse<PaymentResponse>> createPayment(
-            @Parameter(description = "ID của subscription cần thanh toán", example = "1001")
+            @Parameter(description = "ID cá»§a subscription cáº§n thanh toĂ¡n", example = "1001")
             @RequestParam("subscriptionId") Long subscriptionId,
             HttpServletRequest request
     ) {
         String paymentUrl = paymentService.createPaymentUrl(subscriptionId, request);
         PaymentResponse paymentResponse = paymentMapper.toResponse(paymentUrl, subscriptionId);
 
-        return ResponseEntity.ok(ApiResponse.success(paymentResponse, "Tạo link thanh toán thành công"));
+        return ResponseEntity.ok(ApiResponse.success(paymentResponse, "Táº¡o link thanh toĂ¡n thĂ nh cĂ´ng"));
     }
 
     @GetMapping("/vnpay-return")
     @PreAuthorize("permitAll()")
     @SecurityRequirements()
-    @Operation(summary = "VNPay return callback", description = "Endpoint callback public được VNPay redirect về sau khi thanh toán.")
+    @Operation(summary = "VNPay return callback", description = "Endpoint callback public Ä‘Æ°á»£c VNPay redirect vá» sau khi thanh toĂ¡n.")
     public ResponseEntity<ApiResponse<String>> paymentReturn(HttpServletRequest request) {
         String result = paymentService.processPaymentReturn(request);
 
         if ("SUCCESS".equals(result)) {
-            return ResponseEntity.ok(ApiResponse.success(result, "Thanh toán thành công. Gói tập đã được kích hoạt!"));
+            return ResponseEntity.ok(ApiResponse.success(result, "Thanh toĂ¡n thĂ nh cĂ´ng. GĂ³i táº­p Ä‘Ă£ Ä‘Æ°á»£c kĂ­ch hoáº¡t!"));
         }
 
         return ResponseEntity.badRequest()
-                .body(ApiResponse.error(400, "Giao dịch thất bại hoặc đã bị hủy bỏ.", result));
+                .body(ApiResponse.error(400, "Giao dá»‹ch tháº¥t báº¡i hoáº·c Ä‘Ă£ bá»‹ há»§y bá».", result));
     }
 }

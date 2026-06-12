@@ -9,9 +9,9 @@ public interface PaymentMapper {
     default PaymentResponse toResponse(String paymentUrl, Long subscriptionId) {
         return PaymentResponse.builder()
                 .status("OK")
-                .message("Tạo link thanh toán thành công")
+                .message("Táº¡o link thanh toĂ¡n thĂ nh cĂ´ng")
                 .paymentUrl(paymentUrl)
-                .orderInfo("Thanh toán Subscription ID: " + subscriptionId)
+                .orderInfo("Thanh toĂ¡n Subscription ID: " + subscriptionId)
                 .build();
     }
 }

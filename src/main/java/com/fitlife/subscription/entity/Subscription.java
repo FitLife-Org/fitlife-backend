@@ -1,7 +1,7 @@
 package com.fitlife.subscription.entity;
 
 import com.fitlife.member.entity.Member;
-import com.fitlife.packagegym.entity.GymPackage;
+import com.fitlife.gympackage.entity.GymPackage;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDate;
@@ -25,7 +25,7 @@ public class Subscription {
     private Member member;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "package_id", nullable = false)
+    @JoinColumn(name = "gym_package_id", nullable = false)
     private GymPackage gymPackage;
 
     @Column(name = "start_date")

@@ -1,6 +1,6 @@
 package com.fitlife.member.service;
 
-import com.fitlife.core.response.PageResponse;
+import com.fitlife.common.response.PageResponse;
 import com.fitlife.member.dto.MemberCreationRequest;
 import com.fitlife.member.dto.MemberProfileResponse;
 import com.fitlife.member.dto.MemberUpdateRequest;
