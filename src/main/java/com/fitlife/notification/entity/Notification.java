@@ -1,6 +1,6 @@
 package com.fitlife.notification.entity;
 
-import com.fitlife.identity.entity.User;
+import com.fitlife.auth.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -19,7 +19,7 @@ public class Notification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Gắn với User vì cả Staff/Admin cũng có thể nhận thông báo hệ thống
+    // Gáº¯n vá»›i User vĂ¬ cáº£ Staff/Admin cÅ©ng cĂ³ thá»ƒ nháº­n thĂ´ng bĂ¡o há»‡ thá»‘ng
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;

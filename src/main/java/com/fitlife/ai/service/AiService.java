@@ -9,7 +9,5 @@ public interface AiService {
 
     JsonNode generateWorkoutPlan(String username, AiWorkoutRequest request);
 
-    void activatePlan(Long aiPlanId);
-
     List<AiWorkoutPlan> getMemberHistory(String username);
 }

@@ -1,0 +1,33 @@
+### 1. Lấy danh sách hội viên (Yêu cầu quyền ADMIN)
+GET {{host}}/members/admin?page=1&size=10
+Authorization: Bearer {{auth_token}}
+
+
+### 2. Cập nhật hồ sơ (Upload Avatar)
+POST {{host}}/members/avatar
+Authorization: Bearer {{auth_token}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="avatar_test.png"
+Content-Type: image/png
+
+< ./avatar_test.png
+--WebAppBoundary--
+
+
+### 3. Xem hồ sơ của chính mình (Lấy qua Token)
+GET {{host}}/members/me
+Authorization: Bearer {{auth_token}}
+
+
+### 4. Cập nhật hồ sơ và Tính BMI
+PUT {{host}}/members/me
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+
+{
+  "fullName": "Chiến Binh Mùa Đông",
+  "weight": 75.0,
+  "height": 175.0
+}

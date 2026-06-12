@@ -28,6 +28,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     long countByStatus(String status);
 
+    Optional<Member> findByUser_Username(String username);
 
 }
 

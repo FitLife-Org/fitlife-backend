@@ -1,17 +1,30 @@
 package com.fitlife.member.mapper;
 
+import com.fitlife.member.dto.MemberCreationRequest;
 import com.fitlife.member.dto.MemberProfileResponse;
 import com.fitlife.member.entity.Member;
+import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
+@Mapper(componentModel = "spring")
 public interface MemberMapper {
-    // 1. Trường hợp Tên biến giống nhau 100%: MapStruct tự động map toàn bộ!
+
+    @Mapping(source = "user.id", target = "userId")
     MemberProfileResponse toResponse(Member member);
 
-    // 2. Trường hợp Tên biến khác nhau (ĐÂY LÀ CHỖ ĂN TIỀN):
-    // Giả sử Entity có trường 'fullName', nhưng DTO em lại đặt là 'memberName'
-    @Mapping(source = "fullName", target = "memberName")
-    // Giả sử muốn lấy email từ bảng User có quan hệ 1-1 với Member
-    @Mapping(source = "user.email", target = "email")
-    MemberProfileResponse toCustomResponse(Member member);
+    @Mapping(source = "user.id", target = "userId")
+    MemberProfileResponse toProfileResponse(Member member);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "user", ignore = true)
+    @Mapping(target = "memberCode", ignore = true)
+    @Mapping(target = "status", ignore = true)
+    @Mapping(target = "avatarUrl", ignore = true)
+    @Mapping(target = "height", ignore = true)
+    @Mapping(target = "weight", ignore = true)
+    @Mapping(target = "isDeleted", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "subscriptions", ignore = true)
+    Member toEntity(MemberCreationRequest request);
 }
