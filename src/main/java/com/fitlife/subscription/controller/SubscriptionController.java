@@ -1,6 +1,6 @@
 package com.fitlife.subscription.controller;
 
-import com.fitlife.core.response.ApiResponse;
+import com.fitlife.common.response.ApiResponse;
 import com.fitlife.subscription.dto.SubscriptionCreationRequest;
 import com.fitlife.subscription.dto.SubscriptionResponse;
 import com.fitlife.subscription.service.SubscriptionService;
@@ -15,17 +15,17 @@ import java.security.Principal;
 @RestController
 @RequestMapping("/subscriptions")
 @RequiredArgsConstructor
-@Tag(name = "Subscription Management", description = "Tạo và quản lý đăng ký gói tập của hội viên")
+@Tag(name = "Subscription Management", description = "Táº¡o vĂ  quáº£n lĂ½ Ä‘Äƒng kĂ½ gĂ³i táº­p cá»§a há»™i viĂªn")
 public class SubscriptionController {
 
     private final SubscriptionService subscriptionService;
 
     @PostMapping
-    @Operation(summary = "Tạo đăng ký gói tập", description = "Khởi tạo subscription cho hội viên theo gói tập đã chọn và trạng thái chờ thanh toán.")
+    @Operation(summary = "Táº¡o Ä‘Äƒng kĂ½ gĂ³i táº­p", description = "Khá»Ÿi táº¡o subscription cho há»™i viĂªn theo gĂ³i táº­p Ä‘Ă£ chá»n vĂ  tráº¡ng thĂ¡i chá» thanh toĂ¡n.")
     public ResponseEntity<ApiResponse<SubscriptionResponse>> createSubscription(
             @RequestBody SubscriptionCreationRequest request,
             Principal principal) {
         SubscriptionResponse result = subscriptionService.createSubscription(principal.getName(), request);
-        return ResponseEntity.ok(ApiResponse.success(result, "Tạo đơn hàng PENDING thành công"));
+        return ResponseEntity.ok(ApiResponse.success(result, "Táº¡o Ä‘Æ¡n hĂ ng PENDING thĂ nh cĂ´ng"));
     }
 }

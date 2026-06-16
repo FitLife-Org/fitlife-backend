@@ -1,8 +1,8 @@
 package com.fitlife.subscription.service.impl;
 
-import com.fitlife.packagegym.entity.GymPackage;
+import com.fitlife.gympackage.entity.GymPackage;
 import com.fitlife.member.entity.Member;
-import com.fitlife.packagegym.repository.GymPackageRepository;
+import com.fitlife.gympackage.repository.GymPackageRepository;
 import com.fitlife.member.repository.MemberRepository;
 import com.fitlife.subscription.dto.SubscriptionCreationRequest;
 import com.fitlife.subscription.dto.SubscriptionResponse;
@@ -27,25 +27,25 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     @Override
     public SubscriptionResponse createSubscription(String username, SubscriptionCreationRequest request) {
 
-        // 1. TÌM MEMBER BẰNG USERNAME TỪ TOKEN (Bảo mật 100%)
+        // 1. TĂŒM MEMBER Báº°NG USERNAME Tá»ª TOKEN (Báº£o máº­t 100%)
         Member member = memberRepository.findByUserUsername(username)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hội viên"));
+                .orElseThrow(() -> new RuntimeException("KhĂ´ng tĂ¬m tháº¥y há»™i viĂªn"));
 
         GymPackage gymPackage = gymPackageRepository.findById(request.getPackageId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy gói tập"));
+                .orElseThrow(() -> new RuntimeException("KhĂ´ng tĂ¬m tháº¥y gĂ³i táº­p"));
 
-        // 2. Validate: Khách có đang sở hữu gói ACTIVE nào không?
+        // 2. Validate: KhĂ¡ch cĂ³ Ä‘ang sá»Ÿ há»¯u gĂ³i ACTIVE nĂ o khĂ´ng?
         boolean hasActiveSub = subscriptionRepository.existsByMemberAndStatus(member, "ACTIVE");
         if (hasActiveSub) {
-            throw new RuntimeException("Hội viên này đang có một gói tập đang hoạt động (ACTIVE).");
+            throw new RuntimeException("Há»™i viĂªn nĂ y Ä‘ang cĂ³ má»™t gĂ³i táº­p Ä‘ang hoáº¡t Ä‘á»™ng (ACTIVE).");
         }
 
         boolean hasPendingSub = subscriptionRepository.existsByMemberAndStatus(member, "PENDING");
         if (hasPendingSub) {
-            throw new RuntimeException("Bạn đang có một hóa đơn chờ thanh toán. Vui lòng thanh toán hoặc hủy hóa đơn cũ trước.");
+            throw new RuntimeException("Báº¡n Ä‘ang cĂ³ má»™t hĂ³a Ä‘Æ¡n chá» thanh toĂ¡n. Vui lĂ²ng thanh toĂ¡n hoáº·c há»§y hĂ³a Ä‘Æ¡n cÅ© trÆ°á»›c.");
         }
 
-        // 3. Map DTO -> Entity (Trạng thái PENDING chờ VNPay)
+        // 3. Map DTO -> Entity (Tráº¡ng thĂ¡i PENDING chá» VNPay)
         Subscription newSubscription = Subscription.builder()
                 .member(member)
                 .gymPackage(gymPackage)

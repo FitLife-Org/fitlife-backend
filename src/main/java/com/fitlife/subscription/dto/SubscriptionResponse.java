@@ -10,20 +10,20 @@ import java.time.LocalDate;
 @Getter
 @Setter
 @Builder
-@Schema(name = "SubscriptionResponse", description = "Thông tin subscription trả về từ hệ thống")
+@Schema(name = "SubscriptionResponse", description = "ThĂ´ng tin subscription tráº£ vá» tá»« há»‡ thá»‘ng")
 public class SubscriptionResponse {
     @Schema(description = "ID subscription", example = "5001")
     private Long id;
-    @Schema(description = "ID hội viên", example = "100")
+    @Schema(description = "ID há»™i viĂªn", example = "100")
     private Long memberId;
-    @Schema(description = "ID gói tập", example = "1")
+    @Schema(description = "ID gĂ³i táº­p", example = "1")
     private Long packageId;
-    @Schema(description = "Tên gói tập", example = "Premium 12 Months")
+    @Schema(description = "TĂªn gĂ³i táº­p", example = "Premium 12 Months")
     private String packageName;
-    @Schema(description = "Ngày bắt đầu", example = "2026-04-27")
+    @Schema(description = "NgĂ y báº¯t Ä‘áº§u", example = "2026-04-27")
     private LocalDate startDate;
-    @Schema(description = "Ngày kết thúc", example = "2027-04-26")
+    @Schema(description = "NgĂ y káº¿t thĂºc", example = "2027-04-26")
     private LocalDate endDate;
-    @Schema(description = "Trạng thái subscription", example = "PENDING")
+    @Schema(description = "Tráº¡ng thĂ¡i subscription", example = "PENDING")
     private String status;
 }

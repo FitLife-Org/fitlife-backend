@@ -17,6 +17,7 @@ public interface MemberMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)
+    @Mapping(target = "memberCode", ignore = true)
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "avatarUrl", ignore = true)
     @Mapping(target = "height", ignore = true)

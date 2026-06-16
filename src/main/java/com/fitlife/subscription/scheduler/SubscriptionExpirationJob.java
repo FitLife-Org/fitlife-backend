@@ -12,7 +12,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 @Slf4j
-@Component // Giao cho Spring Boot quản lý class này
+@Component // Giao cho Spring Boot quáº£n lĂ½ class nĂ y
 @RequiredArgsConstructor
 public class SubscriptionExpirationJob {
 
@@ -30,14 +30,14 @@ public class SubscriptionExpirationJob {
     @Scheduled(cron = "0 0 0 * * ?")
     @Transactional
     public void scanAndExpireSubscriptions() {
-        log.info("🤖 [CRON JOB] Bắt đầu quét các gói tập hết hạn...");
+        log.info("đŸ¤– [CRON JOB] Báº¯t Ä‘áº§u quĂ©t cĂ¡c gĂ³i táº­p háº¿t háº¡n...");
 
         LocalDate today = LocalDate.now();
 
         List<Subscription> expiredSubs = subscriptionRepository.findByStatusAndEndDateBefore("ACTIVE", today);
 
         if (expiredSubs.isEmpty()) {
-            log.info("🤖 [CRON JOB] Không có gói tập nào hết hạn hôm nay.");
+            log.info("đŸ¤– [CRON JOB] KhĂ´ng cĂ³ gĂ³i táº­p nĂ o háº¿t háº¡n hĂ´m nay.");
             return;
         }
 
@@ -47,6 +47,6 @@ public class SubscriptionExpirationJob {
 
         subscriptionRepository.saveAll(expiredSubs);
 
-        log.info("🤖 [CRON JOB] Đã cập nhật trạng thái EXPIRED cho {} gói tập thành công!", expiredSubs.size());
+        log.info("đŸ¤– [CRON JOB] ÄĂ£ cáº­p nháº­t tráº¡ng thĂ¡i EXPIRED cho {} gĂ³i táº­p thĂ nh cĂ´ng!", expiredSubs.size());
     }
 }
