@@ -46,6 +46,15 @@ public class User implements UserDetails {
     @Column(name = "avatar_url", length = 500)
     private String avatarUrl;
 
+    @Column(name = "auth_provider", nullable = false, length = 50)
+    private String authProvider;
+
+    @Column(name = "provider_id", length = 255)
+    private String providerId;
+
+    @Column(name = "email_verified",  nullable = false)
+    private Boolean emailVerified;
+
     @Column(name = "status", nullable = false, length = 30)
     private String status;
 
