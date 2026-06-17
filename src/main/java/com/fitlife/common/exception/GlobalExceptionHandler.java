@@ -13,51 +13,75 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.HashMap;
 import java.util.Map;
 
-@Slf4j // Tá»± Ä‘á»™ng inject Logger
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // 1. CATCHING VALIDATION ERROR (@Valid)
+    @ExceptionHandler(AppException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAppException(AppException exception) {
+        ErrorCode errorCode = exception.getErrorCode();
+
+        ApiResponse<Void> response = ApiResponse.error(
+                errorCode.getCode(),
+                exception.getMessage()
+        );
+
+        return ResponseEntity
+                .status(errorCode.getHttpStatus())
+                .body(response);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationExceptions(MethodArgumentNotValidException ex) {
+    public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationException(
+            MethodArgumentNotValidException exception
+    ) {
         Map<String, String> errors = new HashMap<>();
 
-        ex.getBindingResult().getAllErrors().forEach((error) -> {
-            String fieldName = (error instanceof FieldError) ? ((FieldError) error).getField() : error.getObjectName();
+        exception.getBindingResult().getAllErrors().forEach(error -> {
+            String fieldName = error instanceof FieldError
+                    ? ((FieldError) error).getField()
+                    : error.getObjectName();
+
             String errorMessage = error.getDefaultMessage();
             errors.put(fieldName, errorMessage);
         });
 
-        // CLEAN CODE: Truyá»n danh sĂ¡ch lá»—i vĂ o hĂ m error()
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(400, "Dá»¯ liá»‡u Ä‘áº§u vĂ o khĂ´ng há»£p lá»‡", errors));
+        ApiResponse<Map<String, String>> response = ApiResponse.error(
+                ErrorCode.VALIDATION_FAILED.getCode(),
+                ErrorCode.VALIDATION_FAILED.getMessage(),
+                errors
+        );
+
+        return ResponseEntity
+                .status(ErrorCode.VALIDATION_FAILED.getHttpStatus())
+                .body(response);
     }
 
-    // 2. CATCHING AUTHENTICATION ERROR
     @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<ApiResponse<String>> handleBadCredentialsException(BadCredentialsException ex) {
-        // CLEAN CODE
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(ApiResponse.error(401, "TĂ i khoáº£n hoáº·c máº­t kháº©u khĂ´ng chĂ­nh xĂ¡c!"));
+    public ResponseEntity<ApiResponse<Void>> handleBadCredentialsException(
+            BadCredentialsException exception
+    ) {
+        ApiResponse<Void> response = ApiResponse.error(
+                ErrorCode.INVALID_CREDENTIALS.getCode(),
+                ErrorCode.INVALID_CREDENTIALS.getMessage()
+        );
+
+        return ResponseEntity
+                .status(ErrorCode.INVALID_CREDENTIALS.getHttpStatus())
+                .body(response);
     }
 
-    // 3. CATCHING CUSTOM BUSINESS EXCEPTION
-    @ExceptionHandler(AppException.class)
-    public ResponseEntity<ApiResponse<String>> handleAppException(AppException ex) {
-        ErrorCode errorCode = ex.getErrorCode(); // Láº¥y ErrorCode tá»« Exception
-
-        // Láº¥y Ä‘Ăºng mĂ£ code tá»« Enum (vĂ­ dá»¥: 404, 400, 401) Ä‘á»™ng theo cáº¥u hĂ¬nh
-        return ResponseEntity.status(errorCode.getCode())
-                .body(ApiResponse.error(errorCode.getCode(), errorCode.getMessage()));
-    }
-
-    // 4. CATCH-ALL: Caught any unwanted system errors (NPE, DB Error...)
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<String>> handleGlobalException(Exception ex) {
-        // Ghi log lá»—i vĂ o file/console Ä‘á»ƒ Dev check, khĂ´ng tráº£ chi tiáº¿t cho Client trĂ¡nh lá»™ báº£o máº­t
-        log.error("Lá»—i há»‡ thá»‘ng nghiĂªm trá»ng: ", ex);
+    public ResponseEntity<ApiResponse<Void>> handleGlobalException(Exception exception) {
+        log.error("Unexpected system error: ", exception);
 
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error(500, "ÄĂ£ cĂ³ lá»—i há»‡ thá»‘ng xáº£y ra. Vui lĂ²ng thá»­ láº¡i sau!"));
+        ApiResponse<Void> response = ApiResponse.error(
+                ErrorCode.UNCATEGORIZED_EXCEPTION.getCode(),
+                ErrorCode.UNCATEGORIZED_EXCEPTION.getMessage()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(response);
     }
 }
