@@ -1,0 +1,9 @@
+### Get current user
+GET {{baseUrl}}/users/me
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+
+### Get current user without token - should return 401
+GET {{baseUrl}}/users/me
+Accept: application/json
