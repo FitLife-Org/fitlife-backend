@@ -22,7 +22,7 @@ Accept: application/json
   "phone": "0900000022"
 }
 
-### 2. Login Member 01 by email and save token - success
+### 2. Login Member 02 by email and save token - success
 
 POST {{baseUrl}}/auth/login
 Content-Type: application/json
