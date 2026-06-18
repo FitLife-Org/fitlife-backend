@@ -5,23 +5,37 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
 @Setter
 @Builder
+@NoArgsConstructor
 @AllArgsConstructor
-@Schema(name = "ApiResponse", description = "Wrapper pháº£n há»“i chuáº©n cá»§a FitLife API")
-// If data is null, it won't be included in the JSON response
+@Schema(
+        name = "ApiResponse",
+        description = "Wrapper phản hồi chuẩn của FitLife API"
+)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ApiResponse<T> {
-    @Schema(description = "MĂ£ tráº¡ng thĂ¡i ná»™i bá»™ cá»§a API", example = "200")
+
+    @Schema(
+            description = "Mã trạng thái nội bộ của API",
+            example = "200"
+    )
     private int code;
 
-    @Schema(description = "ThĂ´ng Ä‘iá»‡p mĂ´ táº£ káº¿t quáº£ xá»­ lĂ½", example = "Success")
+    @Schema(
+            description = "Thông điệp mô tả kết quả xử lý",
+            example = "Success"
+    )
     private String message;
 
-    @Schema(description = "Dá»¯ liá»‡u tráº£ vá» theo tá»«ng endpoint", nullable = true)
+    @Schema(
+            description = "Dữ liệu trả về theo từng endpoint",
+            nullable = true
+    )
     private T data;
 
     public static <T> ApiResponse<T> success(T data) {
@@ -32,10 +46,33 @@ public class ApiResponse<T> {
                 .build();
     }
 
-    public static <T> ApiResponse<T> success(T data, String customMessage) {
+    public static <T> ApiResponse<T> success(String message, T data) {
         return ApiResponse.<T>builder()
                 .code(200)
-                .message(customMessage)
+                .message(message)
+                .data(data)
+                .build();
+    }
+
+    public static <T> ApiResponse<T> success(String message) {
+        return ApiResponse.<T>builder()
+                .code(200)
+                .message(message)
+                .build();
+    }
+
+    public static <T> ApiResponse<T> created(T data) {
+        return ApiResponse.<T>builder()
+                .code(201)
+                .message("Created successfully")
+                .data(data)
+                .build();
+    }
+
+    public static <T> ApiResponse<T> created(String message, T data) {
+        return ApiResponse.<T>builder()
+                .code(201)
+                .message(message)
                 .data(data)
                 .build();
     }
@@ -50,14 +87,6 @@ public class ApiResponse<T> {
     public static <T> ApiResponse<T> error(int code, String message, T data) {
         return ApiResponse.<T>builder()
                 .code(code)
-                .message(message)
-                .data(data)
-                .build();
-    }
-
-    public static <T> ApiResponse<T> created(T data, String message) {
-        return ApiResponse.<T>builder()
-                .code(201)
                 .message(message)
                 .data(data)
                 .build();
