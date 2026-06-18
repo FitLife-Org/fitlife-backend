@@ -1,0 +1,9 @@
+### =========================
+### MAIL API TEST
+### Base URL: {{baseUrl}}
+### =========================
+
+
+### Send test email
+POST {{baseUrl}}/test/mail/send?to=member02@gmail.com
+Accept: application/json

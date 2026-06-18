@@ -28,8 +28,8 @@ gemini:
 
 vnpay:
   enabled: false
-  tmn-code: your_vnpay_tmn_code_here
-  hash-secret: your_vnpay_hash_secret_here
+
+
 
 application:
   security:
