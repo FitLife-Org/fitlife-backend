@@ -15,11 +15,11 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "username": "member01",
-  "email": "member01@gmail.com",
+  "username": "member02",
+  "email": "member02@gmail.com",
   "password": "123456",
-  "fullName": "Member 01",
-  "phone": "0900000001"
+  "fullName": "Member 02",
+  "phone": "0900000022"
 }
 
 ### 2. Login Member 01 by email and save token - success
@@ -29,7 +29,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "identifier": "member01@gmail.com",
+  "identifier": "member02@gmail.com",
   "password": "123456"
 }
 
