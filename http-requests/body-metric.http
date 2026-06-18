@@ -1,0 +1,92 @@
+### =========================
+### BODY METRIC API TEST
+### Base URL: {{baseUrl}}
+### Required token: Bearer {{accessToken}}
+### =========================
+
+
+### 1. Create my body metric
+POST {{baseUrl}}/body-metrics
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "heightCm": 175.0,
+  "weightKg": 70.5,
+  "bodyFatPercent": 18.5,
+  "muscleMassKg": 32.0,
+  "waistCm": 78.0,
+  "chestCm": 95.0,
+  "hipCm": 90.0,
+  "note": "Initial body metric record"
+}
+
+
+### 2. Get my latest body metric
+GET {{baseUrl}}/body-metrics/latest
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+
+### 3. Get my body metric history
+GET {{baseUrl}}/body-metrics/me
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+
+### 4. Get my body metric history with paging
+GET {{baseUrl}}/body-metrics/me?page=0&size=10
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+
+### 5. Get body metric by id
+GET {{baseUrl}}/body-metrics/1
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+
+### 6. Update body metric
+PUT {{baseUrl}}/body-metrics/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "heightCm": 175.0,
+  "weightKg": 69.8,
+  "bodyFatPercent": 17.9,
+  "muscleMassKg": 32.4,
+  "waistCm": 77.0,
+  "chestCm": 95.5,
+  "hipCm": 89.5,
+  "note": "Updated after two weeks"
+}
+
+
+### 7. Delete body metric
+DELETE {{baseUrl}}/body-metrics/1
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+
+### 8. Test validation failed - missing height and weight
+POST {{baseUrl}}/body-metrics
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "heightCm": null,
+  "weightKg": null,
+  "bodyFatPercent": -1,
+  "muscleMassKg": -5,
+  "waistCm": 0,
+  "note": "Invalid body metric"
+}
+
+
+### 9. Test unauthorized - no token
+GET {{baseUrl}}/body-metrics/latest
+Accept: application/json

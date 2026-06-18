@@ -1,61 +1,130 @@
-### Register Member
+### =========================
+
+### AUTH API TEST
+
+### Base URL: {{baseUrl}}
+
+### Contenxt path: /auth/v1
+
+### =========================
+
+### 1. Register Member 01 - success
+
 POST {{baseUrl}}/auth/register
 Content-Type: application/json
 Accept: application/json
 
 {
-  "email": "member01@gmail.com",
+  "username": "member02",
+  "email": "member02@gmail.com",
   "password": "123456",
-  "fullName": "Member 01",
-  "phone": "0900000001"
+  "fullName": "Member 02",
+  "phone": "0900000022"
 }
 
+### 2. Login Member 01 by email and save token - success
 
-### Login Member and save token
 POST {{baseUrl}}/auth/login
 Content-Type: application/json
 Accept: application/json
 
 {
-  "email": "member01@gmail.com",
+  "identifier": "member02@gmail.com",
   "password": "123456"
 }
 
 > {%
     client.global.set("accessToken", response.body.data.accessToken);
-%}
+    %}
 
+### 3. Login Member 01 by username and save token - success
 
-### Login with wrong password
 POST {{baseUrl}}/auth/login
 Content-Type: application/json
 Accept: application/json
 
 {
-  "email": "member01@gmail.com",
+  "identifier": "member01",
+  "password": "123456"
+}
+
+> {%
+    client.global.set("accessToken", response.body.data.accessToken);
+    %}
+
+
+### 4. Login with wrong password - should fail
+
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "identifier": "member01@gmail.com",
   "password": "wrongpassword"
 }
 
+### 5. Login with unknown identifier - should fail
 
-### Register duplicate email
-POST {{baseUrl}}/auth/register
+POST {{baseUrl}}/auth/login
 Content-Type: application/json
 Accept: application/json
 
 {
-  "email": "member01@gmail.com",
-  "password": "123456",
-  "fullName": "Member Duplicate",
-  "phone": "0900000002"
+  "identifier": "unknown_member",
+  "password": "123456"
 }
 
+### 6. Register duplicate username - should fail
 
-### Register validation failed
 POST {{baseUrl}}/auth/register
 Content-Type: application/json
 Accept: application/json
 
 {
+  "username": "member01",
+  "email": "member01_new@gmail.com",
+  "password": "123456",
+  "fullName": "Member Duplicate Username",
+  "phone": "0900000099"
+}
+
+### 7. Register duplicate email - should fail
+
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "username": "member_duplicate_email",
+  "email": "[member01@gmail.com](mailto:member01@gmail.com)",
+  "password": "123456",
+  "fullName": "Member Duplicate Email",
+  "phone": "0999999999"
+}
+
+### 8. Register duplicate phone - should fail
+
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "username": "newmember",
+  "email": "[newmember@gmail.com](mailto:newmember@gmail.com)",
+  "password": "123456",
+  "fullName": "Member Duplicate Phone",
+  "phone": "0900000001"
+}
+
+### 9. Register validation failed - should fail
+
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "username": "",
   "email": "",
   "password": "123",
   "fullName": "",

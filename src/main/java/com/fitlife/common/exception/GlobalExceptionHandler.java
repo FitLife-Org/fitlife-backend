@@ -77,7 +77,7 @@ public class GlobalExceptionHandler {
 
         ApiResponse<Void> response = ApiResponse.error(
                 ErrorCode.UNCATEGORIZED_EXCEPTION.getCode(),
-                ErrorCode.UNCATEGORIZED_EXCEPTION.getMessage()
+                exception.getClass().getSimpleName() + ": " + exception.getMessage()
         );
 
         return ResponseEntity

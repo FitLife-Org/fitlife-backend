@@ -1,0 +1,62 @@
+### =========================
+### MEMBER API TEST
+### Base URL: {{baseUrl}}
+### Required token: Bearer {{accessToken}}
+### =========================
+
+
+### 1. Get my member profile
+GET {{baseUrl}}/members/me
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+
+### 2. Update my member profile
+PUT {{baseUrl}}/members/me
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "fullName": "Member 01 Updated",
+  "phone": "0900000001",
+  "gender": "MALE",
+  "dateOfBirth": "2002-05-20",
+  "address": "Ho Chi Minh City",
+  "emergencyContactName": "Nguyen Van B",
+  "emergencyContactPhone": "0900000002"
+}
+
+
+### 3. Get member by id - admin/staff only
+GET {{baseUrl}}/members/1
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+
+### 4. Get all members - admin/staff only
+GET {{baseUrl}}/members
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+
+### 5. Search members by keyword - admin/staff only
+GET {{baseUrl}}/members/search?keyword=member
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+
+### 6. Update member status - admin/staff only
+PATCH {{baseUrl}}/members/1/status
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "status": "ACTIVE"
+}
+
+
+### 7. Test unauthorized - no token
+GET {{baseUrl}}/members/me
+Accept: application/json

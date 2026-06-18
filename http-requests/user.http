@@ -1,9 +1,16 @@
-### Get current user
+### =========================
+### USER API TEST
+### Base URL: {{baseUrl}}
+### Required token: Bearer {{accessToken}}
+### =========================
+
+
+### 1. Get current user with token - success
 GET {{baseUrl}}/users/me
 Accept: application/json
 Authorization: Bearer {{accessToken}}
 
 
-### Get current user without token - should return 401
+### 2. Get current user without token - should fail
 GET {{baseUrl}}/users/me
 Accept: application/json
