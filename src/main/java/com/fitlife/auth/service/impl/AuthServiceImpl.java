@@ -1,7 +1,9 @@
 package com.fitlife.auth.service.impl;
 
+import com.fitlife.auth.dto.request.ForgotPasswordRequest;
 import com.fitlife.auth.dto.request.LoginRequest;
 import com.fitlife.auth.dto.request.RegisterRequest;
+import com.fitlife.auth.dto.request.ResetPasswordRequest;
 import com.fitlife.auth.dto.response.AuthResponse;
 import com.fitlife.auth.service.AuthService;
 import com.fitlife.common.exception.AppException;
@@ -14,15 +16,19 @@ import com.fitlife.user.entity.User;
 import com.fitlife.user.enums.AuthProvider;
 import com.fitlife.user.enums.UserStatus;
 import com.fitlife.user.repository.UserRepository;
+import com.fitlife.mail.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -36,6 +42,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final EmailService emailService;
 
     @Override
     public AuthResponse register(RegisterRequest request) {
@@ -111,5 +118,63 @@ public class AuthServiceImpl implements AuthService {
                 .fullName(user.getFullName())
                 .roles(roles)
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public void forgotPassword(ForgotPasswordRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        String resetToken = UUID.randomUUID().toString();
+
+        user.setResetToken(resetToken);
+        user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(15));
+
+        userRepository.save(user);
+
+        String subject = "Reset your FitLife password";
+        String content = """
+            Hello %s,
+            
+            We received a request to reset your FitLife password.
+            
+            Your reset token is:
+            %s
+            
+            This token will expire in 15 minutes.
+            
+            If you did not request this, please ignore this email.
+            
+            FitLife Team
+            """.formatted(user.getFullName(), resetToken);
+
+        emailService.sendSimpleMail(
+                user.getEmail(),
+                subject,
+                content
+        );
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new AppException(ErrorCode.PASSWORD_CONFIRM_NOT_MATCH);
+        }
+
+        User user = userRepository.findByResetToken(request.getResetToken())
+                .orElseThrow(() -> new AppException(ErrorCode.RESET_TOKEN_INVALID));
+
+        if (user.getResetTokenExpiry() == null
+                || user.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new AppException(ErrorCode.RESET_TOKEN_EXPIRED);
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        user.setResetToken(null);
+        user.setResetTokenExpiry(null);
+
+        userRepository.save(user);
     }
 }

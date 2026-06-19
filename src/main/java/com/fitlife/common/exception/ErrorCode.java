@@ -29,6 +29,7 @@ public enum ErrorCode {
     USER_NOT_FOUND(
             2001,
             "User not found",
+            // "If the email exists, a password reset email has been sent", // Avoid strangers snooping on emails
             HttpStatus.NOT_FOUND
     ),
 
@@ -110,6 +111,12 @@ public enum ErrorCode {
     RESET_TOKEN_EXPIRED(
             5007,
             "Reset token has expired",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    PASSWORD_CONFIRM_NOT_MATCH(
+            5008,
+            "Password confirmation does not match",
             HttpStatus.BAD_REQUEST
     );
 
