@@ -6,6 +6,7 @@ import com.fitlife.role.entity.Role;
 import com.fitlife.security.CustomUserDetails;
 import com.fitlife.user.dto.response.UserResponse;
 import com.fitlife.user.entity.User;
+import com.fitlife.user.mapper.UserMapper;
 import com.fitlife.user.repository.UserRepository;
 import com.fitlife.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -21,11 +22,12 @@ import java.util.stream.Collectors;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final UserMapper userMapper;
 
     @Override
     public UserResponse getCurrentUser() {
         User currentUser = getCurrentAuthenticatedUser();
-        return toUserResponse(currentUser);
+        return userMapper.toUserResponse(currentUser);
     }
 
     private User getCurrentAuthenticatedUser() {
@@ -47,25 +49,5 @@ public class UserServiceImpl implements UserService {
         }
 
         throw new AppException(ErrorCode.UNAUTHENTICATED);
-    }
-
-    private UserResponse toUserResponse(User user) {
-        Set<String> roles = user.getRoles()
-                .stream()
-                .map(Role::getCode)
-                .collect(Collectors.toSet());
-
-        return UserResponse.builder()
-                .id(user.getId())
-                .username(user.getUsername())
-                .email(user.getEmail())
-                .fullName(user.getFullName())
-                .phone(user.getPhone())
-                .avatarUrl(user.getAvatarUrl())
-                .status(user.getStatus())
-                .authProvider(user.getAuthProvider())
-                .emailVerified(user.getEmailVerified())
-                .roles(roles)
-                .build();
     }
 }
