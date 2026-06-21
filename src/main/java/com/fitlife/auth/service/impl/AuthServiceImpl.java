@@ -1,12 +1,11 @@
 package com.fitlife.auth.service.impl;
 
-import com.fitlife.auth.dto.request.ForgotPasswordRequest;
-import com.fitlife.auth.dto.request.LoginRequest;
-import com.fitlife.auth.dto.request.RegisterRequest;
-import com.fitlife.auth.dto.request.ResetPasswordRequest;
+import com.fitlife.auth.dto.internal.GoogleTokenPayload;
+import com.fitlife.auth.dto.request.*;
 import com.fitlife.auth.dto.response.AuthResponse;
 import com.fitlife.auth.mapper.AuthMapper;
 import com.fitlife.auth.service.AuthService;
+import com.fitlife.auth.service.GoogleTokenVerifierService;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.member.entity.Member;
@@ -22,6 +21,7 @@ import com.fitlife.user.enums.UserStatus;
 import com.fitlife.user.mapper.UserMapper;
 import com.fitlife.user.repository.UserRepository;
 import com.fitlife.mail.service.EmailService;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -48,6 +48,7 @@ public class AuthServiceImpl implements AuthService {
     private final EmailService emailService;
     private final AuthMapper authMapper;
     private final MemberRepository memberRepository;
+    private final GoogleTokenVerifierService googleTokenVerifierService;
 
     @Override
     @Transactional
@@ -204,5 +205,109 @@ public class AuthServiceImpl implements AuthService {
         user.setResetTokenExpiry(null);
 
         userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse googleLogin(GoogleLoginRequest request) {
+        GoogleTokenPayload googlePayload = googleTokenVerifierService.verify(request.getIdToken());
+
+        User user = userRepository
+                .findByAuthProviderAndProviderId(AuthProvider.GOOGLE, googlePayload.getProviderId())
+                .orElseGet(() -> findOrCreateGoogleUser(googlePayload));
+
+        CustomUserDetails userDetails = new CustomUserDetails(user);
+        String accessToken = jwtService.generateToken(userDetails);
+
+        return authMapper.toAuthResponse(user, accessToken);
+    }
+
+    private User findOrCreateGoogleUser(GoogleTokenPayload googlePayload) {
+        return userRepository.findByEmail(googlePayload.getEmail())
+                .map(existingUser -> linkExistingUserWithGoogle(existingUser, googlePayload))
+                .orElseGet(() -> createNewGoogleUser(googlePayload));
+    }
+
+    private User linkExistingUserWithGoogle(
+            User existingUser,
+            GoogleTokenPayload googlePayload
+    ) {
+        existingUser.setAuthProvider(AuthProvider.GOOGLE);
+        existingUser.setProviderId(googlePayload.getProviderId());
+        existingUser.setEmailVerified(Boolean.TRUE.equals(googlePayload.getEmailVerified()));
+
+        if (existingUser.getAvatarUrl() == null || existingUser.getAvatarUrl().isBlank()) {
+            existingUser.setAvatarUrl(googlePayload.getAvatarUrl());
+        }
+
+        User savedUser = userRepository.save(existingUser);
+
+        if (hasMemberRole(savedUser) && !memberRepository.existsByUserId(savedUser.getId())) {
+            createMemberProfileForRegisteredUser(savedUser);
+        }
+
+        return savedUser;
+    }
+
+    private User createNewGoogleUser(GoogleTokenPayload googlePayload) {
+        Role memberRole = roleRepository.findByCode(DEFAULT_MEMBER_ROLE)
+                .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
+
+        User user = User.builder()
+                .username(generateUsernameFromEmail(googlePayload.getEmail()))
+                .email(googlePayload.getEmail())
+                .passwordHash(null)
+                .fullName(resolveGoogleFullName(googlePayload))
+                .phone(null)
+                .avatarUrl(googlePayload.getAvatarUrl())
+                .status(UserStatus.ACTIVE)
+                .authProvider(AuthProvider.GOOGLE)
+                .providerId(googlePayload.getProviderId())
+                .emailVerified(Boolean.TRUE.equals(googlePayload.getEmailVerified()))
+                .isDeleted(false)
+                .roles(new HashSet<>())
+                .build();
+
+        user.getRoles().add(memberRole);
+
+        User savedUser = userRepository.save(user);
+
+        createMemberProfileForRegisteredUser(savedUser);
+
+        return savedUser;
+    }
+
+    private String generateUsernameFromEmail(String email) {
+        String baseUsername = email.substring(0, email.indexOf("@"))
+                .replaceAll("[^a-zA-Z0-9_]", "")
+                .toLowerCase();
+
+        if (baseUsername.isBlank()) {
+            baseUsername = "google_user";
+        }
+
+        String username = baseUsername;
+        int suffix = 1;
+
+        while (userRepository.existsByUsername(username)) {
+            username = baseUsername + suffix;
+            suffix++;
+        }
+
+        return username;
+    }
+
+    private String resolveGoogleFullName(GoogleTokenPayload googlePayload) {
+        if (googlePayload.getFullName() != null && !googlePayload.getFullName().isBlank()) {
+            return googlePayload.getFullName();
+        }
+
+        return googlePayload.getEmail();
+    }
+
+    private boolean hasMemberRole(User user) {
+        return user.getRoles()
+                .stream()
+                .anyMatch(role -> DEFAULT_MEMBER_ROLE.equals(role.getCode()));
     }
 }

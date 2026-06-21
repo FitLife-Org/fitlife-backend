@@ -67,8 +67,8 @@ vnpay:
   enabled: ${VNPAY_ENABLED}
 
 google:
-  enabled: ${GOOGLE_ENABLED}
-  client-id: ${GOOGLE_CLIENT_ID}
+  enabled: ${GOOGLE_ENABLED:false}
+  client-id: ${GOOGLE_CLIENT_ID:demo}
 
 application:
   security:
