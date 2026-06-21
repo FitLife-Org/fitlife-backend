@@ -1,0 +1,23 @@
+### =========================
+### GOOGLE AUTH API TEST
+### Base URL: {{baseUrl}}
+### =========================
+
+
+### Google Login - paste Google ID token from frontend
+POST {{baseUrl}}/auth/google-login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "idToken": "paste-google-id-token-here"
+}
+
+> {%
+    client.global.set("accessToken", response.body.data.accessToken);
+%}
+
+### Get current user after Google login
+GET {{baseUrl}}/users/me
+Accept: application/json
+Authorization: Bearer {{accessToken}}

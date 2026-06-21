@@ -1,9 +1,6 @@
 package com.fitlife.auth.controller;
 
-import com.fitlife.auth.dto.request.ForgotPasswordRequest;
-import com.fitlife.auth.dto.request.LoginRequest;
-import com.fitlife.auth.dto.request.RegisterRequest;
-import com.fitlife.auth.dto.request.ResetPasswordRequest;
+import com.fitlife.auth.dto.request.*;
 import com.fitlife.auth.dto.response.AuthResponse;
 import com.fitlife.auth.service.AuthService;
 import com.fitlife.common.response.ApiResponse;
@@ -55,5 +52,14 @@ public class AuthController {
     ) {
         authService.resetPassword(request);
         return ApiResponse.success("Password reset successfully");
+    }
+
+    @PostMapping("/google-login")
+    @Operation(summary = "Login or register using Google ID token")
+    public ApiResponse<AuthResponse> googleLogin(
+            @Valid @RequestBody GoogleLoginRequest request
+    ) {
+        AuthResponse response = authService.googleLogin(request);
+        return ApiResponse.success("Google login successfully", response);
     }
 }
