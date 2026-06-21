@@ -9,6 +9,9 @@ import com.fitlife.auth.mapper.AuthMapper;
 import com.fitlife.auth.service.AuthService;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
+import com.fitlife.member.entity.Member;
+import com.fitlife.member.enums.MemberStatus;
+import com.fitlife.member.repository.MemberRepository;
 import com.fitlife.role.entity.Role;
 import com.fitlife.role.repository.RoleRepository;
 import com.fitlife.security.CustomUserDetails;
@@ -16,6 +19,7 @@ import com.fitlife.security.JwtService;
 import com.fitlife.user.entity.User;
 import com.fitlife.user.enums.AuthProvider;
 import com.fitlife.user.enums.UserStatus;
+import com.fitlife.user.mapper.UserMapper;
 import com.fitlife.user.repository.UserRepository;
 import com.fitlife.mail.service.EmailService;
 import lombok.RequiredArgsConstructor;
@@ -43,14 +47,11 @@ public class AuthServiceImpl implements AuthService {
     private final JwtService jwtService;
     private final EmailService emailService;
     private final AuthMapper authMapper;
+    private final MemberRepository memberRepository;
 
     @Override
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        String username = request.getUsername().trim().toLowerCase();
-        String email = request.getEmail().trim().toLowerCase();
-        String phone = request.getPhone() == null ? null : request.getPhone().trim();
-
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
@@ -86,10 +87,41 @@ public class AuthServiceImpl implements AuthService {
 
         User savedUser = userRepository.save(user);
 
+        createMemberProfileForRegisteredUser(savedUser);
+
         CustomUserDetails userDetails = new CustomUserDetails(savedUser);
         String accessToken = jwtService.generateToken(userDetails);
 
         return authMapper.toAuthResponse(savedUser, accessToken);
+    }
+
+    private void createMemberProfileForRegisteredUser(User user) {
+        if (memberRepository.existsByUserId(user.getId())) {
+            return;
+        }
+
+        Member member = Member.builder()
+                .user(user)
+                .memberCode(generateMemberCode(user.getId()))
+                .fullName(user.getFullName())
+                .phone(user.getPhone())
+                .email(user.getEmail())
+                .gender(null)
+                .dateOfBirth(null)
+                .avatarUrl(user.getAvatarUrl())
+                .heightCm(null)
+                .weightKg(null)
+                .bmi(null)
+                .fitnessGoal(null)
+                .status(MemberStatus.ACTIVE)
+                .isDeleted(false)
+                .build();
+
+        memberRepository.save(member);
+    }
+
+    private String generateMemberCode(Long userId) {
+        return "MB" + String.format("%06d", userId);
     }
 
     @Override
