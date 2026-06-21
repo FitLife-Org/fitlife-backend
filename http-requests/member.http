@@ -5,26 +5,24 @@
 ### =========================
 
 
-### 1. Get my member profile
-GET {{baseUrl}}/members/me
+### 1. Get my member profile (M01)
+GET http://localhost:8080/api/v1/members/me/profile
 Accept: application/json
 Authorization: Bearer {{accessToken}}
 
 
-### 2. Update my member profile
-PUT {{baseUrl}}/members/me
+### 2. Update my member profile (M02)
+PUT {{baseUrl}}/members/me/profile
 Content-Type: application/json
 Accept: application/json
 Authorization: Bearer {{accessToken}}
 
 {
-  "fullName": "Member 01 Updated",
-  "phone": "0900000001",
+  "fullName": "Nguyễn Văn Member Updated",
+  "phone": "0900000005",
   "gender": "MALE",
   "dateOfBirth": "2002-05-20",
-  "address": "Ho Chi Minh City",
-  "emergencyContactName": "Nguyen Van B",
-  "emergencyContactPhone": "0900000002"
+  "fitnessGoal": "LOSE_FAT"
 }
 
 
