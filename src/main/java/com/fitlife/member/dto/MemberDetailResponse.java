@@ -6,14 +6,15 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class MemberProfileResponse {
+public class MemberDetailResponse {
     private Long id;
-    private Long userId;
+    private String username;
     private String memberCode;
     private String fullName;
     private String phone;
@@ -26,4 +27,6 @@ public class MemberProfileResponse {
     private BigDecimal bmi;
     private String fitnessGoal;
     private String status;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }
