@@ -5,6 +5,7 @@ import com.fitlife.auth.dto.request.LoginRequest;
 import com.fitlife.auth.dto.request.RegisterRequest;
 import com.fitlife.auth.dto.request.ResetPasswordRequest;
 import com.fitlife.auth.dto.response.AuthResponse;
+import com.fitlife.auth.mapper.AuthMapper;
 import com.fitlife.auth.service.AuthService;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
@@ -27,9 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -43,9 +42,15 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final EmailService emailService;
+    private final AuthMapper authMapper;
 
     @Override
+    @Transactional
     public AuthResponse register(RegisterRequest request) {
+        String username = request.getUsername().trim().toLowerCase();
+        String email = request.getEmail().trim().toLowerCase();
+        String phone = request.getPhone() == null ? null : request.getPhone().trim();
+
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
@@ -84,14 +89,17 @@ public class AuthServiceImpl implements AuthService {
         CustomUserDetails userDetails = new CustomUserDetails(savedUser);
         String accessToken = jwtService.generateToken(userDetails);
 
-        return buildAuthResponse(savedUser, accessToken);
+        return authMapper.toAuthResponse(savedUser, accessToken);
     }
 
     @Override
+    @Transactional
     public AuthResponse login(LoginRequest request) {
+        String identifier = request.getIdentifier().trim().toLowerCase();
+
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        request.getIdentifier(),
+                        identifier,
                         request.getPassword()
                 )
         );
@@ -101,29 +109,15 @@ public class AuthServiceImpl implements AuthService {
 
         String accessToken = jwtService.generateToken(userDetails);
 
-        return buildAuthResponse(user, accessToken);
-    }
-
-    private AuthResponse buildAuthResponse(User user, String accessToken) {
-        Set<String> roles = user.getRoles()
-                .stream()
-                .map(Role::getCode)
-                .collect(Collectors.toSet());
-
-        return AuthResponse.builder()
-                .accessToken(accessToken)
-                .tokenType("Bearer")
-                .userId(user.getId())
-                .email(user.getEmail())
-                .fullName(user.getFullName())
-                .roles(roles)
-                .build();
+        return authMapper.toAuthResponse(user, accessToken);
     }
 
     @Override
     @Transactional
     public void forgotPassword(ForgotPasswordRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
+        String email = request.getEmail().trim().toLowerCase();
+
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         String resetToken = UUID.randomUUID().toString();
@@ -163,7 +157,9 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ErrorCode.PASSWORD_CONFIRM_NOT_MATCH);
         }
 
-        User user = userRepository.findByResetToken(request.getResetToken())
+        String resetToken = request.getResetToken().trim();
+
+        User user = userRepository.findByResetToken(resetToken)
                 .orElseThrow(() -> new AppException(ErrorCode.RESET_TOKEN_INVALID));
 
         if (user.getResetTokenExpiry() == null
