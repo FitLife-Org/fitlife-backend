@@ -25,6 +25,12 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST
     ),
 
+    METHOD_NOT_SUPPORTED(
+            1002,
+            "Request method is not supported",
+            HttpStatus.METHOD_NOT_ALLOWED
+    ),
+
     // User errors
     USER_NOT_FOUND(
             2001,

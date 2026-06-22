@@ -15,21 +15,21 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "username": "Tram01",
-  "email": "Tram01@gmail.com",
+  "username": "Member01",
+  "email": "member01@gmail.com",
   "password": "123456",
-  "fullName": "Tram 01",
-  "phone": "0000000777"
+  "fullName": "Member 01",
+  "phone": "0101010101"
 }
 
-### 2. Login Member 02 by email and save token - success
+### 2. Login Member by email and save token - success
 
 POST {{baseUrl}}/auth/login
 Content-Type: application/json
 Accept: application/json
 
 {
-  "identifier": "Tram01@gmail.com",
+  "identifier": "member01@gmail.com",
   "password": "123456"
 }
 
@@ -37,14 +37,14 @@ Accept: application/json
     client.global.set("accessToken", response.body.data.accessToken);
 %}
 
-### 3. Login Member 02 by username and save token - success
+### 3. Login Member by username and save token - success
 
 POST {{baseUrl}}/auth/login
 Content-Type: application/json
 Accept: application/json
 
 {
-  "identifier": "member02",
+  "identifier": "Member01",
   "password": "123456"
 }
 
@@ -97,7 +97,7 @@ Accept: application/json
 
 {
   "username": "member_duplicate_email",
-  "email": "[member01@gmail.com](mailto:member01@gmail.com)",
+  "email": "member01@gmail.com",
   "password": "123456",
   "fullName": "Member Duplicate Email",
   "phone": "0999999999"
@@ -111,10 +111,10 @@ Accept: application/json
 
 {
   "username": "newmember",
-  "email": "[newmember@gmail.com](mailto:newmember@gmail.com)",
+  "email": "newmember@gmail.com",
   "password": "123456",
   "fullName": "Member Duplicate Phone",
-  "phone": "0900000001"
+  "phone": "0101010101"
 }
 
 ### 9. Register validation failed - should fail
@@ -128,71 +128,4 @@ Accept: application/json
   "email": "",
   "password": "123",
   "fullName": "",
-  "phone": "0900000003"
-}
-
-
-
-
-
-
-### 10. Register Admin 02 - success
-
-POST {{baseUrl}}/auth/register
-Content-Type: application/json
-Accept: application/json
-
-{
-  "username": "admin02",
-  "email": "admin02@fitlife.local",
-  "password": "765123",
-  "fullName": "FitLife Admin 02",
-  "phone": "0911223344"
-}
-
-
-### 11. Login Admin bằng tài khoản Seed mẫu (V2) - success
-POST {{baseUrl}}/auth/login
-Content-Type: application/json
-Accept: application/json
-
-{
-  "identifier": "admin02",
-  "password": "765123"
-}
-
-> {%
-    // Lưu riêng token đặc quyền để tránh ghi đè lên biến accessToken của hội viên
-    client.global.set("adminToken", response.body.data.accessToken);
-%}
-
-
-### 12. Login Admin 02 mới đăng ký (Sau khi đã gán quyền trong DB) - success
-POST {{baseUrl}}/auth/login
-Content-Type: application/json
-Accept: application/json
-
-{
-  "identifier": "admin02",
-  "password": "password123"
-}
-
-> {%
-    client.global.set("adminToken", response.body.data.accessToken);
-%}
-
-
-### 13. M03 - Admin xem danh sách hội viên phân trang, tìm kiếm - success
-GET {{baseUrl}}/admin/members?page=1&size=10&keyword=Tram&status=ACTIVE
-Accept: application/json
-Authorization: Bearer {{adminToken}}
-
-
-### 14. M04 - Admin xem thông tin chi tiết một hội viên theo ID - success
-GET {{baseUrl}}/admin/members/1
-Accept: application/json
-Authorization: Bearer {{adminToken}}
-
-
-
-
+  "phone": "

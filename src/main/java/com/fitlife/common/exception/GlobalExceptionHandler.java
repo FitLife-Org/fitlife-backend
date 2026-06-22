@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -82,6 +83,20 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(response);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMethodNotSupported(
+            HttpRequestMethodNotSupportedException exception
+    ) {
+        ApiResponse<Void> response = ApiResponse.error(
+                ErrorCode.METHOD_NOT_SUPPORTED.getCode(),
+                ErrorCode.METHOD_NOT_SUPPORTED.getMessage() + ": " + exception.getMethod()
+        );
+
+        return ResponseEntity
+                .status(ErrorCode.METHOD_NOT_SUPPORTED.getHttpStatus())
                 .body(response);
     }
 }

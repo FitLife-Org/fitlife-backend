@@ -1,23 +1,22 @@
 ### =========================
 ### GOOGLE AUTH API TEST
-### Base URL: {{baseUrl}}
 ### =========================
 
-
-### Google Login - paste Google ID token from frontend
+### 1. Google Login - paste Google ID token from browser console
 POST {{baseUrl}}/auth/google-login
 Content-Type: application/json
 Accept: application/json
 
 {
-  "idToken": "paste-google-id-token-here"
+  "idToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImQxMjk3OGJhNGMyOWVmMTE1NGEzNGU0ODcwYzdhM2E1MWQyNmRmMTAiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI4MjQyMDY4OTYxNTctanMzNGJhaGZkbDA2dTdyODRjMmwycHQ2dDY3MGg3dGYuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI4MjQyMDY4OTYxNTctanMzNGJhaGZkbDA2dTdyODRjMmwycHQ2dDY3MGg3dGYuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMDA0OTM3NjAzNTg1NzcyODk5NjMiLCJlbWFpbCI6InF1YW5naHV5LmxlLmRldkBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwibmJmIjoxNzgyMTAwNzMwLCJuYW1lIjoiUXVhbmcgSHV5IExlIiwicGljdHVyZSI6Imh0dHBzOi8vbGgzLmdvb2dsZXVzZXJjb250ZW50LmNvbS9hL0FDZzhvY0tuMkUwTmxGNkpaZk1oUm1MM19NSVc0VVpqN0RrN0JpWkp5WG1nWDlFMGpUdnhSdz1zOTYtYyIsImdpdmVuX25hbWUiOiJRdWFuZyBIdXkiLCJmYW1pbHlfbmFtZSI6IkxlIiwiaWF0IjoxNzgyMTAxMDMwLCJleHAiOjE3ODIxMDQ2MzAsImp0aSI6ImYwZmQ1OGI0YTAzNTA1ZTIwZDA2YmY2NjBiOTMyY2ZkYTFmMjY3ZTgifQ.4LlD1DblAIJLdaIwGtIxnFzELlFoS9gLpFu62WPF2lKGUsCpMK0Y9x7FYqadhp755G0NW7UOXvuYvh2IVmkjHHos9dyezFyLJ74pAp00HGgeTlTPR_-tI-HJXSqc8-3a9j10pBSxjuRWeRcEFOn0hA9ZJHpk_kzOcpWzEftWc2xrYd-xQtG7ymQHVrviNawD-qzqZESYdJ227vh7BgDBVRZGURqsom4kouHHlTKDP5i8MiCr1DrLgsbVCPgGAJlaJH1dNTO-9_8Y0_2EvQ6fH6uzDsK3vjP7RNzam2v9ppbzqRmAU2LpMnWgWf1GNdiVHnM3y-Cff9KnEAl3cP459Q"
 }
 
 > {%
     client.global.set("accessToken", response.body.data.accessToken);
 %}
 
-### Get current user after Google login
+
+### 2. Get current user after Google login
 GET {{baseUrl}}/users/me
 Accept: application/json
 Authorization: Bearer {{accessToken}}
