@@ -120,11 +120,10 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST
     ),
 
-    PASSWORD_CONFIRM_NOT_MATCH(
-            5008,
-            "Password confirmation does not match",
-            HttpStatus.BAD_REQUEST
-    );
+    PASSWORD_CONFIRM_NOT_MATCH(5008, "Password confirmation does not match", HttpStatus.BAD_REQUEST),
+    OTP_INVALID(5009, "OTP is invalid", HttpStatus.BAD_REQUEST),
+    OTP_EXPIRED(5010, "OTP has expired", HttpStatus.BAD_REQUEST),
+    ;
 
     private final int code;
     private final String message;

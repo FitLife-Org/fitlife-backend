@@ -33,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @RequiredArgsConstructor
@@ -148,39 +149,34 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void forgotPassword(ForgotPasswordRequest request) {
-        String email = request.getEmail().trim().toLowerCase();
-
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        String resetToken = UUID.randomUUID().toString();
+        String otp = generateOtp();
 
-        user.setResetToken(resetToken);
-        user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(15));
+        user.setResetToken(otp);
+        user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(5));
 
         userRepository.save(user);
 
-        String subject = "Reset your FitLife password";
+        String subject = "FitLife Password Reset OTP";
+
         String content = """
             Hello %s,
             
             We received a request to reset your FitLife password.
             
-            Your reset token is:
+            Your OTP is:
             %s
             
-            This token will expire in 15 minutes.
+            This OTP will expire in 5 minutes.
             
             If you did not request this, please ignore this email.
             
             FitLife Team
-            """.formatted(user.getFullName(), resetToken);
+            """.formatted(user.getFullName(), otp);
 
-        emailService.sendSimpleMail(
-                user.getEmail(),
-                subject,
-                content
-        );
+        emailService.sendSimpleMail(user.getEmail(), subject, content);
     }
 
     @Override
@@ -190,14 +186,16 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ErrorCode.PASSWORD_CONFIRM_NOT_MATCH);
         }
 
-        String resetToken = request.getResetToken().trim();
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        User user = userRepository.findByResetToken(resetToken)
-                .orElseThrow(() -> new AppException(ErrorCode.RESET_TOKEN_INVALID));
+        if (user.getResetToken() == null || !user.getResetToken().equals(request.getOtp())) {
+            throw new AppException(ErrorCode.OTP_INVALID);
+        }
 
         if (user.getResetTokenExpiry() == null
                 || user.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
-            throw new AppException(ErrorCode.RESET_TOKEN_EXPIRED);
+            throw new AppException(ErrorCode.OTP_EXPIRED);
         }
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
@@ -309,5 +307,10 @@ public class AuthServiceImpl implements AuthService {
         return user.getRoles()
                 .stream()
                 .anyMatch(role -> DEFAULT_MEMBER_ROLE.equals(role.getCode()));
+    }
+
+    private String generateOtp() {
+        int otp = ThreadLocalRandom.current().nextInt(100000, 1000000);
+        return String.valueOf(otp);
     }
 }
