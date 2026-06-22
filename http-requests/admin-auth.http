@@ -1,0 +1,30 @@
+### =========================
+
+### FITLIFE ADMIN AUTH TEST
+
+### Base URL: {{baseUrl}}
+
+### Context path: /api/v1
+
+### =========================
+
+### 1. Login Admin Seed and save admin token - success
+
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "identifier": "admin01",
+  "password": "admin123"
+}
+
+> {%
+    client.global.set("adminToken", response.body.data.accessToken);
+    %}
+
+### 2. Get current admin user - success
+
+GET {{baseUrl}}/users/me
+Accept: application/json
+Authorization: Bearer {{adminToken}}

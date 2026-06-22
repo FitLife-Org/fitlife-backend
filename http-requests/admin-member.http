@@ -1,0 +1,27 @@
+### =========================
+
+### FITLIFE ADMIN MEMBER TEST
+
+### Base URL: {{baseUrl}}
+
+### Required token: Bearer {{adminToken}}
+
+### =========================
+
+### 1. Admin get member list with paging and filter - success
+
+GET {{baseUrl}}/admin/members?page=0&size=10&keyword=member&status=ACTIVE
+Accept: application/json
+Authorization: Bearer {{adminToken}}
+
+### 2. Admin get member detail by id - success
+
+GET {{baseUrl}}/admin/members/1
+Accept: application/json
+Authorization: Bearer {{adminToken}}
+
+### 3. Member token tries to access admin member list - should fail
+
+GET {{baseUrl}}/admin/members?page=0&size=10
+Accept: application/json
+Authorization: Bearer {{accessToken}}
