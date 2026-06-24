@@ -128,4 +128,6 @@ Accept: application/json
   "email": "",
   "password": "123",
   "fullName": "",
-  "phone": "
+  "phone": "00000"
+  }
+
