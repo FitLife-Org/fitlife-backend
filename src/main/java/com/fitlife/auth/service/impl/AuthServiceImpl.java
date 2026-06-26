@@ -198,6 +198,11 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ErrorCode.OTP_EXPIRED);
         }
 
+        if (user.getPasswordHash() != null
+                && passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
+            throw new AppException(ErrorCode.NEW_PASSWORD_SAME_AS_OLD);
+        }
+
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         user.setResetToken(null);
         user.setResetTokenExpiry(null);
