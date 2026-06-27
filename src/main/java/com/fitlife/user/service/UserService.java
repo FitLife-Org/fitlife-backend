@@ -2,6 +2,7 @@ package com.fitlife.user.service;
 
 import com.fitlife.user.dto.request.AdminCreateInternalUserRequest;
 import com.fitlife.user.dto.request.AdminUpdateUserRequest;
+import com.fitlife.user.dto.request.AdminUpdateUserStatusRequest;
 import com.fitlife.user.dto.request.AdminUserSearchRequest;
 import com.fitlife.user.dto.response.AdminUserDetailResponse;
 import com.fitlife.user.dto.response.AdminUserResponse;
@@ -18,4 +19,6 @@ public interface UserService {
     AdminUserDetailResponse createInternalUser(AdminCreateInternalUserRequest request);
 
     AdminUserDetailResponse updateUser(Long id, AdminUpdateUserRequest request);
+
+    AdminUserDetailResponse updateUserStatus(Long id, AdminUpdateUserStatusRequest request);
 }

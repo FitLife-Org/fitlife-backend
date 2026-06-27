@@ -201,3 +201,64 @@ Content-Type: application/json
   "fullName": "No Token"
 }
 
+### Admin - Lock user account
+PATCH {{baseUrl}}/admin/users/5/status
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "status": "LOCKED"
+}
+
+### Admin - Unlock user account
+PATCH {{baseUrl}}/admin/users/5/status
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "status": "ACTIVE"
+}
+
+### Admin - Deactivate user account
+PATCH {{baseUrl}}/admin/users/5/status
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "status": "INACTIVE"
+}
+
+### Admin - Update invalid user status
+PATCH {{baseUrl}}/admin/users/5/status
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "status": "ABC"
+}
+
+### Admin - Update status for not found user
+PATCH {{baseUrl}}/admin/users/999999/status
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "status": "LOCKED"
+}
+
+### Admin - Update status without token
+PATCH {{baseUrl}}/admin/users/5/status
+Content-Type: application/json
+
+{
+  "status": "LOCKED"
+}
+
+### Member - Should not update user status
+PATCH {{baseUrl}}/admin/users/5/status
+Authorization: Bearer {{member_token}}
+Content-Type: application/json
+
+{
+  "status": "LOCKED"
+}

@@ -3,6 +3,7 @@ package com.fitlife.user.controller;
 import com.fitlife.common.response.ApiResponse;
 import com.fitlife.user.dto.request.AdminCreateInternalUserRequest;
 import com.fitlife.user.dto.request.AdminUpdateUserRequest;
+import com.fitlife.user.dto.request.AdminUpdateUserStatusRequest;
 import com.fitlife.user.dto.request.AdminUserSearchRequest;
 import com.fitlife.user.dto.response.AdminUserDetailResponse;
 import com.fitlife.user.dto.response.AdminUserResponse;
@@ -15,14 +16,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/admin/users")
@@ -98,5 +92,37 @@ public class AdminUserController {
         AdminUserDetailResponse response = userService.updateUser(id, request);
 
         return ApiResponse.success("Update user successfully", response);
+    }
+
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Update user status by admin",
+            description = """
+                Admin can update user account status.
+                
+                Supported statuses:
+                - ACTIVE
+                - INACTIVE
+                - LOCKED
+                
+                Use cases:
+                - Lock user account
+                - Unlock user account
+                - Deactivate user account
+                """
+    )
+    public ApiResponse<AdminUserDetailResponse> updateUserStatus(
+            @Parameter(description = "User id", example = "5")
+            @PathVariable Long id,
+
+            @Valid @RequestBody AdminUpdateUserStatusRequest request
+    ) {
+        AdminUserDetailResponse response = userService.updateUserStatus(id, request);
+
+        return ApiResponse.success(
+                "Update user status successfully",
+                response
+        );
     }
 }
