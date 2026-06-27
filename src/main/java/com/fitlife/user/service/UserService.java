@@ -1,5 +1,6 @@
 package com.fitlife.user.service;
 
+import com.fitlife.user.dto.request.AdminCreateInternalUserRequest;
 import com.fitlife.user.dto.request.AdminUserSearchRequest;
 import com.fitlife.user.dto.response.AdminUserDetailResponse;
 import com.fitlife.user.dto.response.AdminUserResponse;
@@ -12,4 +13,6 @@ public interface UserService {
     PageResponse<AdminUserResponse> getAdminUsers(AdminUserSearchRequest request);
 
     AdminUserDetailResponse getAdminUserDetail(Long id);
+
+    AdminUserDetailResponse createInternalUser(AdminCreateInternalUserRequest request);
 }

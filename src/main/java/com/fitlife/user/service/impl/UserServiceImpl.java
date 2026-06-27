@@ -10,6 +10,7 @@ import com.fitlife.user.dto.response.AdminUserDetailResponse;
 import com.fitlife.user.entity.User;
 import com.fitlife.user.enums.UserStatus;
 import com.fitlife.user.mapper.UserMapper;
+import com.fitlife.user.repository.RoleRepository;
 import com.fitlife.user.repository.UserRepository;
 import com.fitlife.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +20,15 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import com.fitlife.user.dto.request.AdminCreateInternalUserRequest;
+import com.fitlife.user.entity.Role;
+import com.fitlife.user.enums.AuthProvider;
+import com.fitlife.user.repository.RoleRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.util.Set;
 
 import java.util.List;
 
@@ -33,6 +42,8 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public AdminUserResponse getCurrentUser() {
@@ -81,6 +92,69 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         return userMapper.toAdminUserDetailResponse(user);
+    }
+
+    @Override
+    public AdminUserDetailResponse createInternalUser(AdminCreateInternalUserRequest request) {
+        validateCreateInternalUserRequest(request);
+
+        String roleCode = normalizeRoleCode(request.getRoleCode());
+
+        if (!isAllowedInternalRole(roleCode)) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
+        Role role = roleRepository.findByCode(roleCode)
+                .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
+
+        UserStatus status = parseUserStatusWithDefault(request.getStatus());
+
+        User user = User.builder()
+                .username(request.getUsername().trim())
+                .email(request.getEmail().trim().toLowerCase())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .fullName(request.getFullName().trim())
+                .phone(request.getPhone().trim())
+                .status(status)
+                .authProvider(AuthProvider.LOCAL)
+                .emailVerified(true)
+                .isDeleted(false)
+                .roles(Set.of(role))
+                .build();
+
+        User savedUser = userRepository.save(user);
+
+        return userMapper.toAdminUserDetailResponse(savedUser);
+    }
+
+    private void validateCreateInternalUserRequest(AdminCreateInternalUserRequest request) {
+        String username = request.getUsername().trim();
+        String email = request.getEmail().trim().toLowerCase();
+        String phone = request.getPhone().trim();
+
+        if (userRepository.existsByUsername(username)) {
+            throw new AppException(ErrorCode.USERNAME_ALREADY_EXISTS);
+        }
+
+        if (userRepository.existsByEmail(email)) {
+            throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS);
+        }
+
+        if (userRepository.existsByPhone(phone)) {
+            throw new AppException(ErrorCode.PHONE_ALREADY_EXISTS);
+        }
+    }
+
+    private boolean isAllowedInternalRole(String roleCode) {
+        return Set.of("ROLE_ADMIN", "ROLE_STAFF", "ROLE_TRAINER").contains(roleCode);
+    }
+
+    private UserStatus parseUserStatusWithDefault(String status) {
+        if (status == null || status.isBlank()) {
+            return UserStatus.ACTIVE;
+        }
+
+        return parseUserStatus(status);
     }
 
     private User getCurrentAuthenticatedUser() {

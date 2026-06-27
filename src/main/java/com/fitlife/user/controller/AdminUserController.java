@@ -18,6 +18,10 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.fitlife.user.dto.request.AdminCreateInternalUserRequest;
+import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 @RestController
 @RequestMapping("/admin/users")
@@ -72,6 +76,34 @@ public class AdminUserController {
 
         return ApiResponse.success(
                 "Get user detail successfully",
+                response
+        );
+    }
+
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Create internal user account",
+            description = """
+                Admin can create an internal account for FitLife system.
+                
+                Allowed internal roles:
+                - ROLE_ADMIN
+                - ROLE_STAFF
+                - ROLE_PT
+                
+                Note:
+                - ROLE_MEMBER should normally be created by public register or membership registration flow.
+                - Password will be encrypted before saving.
+                """
+    )
+    public ApiResponse<AdminUserDetailResponse> createInternalUser(
+            @Valid @RequestBody AdminCreateInternalUserRequest request
+    ) {
+        AdminUserDetailResponse response = userService.createInternalUser(request);
+
+        return ApiResponse.success(
+                "Create internal user successfully",
                 response
         );
     }
