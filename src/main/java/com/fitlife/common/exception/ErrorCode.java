@@ -120,10 +120,47 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST
     ),
 
-    PASSWORD_CONFIRM_NOT_MATCH(5008, "Password confirmation does not match", HttpStatus.BAD_REQUEST),
-    OTP_INVALID(5009, "OTP is invalid", HttpStatus.BAD_REQUEST),
-    OTP_EXPIRED(5010, "OTP has expired", HttpStatus.BAD_REQUEST),
-    NEW_PASSWORD_SAME_AS_OLD(5011, "New password must be different from old password", HttpStatus.BAD_REQUEST),;
+    PASSWORD_CONFIRM_NOT_MATCH(
+            5008,
+            "Password confirmation does not match",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    OTP_INVALID(
+            5009,
+            "OTP is invalid",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    OTP_EXPIRED(
+            5010,
+            "OTP has expired",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    NEW_PASSWORD_SAME_AS_OLD(
+            5011,
+            "New password must be different from old password",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    ACCOUNT_LOCKED(
+            5012,
+            "Account is locked",
+            HttpStatus.FORBIDDEN
+    ),
+
+    ACCOUNT_INACTIVE(
+            5013,
+            "Account is inactive",
+            HttpStatus.FORBIDDEN
+    ),
+
+    ACCOUNT_DELETED(
+            5014,
+            "Account has been deleted",
+            HttpStatus.FORBIDDEN
+    );
 
     private final int code;
     private final String message;
