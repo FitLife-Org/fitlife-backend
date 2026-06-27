@@ -262,3 +262,39 @@ Content-Type: application/json
 {
   "status": "LOCKED"
 }
+
+### Admin - Lock staff account
+PATCH {{baseUrl}}/admin/users/5/status
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "status": "LOCKED"
+}
+
+### Login with locked staff account
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "identifier": "staff02_updated",
+  "password": "123456"
+}
+
+### Admin - Set staff inactive
+PATCH {{baseUrl}}/admin/users/5/status
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "status": "INACTIVE"
+}
+
+### Admin - Activate staff account
+PATCH {{baseUrl}}/admin/users/5/status
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "status": "ACTIVE"
+}
