@@ -1,21 +1,20 @@
 package com.fitlife.user.dto.response;
 
-import com.fitlife.user.enums.AuthProvider;
-import com.fitlife.user.enums.UserStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
 import java.util.Set;
 
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserResponse {
+@Builder
+public class AdminUserResponse {
 
     private Long id;
 
@@ -27,13 +26,13 @@ public class UserResponse {
 
     private String phone;
 
-    private String avatarUrl;
+    private String status;
 
-    private UserStatus status;
-
-    private AuthProvider authProvider;
+    private String authProvider;
 
     private Boolean emailVerified;
 
     private Set<String> roles;
+
+    private LocalDateTime createdAt;
 }

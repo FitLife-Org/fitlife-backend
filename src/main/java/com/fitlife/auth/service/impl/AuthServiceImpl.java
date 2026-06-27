@@ -11,17 +11,15 @@ import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.member.entity.Member;
 import com.fitlife.member.enums.MemberStatus;
 import com.fitlife.member.repository.MemberRepository;
-import com.fitlife.role.entity.Role;
-import com.fitlife.role.repository.RoleRepository;
+import com.fitlife.user.entity.Role;
+import com.fitlife.user.repository.RoleRepository;
 import com.fitlife.security.CustomUserDetails;
 import com.fitlife.security.JwtService;
 import com.fitlife.user.entity.User;
 import com.fitlife.user.enums.AuthProvider;
 import com.fitlife.user.enums.UserStatus;
-import com.fitlife.user.mapper.UserMapper;
 import com.fitlife.user.repository.UserRepository;
 import com.fitlife.mail.service.EmailService;
-import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -32,7 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
-import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Service
