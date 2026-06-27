@@ -50,3 +50,21 @@ Authorization: Bearer {{admin_token}}
 ### Admin - Invalid status
 GET {{baseUrl}}/admin/users?status=ABC
 Authorization: Bearer {{admin_token}}
+
+### Admin - Get user detail by id
+GET {{baseUrl}}/admin/users/1
+Authorization: Bearer {{admin_token}}
+
+
+### Admin - Get user detail not found
+GET {{baseUrl}}/admin/users/999999
+Authorization: Bearer {{admin_token}}
+
+
+### Admin - Get user detail without token
+GET {{baseUrl}}/admin/users/1
+
+
+### Admin - Get user detail with invalid id format
+GET {{baseUrl}}/admin/users/abc
+Authorization: Bearer {{admin_token}}

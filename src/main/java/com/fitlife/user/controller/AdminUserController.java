@@ -2,6 +2,7 @@ package com.fitlife.user.controller;
 
 import com.fitlife.common.response.ApiResponse;
 import com.fitlife.user.dto.request.AdminUserSearchRequest;
+import com.fitlife.user.dto.response.AdminUserDetailResponse;
 import com.fitlife.user.dto.response.AdminUserResponse;
 import com.fitlife.user.dto.response.PageResponse;
 import com.fitlife.user.service.UserService;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -52,6 +54,24 @@ public class AdminUserController {
 
         return ApiResponse.success(
                 "Get user list successfully",
+                response
+        );
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Get user detail for admin",
+            description = "Admin can view detail information of a user by user id."
+    )
+    public ApiResponse<AdminUserDetailResponse> getAdminUserDetail(
+            @Parameter(description = "User id", example = "1")
+            @PathVariable Long id
+    ) {
+        AdminUserDetailResponse response = userService.getAdminUserDetail(id);
+
+        return ApiResponse.success(
+                "Get user detail successfully",
                 response
         );
     }

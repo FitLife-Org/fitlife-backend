@@ -6,6 +6,7 @@ import com.fitlife.security.CustomUserDetails;
 import com.fitlife.user.dto.request.AdminUserSearchRequest;
 import com.fitlife.user.dto.response.AdminUserResponse;
 import com.fitlife.user.dto.response.PageResponse;
+import com.fitlife.user.dto.response.AdminUserDetailResponse;
 import com.fitlife.user.entity.User;
 import com.fitlife.user.enums.UserStatus;
 import com.fitlife.user.mapper.UserMapper;
@@ -72,6 +73,14 @@ public class UserServiceImpl implements UserService {
                 .totalPages(userPage.getTotalPages())
                 .last(userPage.isLast())
                 .build();
+    }
+
+    @Override
+    public AdminUserDetailResponse getAdminUserDetail(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        return userMapper.toAdminUserDetailResponse(user);
     }
 
     private User getCurrentAuthenticatedUser() {
