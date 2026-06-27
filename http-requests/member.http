@@ -18,7 +18,7 @@ Accept: application/json
 Authorization: Bearer {{accessToken}}
 
 {
-  "fullName": "Nguyễn Văn Member Updated",
+  "fullName": "Nguyễn Thị Ngọc Trâm",
   "phone": "0900000005",
   "gender": "MALE",
   "dateOfBirth": "2002-05-20",
@@ -58,3 +58,7 @@ Authorization: Bearer {{accessToken}}
 ### 7. Test unauthorized - no token
 GET {{baseUrl}}/members/me
 Accept: application/json
+
+
+
+
