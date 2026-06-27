@@ -28,6 +28,7 @@ import com.fitlife.user.entity.Role;
 import com.fitlife.user.enums.AuthProvider;
 import com.fitlife.user.repository.RoleRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import com.fitlife.user.dto.request.AdminUpdateUserStatusRequest;
 
 import java.util.Set;
 
@@ -138,6 +139,26 @@ public class UserServiceImpl implements UserService {
         updateFullNameIfPresent(user, request.getFullName());
         updatePhoneIfPresent(user, request.getPhone());
         updateStatusIfPresent(user, request.getStatus());
+
+        User savedUser = userRepository.save(user);
+
+        return userMapper.toAdminUserDetailResponse(savedUser);
+    }
+
+    @Override
+    public AdminUserDetailResponse updateUserStatus(Long id, AdminUpdateUserStatusRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        User currentUser = getCurrentAuthenticatedUser();
+
+        if (currentUser.getId().equals(user.getId())) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
+        UserStatus newStatus = parseUserStatus(request.getStatus());
+
+        user.setStatus(newStatus);
 
         User savedUser = userRepository.save(user);
 
