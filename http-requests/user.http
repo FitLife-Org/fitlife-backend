@@ -68,3 +68,77 @@ GET {{baseUrl}}/admin/users/1
 ### Admin - Get user detail with invalid id format
 GET {{baseUrl}}/admin/users/abc
 Authorization: Bearer {{admin_token}}
+
+### Admin - Create internal Staff account
+POST {{baseUrl}}/admin/users
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "username": "staff02",
+  "email": "staff02@fitlife.local",
+  "password": "123456",
+  "fullName": "FitLife Staff 02",
+  "phone": "0900000022",
+  "roleCode": "ROLE_STAFF",
+  "status": "ACTIVE"
+}
+
+### Admin - Create internal Trainer account
+POST {{baseUrl}}/admin/users
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "username": "trainer02",
+  "email": "trainer02@fitlife.local",
+  "password": "123456",
+  "fullName": "FitLife Trainer 02",
+  "phone": "0900000032",
+  "roleCode": "ROLE_TRAINER",
+  "status": "ACTIVE"
+}
+
+### Admin - Create internal user with MEMBER role should fail
+POST {{baseUrl}}/admin/users
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "username": "member02",
+  "email": "member02@fitlife.local",
+  "password": "123456",
+  "fullName": "FitLife Member 02",
+  "phone": "0900000042",
+  "roleCode": "ROLE_MEMBER",
+  "status": "ACTIVE"
+}
+
+### Admin - Create internal user duplicate email
+POST {{baseUrl}}/admin/users
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "username": "staff03",
+  "email": "staff02@fitlife.local",
+  "password": "123456",
+  "fullName": "FitLife Staff 03",
+  "phone": "0900000023",
+  "roleCode": "ROLE_STAFF",
+  "status": "ACTIVE"
+}
+
+### Admin - Create internal user without token
+POST {{baseUrl}}/admin/users
+Content-Type: application/json
+
+{
+  "username": "staff04",
+  "email": "staff04@fitlife.local",
+  "password": "123456",
+  "fullName": "FitLife Staff 04",
+  "phone": "0900000024",
+  "roleCode": "ROLE_STAFF",
+  "status": "ACTIVE"
+}
