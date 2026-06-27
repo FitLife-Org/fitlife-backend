@@ -1,4 +1,4 @@
-package com.fitlife.role.entity;
+package com.fitlife.user.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

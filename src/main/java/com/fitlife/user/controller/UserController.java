@@ -1,7 +1,7 @@
 package com.fitlife.user.controller;
 
 import com.fitlife.common.response.ApiResponse;
-import com.fitlife.user.dto.response.UserResponse;
+import com.fitlife.user.dto.response.AdminUserResponse;
 import com.fitlife.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
-@Tag(name = "Users", description = "APIs for current user profile")
+@Tag(name = "User Profile", description = "APIs for current authenticated user")
 @SecurityRequirement(name = "bearerAuth")
 public class UserController {
 
@@ -22,8 +22,8 @@ public class UserController {
 
     @GetMapping("/me")
     @Operation(summary = "Get current authenticated user")
-    public ApiResponse<UserResponse> getCurrentUser() {
-        UserResponse response = userService.getCurrentUser();
+    public ApiResponse<AdminUserResponse> getCurrentUser() {
+        AdminUserResponse response = userService.getCurrentUser();
         return ApiResponse.success("Get current user successfully", response);
     }
 }

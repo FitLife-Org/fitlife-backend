@@ -1,8 +1,12 @@
 package com.fitlife.user.service;
 
-import com.fitlife.user.dto.response.UserResponse;
+import com.fitlife.user.dto.request.AdminUserSearchRequest;
+import com.fitlife.user.dto.response.AdminUserResponse;
+import com.fitlife.user.dto.response.PageResponse;
 
 public interface UserService {
 
-    UserResponse getCurrentUser();
+    AdminUserResponse getCurrentUser();
+
+    PageResponse<AdminUserResponse> getAdminUsers(AdminUserSearchRequest request);
 }
