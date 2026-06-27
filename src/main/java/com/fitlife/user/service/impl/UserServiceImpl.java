@@ -3,6 +3,7 @@ package com.fitlife.user.service.impl;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.security.CustomUserDetails;
+import com.fitlife.user.dto.request.AdminUpdateUserRequest;
 import com.fitlife.user.dto.request.AdminUserSearchRequest;
 import com.fitlife.user.dto.response.AdminUserResponse;
 import com.fitlife.user.dto.response.PageResponse;
@@ -127,34 +128,20 @@ public class UserServiceImpl implements UserService {
         return userMapper.toAdminUserDetailResponse(savedUser);
     }
 
-    private void validateCreateInternalUserRequest(AdminCreateInternalUserRequest request) {
-        String username = request.getUsername().trim();
-        String email = request.getEmail().trim().toLowerCase();
-        String phone = request.getPhone().trim();
+    @Override
+    public AdminUserDetailResponse updateUser(Long id, AdminUpdateUserRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        if (userRepository.existsByUsername(username)) {
-            throw new AppException(ErrorCode.USERNAME_ALREADY_EXISTS);
-        }
+        updateUsernameIfPresent(user, request.getUsername());
+        updateEmailIfPresent(user, request.getEmail());
+        updateFullNameIfPresent(user, request.getFullName());
+        updatePhoneIfPresent(user, request.getPhone());
+        updateStatusIfPresent(user, request.getStatus());
 
-        if (userRepository.existsByEmail(email)) {
-            throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS);
-        }
+        User savedUser = userRepository.save(user);
 
-        if (userRepository.existsByPhone(phone)) {
-            throw new AppException(ErrorCode.PHONE_ALREADY_EXISTS);
-        }
-    }
-
-    private boolean isAllowedInternalRole(String roleCode) {
-        return Set.of("ROLE_ADMIN", "ROLE_STAFF", "ROLE_TRAINER").contains(roleCode);
-    }
-
-    private UserStatus parseUserStatusWithDefault(String status) {
-        if (status == null || status.isBlank()) {
-            return UserStatus.ACTIVE;
-        }
-
-        return parseUserStatus(status);
+        return userMapper.toAdminUserDetailResponse(savedUser);
     }
 
     private User getCurrentAuthenticatedUser() {
@@ -216,5 +203,106 @@ public class UserServiceImpl implements UserService {
         } catch (IllegalArgumentException exception) {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
+    }
+
+    private void validateCreateInternalUserRequest(AdminCreateInternalUserRequest request) {
+        String username = request.getUsername().trim();
+        String email = request.getEmail().trim().toLowerCase();
+        String phone = request.getPhone().trim();
+
+        if (userRepository.existsByUsername(username)) {
+            throw new AppException(ErrorCode.USERNAME_ALREADY_EXISTS);
+        }
+
+        if (userRepository.existsByEmail(email)) {
+            throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS);
+        }
+
+        if (userRepository.existsByPhone(phone)) {
+            throw new AppException(ErrorCode.PHONE_ALREADY_EXISTS);
+        }
+    }
+
+    private boolean isAllowedInternalRole(String roleCode) {
+        return Set.of("ROLE_ADMIN", "ROLE_STAFF", "ROLE_TRAINER").contains(roleCode);
+    }
+
+    private UserStatus parseUserStatusWithDefault(String status) {
+        if (status == null || status.isBlank()) {
+            return UserStatus.ACTIVE;
+        }
+
+        return parseUserStatus(status);
+    }
+
+    private void updateUsernameIfPresent(User user, String username) {
+        if (username == null || username.isBlank()) {
+            return;
+        }
+
+        String normalizedUsername = username.trim();
+
+        if (normalizedUsername.equals(user.getUsername())) {
+            return;
+        }
+
+        if (userRepository.existsByUsername(normalizedUsername)) {
+            throw new AppException(ErrorCode.USERNAME_ALREADY_EXISTS);
+        }
+
+        user.setUsername(normalizedUsername);
+    }
+
+    private void updateEmailIfPresent(User user, String email) {
+        if (email == null || email.isBlank()) {
+            return;
+        }
+
+        String normalizedEmail = email.trim().toLowerCase();
+
+        if (normalizedEmail.equals(user.getEmail())) {
+            return;
+        }
+
+        if (userRepository.existsByEmail(normalizedEmail)) {
+            throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS);
+        }
+
+        user.setEmail(normalizedEmail);
+    }
+
+    private void updateFullNameIfPresent(User user, String fullName) {
+        if (fullName == null || fullName.isBlank()) {
+            return;
+        }
+
+        user.setFullName(fullName.trim());
+    }
+
+    private void updatePhoneIfPresent(User user, String phone) {
+        if (phone == null || phone.isBlank()) {
+            return;
+        }
+
+        String normalizedPhone = phone.trim();
+
+        if (normalizedPhone.equals(user.getPhone())) {
+            return;
+        }
+
+        if (userRepository.existsByPhone(normalizedPhone)) {
+            throw new AppException(ErrorCode.PHONE_ALREADY_EXISTS);
+        }
+
+        user.setPhone(normalizedPhone);
+    }
+
+    private void updateStatusIfPresent(User user, String status) {
+        if (status == null || status.isBlank()) {
+            return;
+        }
+
+        UserStatus userStatus = parseUserStatus(status);
+        user.setStatus(userStatus);
     }
 }

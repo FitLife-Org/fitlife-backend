@@ -142,3 +142,62 @@ Content-Type: application/json
   "roleCode": "ROLE_STAFF",
   "status": "ACTIVE"
 }
+
+### Admin - Update user information
+PUT {{baseUrl}}/admin/users/5
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "username": "staff02_updated",
+  "email": "staff02.updated@fitlife.local",
+  "fullName": "FitLife Staff 02 Updated",
+  "phone": "0900000099",
+  "status": "ACTIVE"
+}
+
+### Admin - Update user full name only
+PUT {{baseUrl}}/admin/users/5
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "fullName": "FitLife Staff Updated Name"
+}
+
+### Admin - Update user not found
+PUT {{baseUrl}}/admin/users/999999
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "fullName": "Not Found User"
+}
+
+### Admin - Update duplicate email
+PUT {{baseUrl}}/admin/users/5
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "email": "admin@fitlife.local"
+}
+
+### Admin - Update invalid status
+PUT {{baseUrl}}/admin/users/5
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "status": "ABC"
+}
+
+
+### Admin - Update user without token
+PUT {{baseUrl}}/admin/users/5
+Content-Type: application/json
+
+{
+  "fullName": "No Token"
+}
+
