@@ -1,16 +1,52 @@
-### =========================
-### USER API TEST
-### Base URL: {{baseUrl}}
-### Required token: Bearer {{accessToken}}
-### =========================
+### Login as admin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "identifier": "admin",
+  "password": "123456"
+}
+
+> {%
+    client.global.set("admin_token", response.body.data.accessToken);
+%}
 
 
-### 1. Get current user with token - success
+### Get current user
 GET {{baseUrl}}/users/me
-Accept: application/json
-Authorization: Bearer {{accessToken}}
+Authorization: Bearer {{admin_token}}
 
 
-### 2. Get current user without token - should fail
-GET {{baseUrl}}/users/me
-Accept: application/json
+### Admin - Get all users
+GET {{baseUrl}}/admin/users
+Authorization: Bearer {{admin_token}}
+
+
+### Admin - Get users with pagination
+GET {{baseUrl}}/admin/users?page=0&size=10
+Authorization: Bearer {{admin_token}}
+
+
+### Admin - Search users by keyword
+GET {{baseUrl}}/admin/users?keyword=huy
+Authorization: Bearer {{admin_token}}
+
+
+### Admin - Filter users by role
+GET {{baseUrl}}/admin/users?roleCode=ROLE_MEMBER
+Authorization: Bearer {{admin_token}}
+
+
+### Admin - Filter users by status
+GET {{baseUrl}}/admin/users?status=ACTIVE
+Authorization: Bearer {{admin_token}}
+
+
+### Admin - Search + filter + pagination
+GET {{baseUrl}}/admin/users?page=0&size=5&keyword=huy&roleCode=ROLE_MEMBER&status=ACTIVE
+Authorization: Bearer {{admin_token}}
+
+
+### Admin - Invalid status
+GET {{baseUrl}}/admin/users?status=ABC
+Authorization: Bearer {{admin_token}}

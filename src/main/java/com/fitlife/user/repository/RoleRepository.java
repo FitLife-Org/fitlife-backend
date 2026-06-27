@@ -1,6 +1,6 @@
-package com.fitlife.role.repository;
+package com.fitlife.user.repository;
 
-import com.fitlife.role.entity.Role;
+import com.fitlife.user.entity.Role;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

@@ -1,6 +1,5 @@
 package com.fitlife.user.entity;
 
-import com.fitlife.role.entity.Role;
 import com.fitlife.user.enums.AuthProvider;
 import com.fitlife.user.enums.UserStatus;
 import jakarta.persistence.Column;

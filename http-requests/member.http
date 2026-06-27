@@ -6,7 +6,7 @@
 
 
 ### 1. Get my member profile (M01)
-GET http://localhost:8080/api/v1/members/me/profile
+GET http://{{baseUrl}}/api/v1/members/me/profile
 Accept: application/json
 Authorization: Bearer {{accessToken}}
 

@@ -1,7 +1,7 @@
 package com.fitlife.auth.mapper;
 
 import com.fitlife.auth.dto.response.AuthResponse;
-import com.fitlife.role.entity.Role;
+import com.fitlife.user.entity.Role;
 import com.fitlife.user.entity.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
