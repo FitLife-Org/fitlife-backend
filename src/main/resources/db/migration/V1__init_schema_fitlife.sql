@@ -1,7 +1,11 @@
--- FitLife Standard Database Schema
+-- FitLife Database Schema
 -- Scope: Smart Gym Management System FitLife
 -- DB: MySQL 8.x / Spring Boot 3 / Flyway
--- Notes: No locker, no branch, no cart/order/product sales, no mobile/IoT in current MVP.
+-- Notes:
+-- 1. This is the clean base schema.
+-- 2. Google users may not have local passwords, so users.password_hash is nullable.
+-- 3. Current roles: ROLE_ADMIN, ROLE_STAFF, ROLE_TRAINER, ROLE_MEMBER.
+-- 4. No ROLE_PT in the new standard.
 
 CREATE TABLE roles
 (
@@ -13,12 +17,13 @@ CREATE TABLE roles
     updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+
 CREATE TABLE users
 (
     id                 BIGINT AUTO_INCREMENT PRIMARY KEY,
     username           VARCHAR(100) NOT NULL UNIQUE,
     email              VARCHAR(150) UNIQUE,
-    password_hash      VARCHAR(255) NOT NULL,
+    password_hash      VARCHAR(255) NULL,
     full_name          VARCHAR(150),
     phone              VARCHAR(20),
     avatar_url         VARCHAR(500),
@@ -34,21 +39,27 @@ CREATE TABLE users
     created_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    INDEX              idx_users_status (status),
-    INDEX              idx_users_email (email),
-    INDEX              idx_users_auth_provider (auth_provider),
-    INDEX              idx_users_provider_id (provider_id)
-
+    INDEX idx_users_status (status),
+    INDEX idx_users_email (email),
+    INDEX idx_users_auth_provider (auth_provider),
+    INDEX idx_users_provider_id (provider_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 CREATE TABLE user_roles
 (
     user_id BIGINT NOT NULL,
     role_id BIGINT NOT NULL,
+
     PRIMARY KEY (user_id, role_id),
-    CONSTRAINT fk_user_roles_user FOREIGN KEY (user_id) REFERENCES users (id),
-    CONSTRAINT fk_user_roles_role FOREIGN KEY (role_id) REFERENCES roles (id)
+
+    CONSTRAINT fk_user_roles_user
+        FOREIGN KEY (user_id) REFERENCES users (id),
+
+    CONSTRAINT fk_user_roles_role
+        FOREIGN KEY (role_id) REFERENCES roles (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 CREATE TABLE members
 (
@@ -69,10 +80,14 @@ CREATE TABLE members
     is_deleted    BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_members_user FOREIGN KEY (user_id) REFERENCES users (id),
-    INDEX         idx_members_status (status),
-    INDEX         idx_members_phone (phone)
+
+    CONSTRAINT fk_members_user
+        FOREIGN KEY (user_id) REFERENCES users (id),
+
+    INDEX idx_members_status (status),
+    INDEX idx_members_phone (phone)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 CREATE TABLE body_metrics
 (
@@ -86,9 +101,13 @@ CREATE TABLE body_metrics
     note             TEXT,
     recorded_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_at       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_body_metrics_member FOREIGN KEY (member_id) REFERENCES members (id),
-    INDEX            idx_body_metrics_member_recorded (member_id, recorded_at)
+
+    CONSTRAINT fk_body_metrics_member
+        FOREIGN KEY (member_id) REFERENCES members (id),
+
+    INDEX idx_body_metrics_member_recorded (member_id, recorded_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 CREATE TABLE trainers
 (
@@ -105,9 +124,13 @@ CREATE TABLE trainers
     is_deleted       BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_trainers_user FOREIGN KEY (user_id) REFERENCES users (id),
-    INDEX            idx_trainers_status (status)
+
+    CONSTRAINT fk_trainers_user
+        FOREIGN KEY (user_id) REFERENCES users (id),
+
+    INDEX idx_trainers_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 CREATE TABLE trainer_assignments
 (
@@ -120,12 +143,18 @@ CREATE TABLE trainer_assignments
     note       TEXT,
     created_at DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_trainer_assignments_trainer FOREIGN KEY (trainer_id) REFERENCES trainers (id),
-    CONSTRAINT fk_trainer_assignments_member FOREIGN KEY (member_id) REFERENCES members (id),
-    INDEX      idx_trainer_assignments_trainer (trainer_id),
-    INDEX      idx_trainer_assignments_member (member_id),
-    INDEX      idx_trainer_assignments_status (status)
+
+    CONSTRAINT fk_trainer_assignments_trainer
+        FOREIGN KEY (trainer_id) REFERENCES trainers (id),
+
+    CONSTRAINT fk_trainer_assignments_member
+        FOREIGN KEY (member_id) REFERENCES members (id),
+
+    INDEX idx_trainer_assignments_trainer (trainer_id),
+    INDEX idx_trainer_assignments_member (member_id),
+    INDEX idx_trainer_assignments_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 CREATE TABLE gym_packages
 (
@@ -142,9 +171,11 @@ CREATE TABLE gym_packages
     is_deleted    BOOLEAN        NOT NULL DEFAULT FALSE,
     created_at    DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at    DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX         idx_gym_packages_status (status),
-    INDEX         idx_gym_packages_type (package_type)
+
+    INDEX idx_gym_packages_status (status),
+    INDEX idx_gym_packages_type (package_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 CREATE TABLE subscriptions
 (
@@ -158,13 +189,19 @@ CREATE TABLE subscriptions
     note           TEXT,
     created_at     DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at     DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_subscriptions_member FOREIGN KEY (member_id) REFERENCES members (id),
-    CONSTRAINT fk_subscriptions_package FOREIGN KEY (gym_package_id) REFERENCES gym_packages (id),
-    INDEX          idx_subscriptions_member (member_id),
-    INDEX          idx_subscriptions_package (gym_package_id),
-    INDEX          idx_subscriptions_status (status),
-    INDEX          idx_subscriptions_dates (start_date, end_date)
+
+    CONSTRAINT fk_subscriptions_member
+        FOREIGN KEY (member_id) REFERENCES members (id),
+
+    CONSTRAINT fk_subscriptions_package
+        FOREIGN KEY (gym_package_id) REFERENCES gym_packages (id),
+
+    INDEX idx_subscriptions_member (member_id),
+    INDEX idx_subscriptions_package (gym_package_id),
+    INDEX idx_subscriptions_status (status),
+    INDEX idx_subscriptions_dates (start_date, end_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 CREATE TABLE invoices
 (
@@ -181,11 +218,17 @@ CREATE TABLE invoices
     note            TEXT,
     created_at      DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_invoices_member FOREIGN KEY (member_id) REFERENCES members (id),
-    CONSTRAINT fk_invoices_subscription FOREIGN KEY (subscription_id) REFERENCES subscriptions (id),
-    INDEX           idx_invoices_member (member_id),
-    INDEX           idx_invoices_status (status)
+
+    CONSTRAINT fk_invoices_member
+        FOREIGN KEY (member_id) REFERENCES members (id),
+
+    CONSTRAINT fk_invoices_subscription
+        FOREIGN KEY (subscription_id) REFERENCES subscriptions (id),
+
+    INDEX idx_invoices_member (member_id),
+    INDEX idx_invoices_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 CREATE TABLE payments
 (
@@ -205,12 +248,18 @@ CREATE TABLE payments
     paid_at            DATETIME,
     created_at         DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at         DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_payments_invoice FOREIGN KEY (invoice_id) REFERENCES invoices (id),
-    CONSTRAINT fk_payments_subscription FOREIGN KEY (subscription_id) REFERENCES subscriptions (id),
-    INDEX              idx_payments_invoice (invoice_id),
-    INDEX              idx_payments_status (status),
-    INDEX              idx_payments_method (payment_method)
+
+    CONSTRAINT fk_payments_invoice
+        FOREIGN KEY (invoice_id) REFERENCES invoices (id),
+
+    CONSTRAINT fk_payments_subscription
+        FOREIGN KEY (subscription_id) REFERENCES subscriptions (id),
+
+    INDEX idx_payments_invoice (invoice_id),
+    INDEX idx_payments_status (status),
+    INDEX idx_payments_method (payment_method)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 CREATE TABLE checkins
 (
@@ -224,12 +273,20 @@ CREATE TABLE checkins
     created_by      BIGINT,
     created_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_checkins_member FOREIGN KEY (member_id) REFERENCES members (id),
-    CONSTRAINT fk_checkins_subscription FOREIGN KEY (subscription_id) REFERENCES subscriptions (id),
-    CONSTRAINT fk_checkins_created_by FOREIGN KEY (created_by) REFERENCES users (id),
-    INDEX           idx_checkins_member_time (member_id, checkin_time),
-    INDEX           idx_checkins_status (status)
+
+    CONSTRAINT fk_checkins_member
+        FOREIGN KEY (member_id) REFERENCES members (id),
+
+    CONSTRAINT fk_checkins_subscription
+        FOREIGN KEY (subscription_id) REFERENCES subscriptions (id),
+
+    CONSTRAINT fk_checkins_created_by
+        FOREIGN KEY (created_by) REFERENCES users (id),
+
+    INDEX idx_checkins_member_time (member_id, checkin_time),
+    INDEX idx_checkins_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 CREATE TABLE equipment
 (
@@ -245,9 +302,11 @@ CREATE TABLE equipment
     is_deleted      BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX           idx_equipment_status (status),
-    INDEX           idx_equipment_category (category)
+
+    INDEX idx_equipment_status (status),
+    INDEX idx_equipment_category (category)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 CREATE TABLE equipment_maintenance
 (
@@ -261,11 +320,17 @@ CREATE TABLE equipment_maintenance
     handled_by       BIGINT,
     created_at       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_equipment_maintenance_equipment FOREIGN KEY (equipment_id) REFERENCES equipment (id),
-    CONSTRAINT fk_equipment_maintenance_user FOREIGN KEY (handled_by) REFERENCES users (id),
-    INDEX            idx_equipment_maintenance_equipment (equipment_id),
-    INDEX            idx_equipment_maintenance_status (status)
+
+    CONSTRAINT fk_equipment_maintenance_equipment
+        FOREIGN KEY (equipment_id) REFERENCES equipment (id),
+
+    CONSTRAINT fk_equipment_maintenance_user
+        FOREIGN KEY (handled_by) REFERENCES users (id),
+
+    INDEX idx_equipment_maintenance_equipment (equipment_id),
+    INDEX idx_equipment_maintenance_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 CREATE TABLE bookings
 (
@@ -279,12 +344,18 @@ CREATE TABLE bookings
     note         TEXT,
     created_at   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_bookings_member FOREIGN KEY (member_id) REFERENCES members (id),
-    CONSTRAINT fk_bookings_trainer FOREIGN KEY (trainer_id) REFERENCES trainers (id),
-    INDEX        idx_bookings_member (member_id),
-    INDEX        idx_bookings_trainer_date (trainer_id, booking_date),
-    INDEX        idx_bookings_status (status)
+
+    CONSTRAINT fk_bookings_member
+        FOREIGN KEY (member_id) REFERENCES members (id),
+
+    CONSTRAINT fk_bookings_trainer
+        FOREIGN KEY (trainer_id) REFERENCES trainers (id),
+
+    INDEX idx_bookings_member (member_id),
+    INDEX idx_bookings_trainer_date (trainer_id, booking_date),
+    INDEX idx_bookings_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 CREATE TABLE ai_workout_plans
 (
@@ -298,10 +369,14 @@ CREATE TABLE ai_workout_plans
     generated_by   VARCHAR(50)  NOT NULL DEFAULT 'SYSTEM',
     created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_ai_workout_plans_member FOREIGN KEY (member_id) REFERENCES members (id),
-    INDEX          idx_ai_workout_plans_member (member_id),
-    INDEX          idx_ai_workout_plans_status (status)
+
+    CONSTRAINT fk_ai_workout_plans_member
+        FOREIGN KEY (member_id) REFERENCES members (id),
+
+    INDEX idx_ai_workout_plans_member (member_id),
+    INDEX idx_ai_workout_plans_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 CREATE TABLE ai_workout_plan_items
 (
@@ -315,9 +390,13 @@ CREATE TABLE ai_workout_plan_items
     note               TEXT,
     sort_order         INT          NOT NULL DEFAULT 0,
     created_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_ai_workout_plan_items_plan FOREIGN KEY (ai_workout_plan_id) REFERENCES ai_workout_plans (id),
-    INDEX              idx_ai_workout_plan_items_plan (ai_workout_plan_id)
+
+    CONSTRAINT fk_ai_workout_plan_items_plan
+        FOREIGN KEY (ai_workout_plan_id) REFERENCES ai_workout_plans (id),
+
+    INDEX idx_ai_workout_plan_items_plan (ai_workout_plan_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 CREATE TABLE nutrition_plans
 (
@@ -333,11 +412,17 @@ CREATE TABLE nutrition_plans
     end_date           DATE,
     created_at         DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at         DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_nutrition_plans_member FOREIGN KEY (member_id) REFERENCES members (id),
-    CONSTRAINT fk_nutrition_plans_ai_plan FOREIGN KEY (ai_workout_plan_id) REFERENCES ai_workout_plans (id),
-    INDEX              idx_nutrition_plans_member (member_id),
-    INDEX              idx_nutrition_plans_status (status)
+
+    CONSTRAINT fk_nutrition_plans_member
+        FOREIGN KEY (member_id) REFERENCES members (id),
+
+    CONSTRAINT fk_nutrition_plans_ai_plan
+        FOREIGN KEY (ai_workout_plan_id) REFERENCES ai_workout_plans (id),
+
+    INDEX idx_nutrition_plans_member (member_id),
+    INDEX idx_nutrition_plans_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 CREATE TABLE nutrition_plan_items
 (
@@ -352,9 +437,13 @@ CREATE TABLE nutrition_plan_items
     is_customized     BOOLEAN      NOT NULL DEFAULT FALSE,
     sort_order        INT          NOT NULL DEFAULT 0,
     created_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_nutrition_plan_items_plan FOREIGN KEY (nutrition_plan_id) REFERENCES nutrition_plans (id),
-    INDEX             idx_nutrition_plan_items_plan (nutrition_plan_id)
+
+    CONSTRAINT fk_nutrition_plan_items_plan
+        FOREIGN KEY (nutrition_plan_id) REFERENCES nutrition_plans (id),
+
+    INDEX idx_nutrition_plan_items_plan (nutrition_plan_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 CREATE TABLE ai_recommendations
 (
@@ -365,10 +454,14 @@ CREATE TABLE ai_recommendations
     content             TEXT        NOT NULL,
     status              VARCHAR(30) NOT NULL DEFAULT 'ACTIVE',
     created_at          DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_ai_recommendations_member FOREIGN KEY (member_id) REFERENCES members (id),
-    INDEX               idx_ai_recommendations_member (member_id),
-    INDEX               idx_ai_recommendations_type (recommendation_type)
+
+    CONSTRAINT fk_ai_recommendations_member
+        FOREIGN KEY (member_id) REFERENCES members (id),
+
+    INDEX idx_ai_recommendations_member (member_id),
+    INDEX idx_ai_recommendations_type (recommendation_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 CREATE TABLE notifications
 (
@@ -379,9 +472,13 @@ CREATE TABLE notifications
     notification_type VARCHAR(50),
     is_read           BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES users (id),
-    INDEX             idx_notifications_user_read (user_id, is_read)
+
+    CONSTRAINT fk_notifications_user
+        FOREIGN KEY (user_id) REFERENCES users (id),
+
+    INDEX idx_notifications_user_read (user_id, is_read)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 CREATE TABLE audit_logs
 (
@@ -394,8 +491,11 @@ CREATE TABLE audit_logs
     new_value   JSON,
     ip_address  VARCHAR(100),
     created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_audit_logs_user FOREIGN KEY (user_id) REFERENCES users (id),
-    INDEX       idx_audit_logs_user (user_id),
-    INDEX       idx_audit_logs_entity (entity_name, entity_id),
-    INDEX       idx_audit_logs_action (action)
+
+    CONSTRAINT fk_audit_logs_user
+        FOREIGN KEY (user_id) REFERENCES users (id),
+
+    INDEX idx_audit_logs_user (user_id),
+    INDEX idx_audit_logs_entity (entity_name, entity_id),
+    INDEX idx_audit_logs_action (action)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -37,21 +37,15 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
-    @Operation(summary = "Request password reset token by email")
-    public ApiResponse<Void> forgotPassword(
-            @Valid @RequestBody ForgotPasswordRequest request
-    ) {
+    public ApiResponse<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         authService.forgotPassword(request);
-        return ApiResponse.success("Password reset email sent successfully");
+        return ApiResponse.success("OTP has been sent to your email", null);
     }
 
     @PostMapping("/reset-password")
-    @Operation(summary = "Reset password using reset token")
-    public ApiResponse<Void> resetPassword(
-            @Valid @RequestBody ResetPasswordRequest request
-    ) {
+    public ApiResponse<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         authService.resetPassword(request);
-        return ApiResponse.success("Password reset successfully");
+        return ApiResponse.success("Password has been reset successfully", null);
     }
 
     @PostMapping("/google-login")
