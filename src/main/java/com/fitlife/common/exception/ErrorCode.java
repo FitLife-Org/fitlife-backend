@@ -83,6 +83,19 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST
     ),
 
+    // Package errors
+    PACKAGE_NOT_FOUND(
+            7001,
+            "Package not found",
+            HttpStatus.NOT_FOUND
+    ),
+
+    PACKAGE_CODE_ALREADY_EXISTS(
+            7002,
+            "Package code already exists",
+            HttpStatus.BAD_REQUEST
+    ),
+
     // Role errors
     ROLE_NOT_FOUND(
             4001,
