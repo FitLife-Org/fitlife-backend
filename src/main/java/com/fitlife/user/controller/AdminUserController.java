@@ -1,10 +1,7 @@
 package com.fitlife.user.controller;
 
 import com.fitlife.common.response.ApiResponse;
-import com.fitlife.user.dto.request.AdminCreateInternalUserRequest;
-import com.fitlife.user.dto.request.AdminUpdateUserRequest;
-import com.fitlife.user.dto.request.AdminUpdateUserStatusRequest;
-import com.fitlife.user.dto.request.AdminUserSearchRequest;
+import com.fitlife.user.dto.request.*;
 import com.fitlife.user.dto.response.AdminUserDetailResponse;
 import com.fitlife.user.dto.response.AdminUserResponse;
 import com.fitlife.user.dto.response.PageResponse;
@@ -122,6 +119,40 @@ public class AdminUserController {
 
         return ApiResponse.success(
                 "Update user status successfully",
+                response
+        );
+    }
+
+    @PatchMapping("/{id}/roles")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Update user roles by admin",
+            description = """
+                Admin can update roles of a user.
+                
+                This API replaces all current roles of the user with the submitted roleCodes.
+                
+                Supported roles:
+                - ROLE_ADMIN
+                - ROLE_STAFF
+                - ROLE_TRAINER
+                - ROLE_MEMBER
+                
+                Note:
+                - This API does not update user profile, password or status.
+                - Admin should not update roles of the currently authenticated admin account.
+                """
+    )
+    public ApiResponse<AdminUserDetailResponse> updateUserRoles(
+            @Parameter(description = "User id", example = "5")
+            @PathVariable Long id,
+
+            @Valid @RequestBody AdminUpdateUserRolesRequest request
+    ) {
+        AdminUserDetailResponse response = userService.updateUserRoles(id, request);
+
+        return ApiResponse.success(
+                "Update user roles successfully",
                 response
         );
     }

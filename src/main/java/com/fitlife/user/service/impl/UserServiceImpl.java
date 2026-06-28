@@ -33,6 +33,14 @@ import com.fitlife.user.dto.request.AdminUpdateUserStatusRequest;
 import java.util.Set;
 
 import java.util.List;
+import com.fitlife.user.dto.request.AdminUpdateUserRolesRequest;
+import com.fitlife.user.entity.Role;
+import com.fitlife.user.repository.RoleRepository;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -159,6 +167,34 @@ public class UserServiceImpl implements UserService {
         UserStatus newStatus = parseUserStatus(request.getStatus());
 
         user.setStatus(newStatus);
+
+        User savedUser = userRepository.save(user);
+
+        return userMapper.toAdminUserDetailResponse(savedUser);
+    }
+
+    @Override
+    public AdminUserDetailResponse updateUserRoles(Long id, AdminUpdateUserRolesRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        User currentUser = getCurrentAuthenticatedUser();
+
+        if (currentUser.getId().equals(user.getId())) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
+        Set<String> normalizedRoleCodes = normalizeRoleCodes(request.getRoleCodes());
+
+        validateRoleCodesAllowed(normalizedRoleCodes);
+
+        List<Role> roles = roleRepository.findByCodeIn(normalizedRoleCodes);
+
+        if (roles.size() != normalizedRoleCodes.size()) {
+            throw new AppException(ErrorCode.ROLE_NOT_FOUND);
+        }
+
+        user.setRoles(new HashSet<>(roles));
 
         User savedUser = userRepository.save(user);
 
@@ -325,5 +361,32 @@ public class UserServiceImpl implements UserService {
 
         UserStatus userStatus = parseUserStatus(status);
         user.setStatus(userStatus);
+    }
+
+    private Set<String> normalizeRoleCodes(Set<String> roleCodes) {
+        if (roleCodes == null || roleCodes.isEmpty()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
+        return roleCodes.stream()
+                .filter(roleCode -> roleCode != null && !roleCode.isBlank())
+                .map(roleCode -> roleCode.trim().toUpperCase())
+                .collect(Collectors.toSet());
+    }
+
+    private void validateRoleCodesAllowed(Set<String> roleCodes) {
+        Set<String> allowedRoles = Set.of(
+                "ROLE_ADMIN",
+                "ROLE_STAFF",
+                "ROLE_TRAINER",
+                "ROLE_MEMBER"
+        );
+
+        boolean hasInvalidRole = roleCodes.stream()
+                .anyMatch(roleCode -> !allowedRoles.contains(roleCode));
+
+        if (hasInvalidRole) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
     }
 }
