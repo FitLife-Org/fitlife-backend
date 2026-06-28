@@ -29,7 +29,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "identifier": "member01@gmail.com",
+  "identifier": "admin",
   "password": "123456"
 }
 
