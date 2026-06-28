@@ -12,8 +12,12 @@
 
 GET {{baseUrl}}/admin/members?page=0&size=10&keyword=member&status=ACTIVE
 Accept: application/json
-Authorization: Bearer {{adminToken}}
+Authorization: Bearer {{accessToken}}
 
+
+> {%
+    client.global.set("accessToken", response.body.data.accessToken);
+%}
 ### 2. Admin get member detail by id - success
 
 GET {{baseUrl}}/admin/members/1
@@ -25,3 +29,21 @@ Authorization: Bearer {{adminToken}}
 GET {{baseUrl}}/admin/members?page=0&size=10
 Accept: application/json
 Authorization: Bearer {{accessToken}}
+
+
+###4 . Tạo mới hội viên thành công
+POST {{baseUrl}}/admin/members
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "username": "hoivien_fitlife_99",
+  "email": "fitlife99@gmail.com",
+  "password": "password123",
+  "fullName": "Nguyễn Văn Hội Viên",
+  "phone": "0912345678",
+  "gender": "MALE",
+  "dateOfBirth": "1998-05-20",
+  "fitnessGoal": "LOSE_FAT"
+}

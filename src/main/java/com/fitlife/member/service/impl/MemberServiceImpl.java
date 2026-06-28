@@ -1,6 +1,7 @@
 package com.fitlife.member.service.impl;
 
 import com.fitlife.common.response.PageResponse;
+import com.fitlife.member.dto.AdminMemberCreateRequest;
 import com.fitlife.member.dto.MemberDetailResponse;
 import com.fitlife.member.dto.MemberProfileResponse;
 import com.fitlife.member.dto.MemberResponse;
@@ -10,11 +11,14 @@ import com.fitlife.member.enums.Gender;
 import com.fitlife.member.mapper.MemberMapper;
 import com.fitlife.member.repository.MemberRepository;
 import com.fitlife.member.service.MemberService;
+import com.fitlife.user.entity.Role;
 import com.fitlife.user.entity.User;
+import com.fitlife.user.repository.RoleRepository;
 import com.fitlife.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,7 +32,63 @@ public class MemberServiceImpl implements MemberService {
 
     private final MemberRepository memberRepository;
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final MemberMapper memberMapper;
+    private final PasswordEncoder passwordEncoder;
+
+    @Override
+    @Transactional
+    public MemberResponse createMemberByAdmin(AdminMemberCreateRequest request) {
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new RuntimeException("Tên đăng nhập (Username) này đã tồn tại trong hệ thống!");
+        }
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("Địa chỉ Email này đã tồn tại trong hệ thống!");
+        }
+
+        User user = new User();
+        user.setUsername(request.getUsername());
+        user.setEmail(request.getEmail());
+        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        user.setFullName(request.getFullName());
+        user.setPhone(request.getPhone());
+
+        user.setStatus(com.fitlife.user.enums.UserStatus.ACTIVE);
+        user.setAuthProvider(com.fitlife.user.enums.AuthProvider.LOCAL);
+        Role memberRole = roleRepository.findByCode("ROLE_MEMBER")
+                .orElseThrow(() -> new RuntimeException("Lỗi hệ thống: Không tìm thấy phân quyền ROLE_MEMBER!"));
+        user.getRoles().add(memberRole);
+
+        User savedUser = userRepository.save(user);
+
+        String generatedMemberCode = "MEM" + String.format("%03d", (int)(Math.random() * 1000));
+
+        Member member = new Member();
+        member.setUser(savedUser);
+        member.setMemberCode(generatedMemberCode);
+        member.setFullName(request.getFullName());
+        member.setPhone(request.getPhone());
+        member.setEmail(request.getEmail());
+        member.setDateOfBirth(request.getDateOfBirth());
+        member.setFitnessGoal(request.getFitnessGoal());
+
+        member.setStatus(com.fitlife.member.enums.MemberStatus.ACTIVE);
+        member.setIsDeleted(false);
+
+        if (request.getGender() != null && !request.getGender().trim().isEmpty()) {
+            try {
+                member.setGender(Gender.valueOf(request.getGender().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Định dạng giới tính không hợp lệ: " + request.getGender());
+            }
+        } else {
+            member.setGender(null);
+        }
+
+        Member savedMember = memberRepository.save(member);
+
+        return memberMapper.toMemberResponse(savedMember);
+    }
 
     @Override
     public List<MemberResponse> getAllMembers() {
@@ -39,7 +99,6 @@ public class MemberServiceImpl implements MemberService {
     @Override
     @Transactional(readOnly = true)
     public MemberProfileResponse getMyProfile(String tokenIdentifier) {
-        // GIẢI PHÁP THÔNG MINH: Tìm theo Username trước, nếu không khớp thì tìm theo Email
         User user = userRepository.findByUsername(tokenIdentifier)
                 .orElseGet(() -> userRepository.findByEmail(tokenIdentifier)
                         .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản người dùng với định danh: " + tokenIdentifier)));
@@ -53,7 +112,6 @@ public class MemberServiceImpl implements MemberService {
     @Override
     @Transactional
     public MemberProfileResponse updateMyProfile(String tokenIdentifier, MemberUpdateRequest request) {
-        // Áp dụng giải pháp kiểm tra song song cho hàm Update
         User user = userRepository.findByUsername(tokenIdentifier)
                 .orElseGet(() -> userRepository.findByEmail(tokenIdentifier)
                         .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản người dùng")));

@@ -1,12 +1,15 @@
 package com.fitlife.member.controller;
 
 import com.fitlife.common.response.PageResponse;
+import com.fitlife.member.dto.AdminMemberCreateRequest;
 import com.fitlife.member.dto.MemberDetailResponse;
 import com.fitlife.member.dto.MemberResponse;
 import com.fitlife.member.service.MemberService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,4 +35,13 @@ public class AdminMemberController {
     public ResponseEntity<MemberDetailResponse> getMemberDetail(@PathVariable("id") Long id) {
         return ResponseEntity.ok(memberService.getMemberDetailForAdmin(id));
     }
+
+
+    @PostMapping
+    public ResponseEntity<MemberResponse> createMemberByAdmin(@Valid @RequestBody AdminMemberCreateRequest request) {
+        MemberResponse response = memberService.createMemberByAdmin(request);
+        // Trả về HTTP Status 210 Created theo đúng chuẩn nghiệp vụ thiết kế API Restful
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
 }
