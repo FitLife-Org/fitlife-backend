@@ -33,6 +33,7 @@ import com.fitlife.user.dto.request.AdminUpdateUserStatusRequest;
 import java.util.Set;
 
 import java.util.List;
+
 import com.fitlife.user.dto.request.AdminUpdateUserRolesRequest;
 import com.fitlife.user.entity.Role;
 import com.fitlife.user.repository.RoleRepository;
@@ -41,6 +42,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import com.fitlife.user.dto.request.ChangePasswordRequest;
+import com.fitlife.user.dto.response.UserProfileResponse;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Service
 @RequiredArgsConstructor
@@ -56,9 +61,9 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
 
     @Override
-    public AdminUserResponse getCurrentUser() {
+    public UserProfileResponse getCurrentUser() {
         User currentUser = getCurrentAuthenticatedUser();
-        return userMapper.toAdminUserResponse(currentUser);
+        return userMapper.toUserProfileResponse(currentUser);
     }
 
     @Override
@@ -199,6 +204,27 @@ public class UserServiceImpl implements UserService {
         User savedUser = userRepository.save(user);
 
         return userMapper.toAdminUserDetailResponse(savedUser);
+    }
+
+    @Override
+    public void changePassword(ChangePasswordRequest request) {
+        User currentUser = getCurrentAuthenticatedUser();
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), currentUser.getPasswordHash())) {
+            throw new AppException(ErrorCode.CURRENT_PASSWORD_INCORRECT);
+        }
+
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new AppException(ErrorCode.PASSWORD_CONFIRM_NOT_MATCH);
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), currentUser.getPasswordHash())) {
+            throw new AppException(ErrorCode.NEW_PASSWORD_SAME_AS_OLD);
+        }
+
+        currentUser.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+
+        userRepository.save(currentUser);
     }
 
     private User getCurrentAuthenticatedUser() {
