@@ -44,4 +44,10 @@ public class AdminMemberController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @GetMapping("/code/{memberCode}")
+    public ResponseEntity<MemberDetailResponse> getMemberByCode(@PathVariable("memberCode") String memberCode) {
+        return ResponseEntity.ok(memberService.getMemberByCodeForAdmin(memberCode));
+    }
+
+
 }

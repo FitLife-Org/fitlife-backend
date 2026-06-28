@@ -47,3 +47,9 @@ Authorization: Bearer {{accessToken}}
   "dateOfBirth": "1998-05-20",
   "fitnessGoal": "LOSE_FAT"
 }
+
+###5. Xem thông tin hội viên theo mã thành công
+GET {{baseUrl}}/admin/members/code/MEM001
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+

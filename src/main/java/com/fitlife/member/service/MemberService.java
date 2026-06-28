@@ -14,7 +14,7 @@ public interface MemberService {
     MemberProfileResponse updateMyProfile(String username, MemberUpdateRequest request);
     PageResponse<MemberResponse> getAllMembersForAdmin(String keyword, String status, Pageable pageable);
     MemberDetailResponse getMemberDetailForAdmin(Long id);
-
+    MemberDetailResponse getMemberByCodeForAdmin(String memberCode);
     List<MemberResponse> getAllMembers();
 
 }

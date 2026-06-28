@@ -188,4 +188,14 @@ public class MemberServiceImpl implements MemberService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin hội viên mang ID: " + id));
         return memberMapper.toDetailResponse(member);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MemberDetailResponse getMemberByCodeForAdmin(String memberCode) {
+        Member member = memberRepository.findByMemberCodeAndIsDeletedFalse(memberCode)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin hội viên mang mã: " + memberCode));
+
+
+        return memberMapper.toDetailResponse(member);
+    }
 }
