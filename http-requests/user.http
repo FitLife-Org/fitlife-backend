@@ -50,3 +50,328 @@ Authorization: Bearer {{admin_token}}
 ### Admin - Invalid status
 GET {{baseUrl}}/admin/users?status=ABC
 Authorization: Bearer {{admin_token}}
+
+### Admin - Get user detail by id
+GET {{baseUrl}}/admin/users/1
+Authorization: Bearer {{admin_token}}
+
+
+### Admin - Get user detail not found
+GET {{baseUrl}}/admin/users/999999
+Authorization: Bearer {{admin_token}}
+
+
+### Admin - Get user detail without token
+GET {{baseUrl}}/admin/users/1
+
+
+### Admin - Get user detail with invalid id format
+GET {{baseUrl}}/admin/users/abc
+Authorization: Bearer {{admin_token}}
+
+### Admin - Create internal Staff account
+POST {{baseUrl}}/admin/users
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "username": "staff02",
+  "email": "staff02@fitlife.local",
+  "password": "123456",
+  "fullName": "FitLife Staff 02",
+  "phone": "0900000022",
+  "roleCode": "ROLE_STAFF",
+  "status": "ACTIVE"
+}
+
+### Admin - Create internal Trainer account
+POST {{baseUrl}}/admin/users
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "username": "trainer02",
+  "email": "trainer02@fitlife.local",
+  "password": "123456",
+  "fullName": "FitLife Trainer 02",
+  "phone": "0900000032",
+  "roleCode": "ROLE_TRAINER",
+  "status": "ACTIVE"
+}
+
+### Admin - Create internal user with MEMBER role should fail
+POST {{baseUrl}}/admin/users
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "username": "member02",
+  "email": "member02@fitlife.local",
+  "password": "123456",
+  "fullName": "FitLife Member 02",
+  "phone": "0900000042",
+  "roleCode": "ROLE_MEMBER",
+  "status": "ACTIVE"
+}
+
+### Admin - Create internal user duplicate email
+POST {{baseUrl}}/admin/users
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "username": "staff03",
+  "email": "staff02@fitlife.local",
+  "password": "123456",
+  "fullName": "FitLife Staff 03",
+  "phone": "0900000023",
+  "roleCode": "ROLE_STAFF",
+  "status": "ACTIVE"
+}
+
+### Admin - Create internal user without token
+POST {{baseUrl}}/admin/users
+Content-Type: application/json
+
+{
+  "username": "staff04",
+  "email": "staff04@fitlife.local",
+  "password": "123456",
+  "fullName": "FitLife Staff 04",
+  "phone": "0900000024",
+  "roleCode": "ROLE_STAFF",
+  "status": "ACTIVE"
+}
+
+### Admin - Update user information
+PUT {{baseUrl}}/admin/users/5
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "username": "staff02_updated",
+  "email": "staff02.updated@fitlife.local",
+  "fullName": "FitLife Staff 02 Updated",
+  "phone": "0900000099",
+  "status": "ACTIVE"
+}
+
+### Admin - Update user full name only
+PUT {{baseUrl}}/admin/users/5
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "fullName": "FitLife Staff Updated Name"
+}
+
+### Admin - Update user not found
+PUT {{baseUrl}}/admin/users/999999
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "fullName": "Not Found User"
+}
+
+### Admin - Update duplicate email
+PUT {{baseUrl}}/admin/users/5
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "email": "admin@fitlife.local"
+}
+
+### Admin - Update invalid status
+PUT {{baseUrl}}/admin/users/5
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "status": "ABC"
+}
+
+
+### Admin - Update user without token
+PUT {{baseUrl}}/admin/users/5
+Content-Type: application/json
+
+{
+  "fullName": "No Token"
+}
+
+### Admin - Lock user account
+PATCH {{baseUrl}}/admin/users/5/status
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "status": "LOCKED"
+}
+
+### Admin - Unlock user account
+PATCH {{baseUrl}}/admin/users/5/status
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "status": "ACTIVE"
+}
+
+### Admin - Deactivate user account
+PATCH {{baseUrl}}/admin/users/5/status
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "status": "INACTIVE"
+}
+
+### Admin - Update invalid user status
+PATCH {{baseUrl}}/admin/users/5/status
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "status": "ABC"
+}
+
+### Admin - Update status for not found user
+PATCH {{baseUrl}}/admin/users/999999/status
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "status": "LOCKED"
+}
+
+### Admin - Update status without token
+PATCH {{baseUrl}}/admin/users/5/status
+Content-Type: application/json
+
+{
+  "status": "LOCKED"
+}
+
+### Member - Should not update user status
+PATCH {{baseUrl}}/admin/users/5/status
+Authorization: Bearer {{member_token}}
+Content-Type: application/json
+
+{
+  "status": "LOCKED"
+}
+
+### Admin - Lock staff account
+PATCH {{baseUrl}}/admin/users/5/status
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "status": "LOCKED"
+}
+
+### Login with locked staff account
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "identifier": "staff02_updated",
+  "password": "123456"
+}
+
+### Admin - Set staff inactive
+PATCH {{baseUrl}}/admin/users/5/status
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "status": "INACTIVE"
+}
+
+### Admin - Activate staff account
+PATCH {{baseUrl}}/admin/users/5/status
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "status": "ACTIVE"
+}
+
+### Admin - Update user roles to STAFF
+PATCH {{baseUrl}}/admin/users/5/roles
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "roleCodes": [
+    "ROLE_STAFF"
+  ]
+}
+
+### Admin - Update user roles to TRAINER
+PATCH {{baseUrl}}/admin/users/5/roles
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "roleCodes": [
+    "ROLE_TRAINER"
+  ]
+}
+
+### Admin - Update user roles to STAFF and PT
+PATCH {{baseUrl}}/admin/users/5/roles
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "roleCodes": [
+    "ROLE_STAFF",
+    "ROLE_TRAINER"
+  ]
+}
+
+### Admin - Update user roles with invalid role
+PATCH {{baseUrl}}/admin/users/5/roles
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "roleCodes": [
+    "ROLE_UNKNOWN"
+  ]
+}
+
+### Admin - Update roles for not found user
+PATCH {{baseUrl}}/admin/users/999999/roles
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "roleCodes": [
+    "ROLE_STAFF"
+  ]
+}
+
+### Admin - Update roles without token
+PATCH {{baseUrl}}/admin/users/5/roles
+Content-Type: application/json
+
+{
+  "roleCodes": [
+    "ROLE_STAFF"
+  ]
+}
+
+### Member - Should not update user roles
+PATCH {{baseUrl}}/admin/users/5/roles
+Authorization: Bearer {{member_token}}
+Content-Type: application/json
+
+{
+  "roleCodes": [
+    "ROLE_ADMIN"
+  ]
+}
