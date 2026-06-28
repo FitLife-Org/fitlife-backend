@@ -6,6 +6,7 @@ import com.fitlife.member.dto.MemberResponse;
 import com.fitlife.member.entity.Member;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import java.util.List;
 
 @Mapper(componentModel = "spring")
 public interface MemberMapper {
@@ -17,4 +18,6 @@ public interface MemberMapper {
 
     @Mapping(target = "username", source = "user.username")
     MemberDetailResponse toDetailResponse(Member member);
+
+    List<MemberResponse> toMemberResponseList(List<Member> members);
 }

@@ -31,6 +31,12 @@ public class MemberServiceImpl implements MemberService {
     private final MemberMapper memberMapper;
 
     @Override
+    public List<MemberResponse> getAllMembers() {
+        List<Member> members = memberRepository.findByIsDeletedFalse();
+        return memberMapper.toMemberResponseList(members);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public MemberProfileResponse getMyProfile(String tokenIdentifier) {
         // GIẢI PHÁP THÔNG MINH: Tìm theo Username trước, nếu không khớp thì tìm theo Email
