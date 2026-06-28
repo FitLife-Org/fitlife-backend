@@ -70,6 +70,19 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST
     ),
 
+    // Equipment errors
+    EQUIPMENT_NOT_FOUND(
+            6001,
+            "Equipment not found",
+            HttpStatus.NOT_FOUND
+    ),
+
+    EQUIPMENT_CODE_ALREADY_EXISTS(
+            6002,
+            "Equipment code already exists",
+            HttpStatus.BAD_REQUEST
+    ),
+
     // Role errors
     ROLE_NOT_FOUND(
             4001,
