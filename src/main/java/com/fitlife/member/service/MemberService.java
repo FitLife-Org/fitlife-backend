@@ -17,5 +17,5 @@ public interface MemberService {
     MemberDetailResponse getMemberByCodeForAdmin(String memberCode);
     List<MemberResponse> getAllMembers();
     MemberResponse updateMemberByAdmin(Long id, AdminMemberUpdateRequest request);
-
+    MemberResponse updateMemberStatusByAdmin(Long id, AdminMemberStatusUpdateRequest request);
 }

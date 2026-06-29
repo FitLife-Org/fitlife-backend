@@ -3,6 +3,7 @@ package com.fitlife.member.service.impl;
 import com.fitlife.common.response.PageResponse;
 import com.fitlife.member.dto.AdminMemberCreateRequest;
 import com.fitlife.member.dto.AdminMemberUpdateRequest;
+import com.fitlife.member.dto.AdminMemberStatusUpdateRequest; // Đảm bảo import DTO này nếu chưa có
 import com.fitlife.member.dto.MemberDetailResponse;
 import com.fitlife.member.dto.MemberProfileResponse;
 import com.fitlife.member.dto.MemberResponse;
@@ -258,5 +259,31 @@ public class MemberServiceImpl implements MemberService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin hội viên mang mã: " + memberCode));
 
         return memberMapper.toDetailResponse(member);
+    }
+
+    @Override
+    @Transactional
+    public MemberResponse updateMemberStatusByAdmin(Long id, AdminMemberStatusUpdateRequest request) {
+        Member member = memberRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin hội viên mang ID: " + id));
+
+        try {
+            member.setStatus(com.fitlife.member.enums.MemberStatus.valueOf(request.getStatus().toUpperCase()));
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Trạng thái hội viên không hợp lệ: " + request.getStatus());
+        }
+
+        User user = member.getUser();
+        if (user != null) {
+            try {
+                user.setStatus(com.fitlife.user.enums.UserStatus.valueOf(request.getStatus().toUpperCase()));
+                userRepository.save(user);
+            } catch (Exception e) {
+            }
+        }
+
+        Member savedMember = memberRepository.save(member);
+
+        return memberMapper.toMemberResponse(savedMember);
     }
 }

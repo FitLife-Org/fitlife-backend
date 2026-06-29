@@ -70,3 +70,15 @@ Authorization: Bearer {{accessToken}}
   "fitnessGoal": "GAIN_MUSCLE",
   "status": "ACTIVE"
 }
+
+
+
+### 7Chức năng Admin thay đổi trạng thái hoạt động của Hội viên ACTIVE, INACTIVE
+PATCH {{baseUrl}}/admin/members/1/status
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "status": "ACTIVE"
+}

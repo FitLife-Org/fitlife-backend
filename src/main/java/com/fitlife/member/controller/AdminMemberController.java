@@ -1,10 +1,7 @@
 package com.fitlife.member.controller;
 
 import com.fitlife.common.response.PageResponse;
-import com.fitlife.member.dto.AdminMemberCreateRequest;
-import com.fitlife.member.dto.AdminMemberUpdateRequest;
-import com.fitlife.member.dto.MemberDetailResponse;
-import com.fitlife.member.dto.MemberResponse;
+import com.fitlife.member.dto.*;
 import com.fitlife.member.service.MemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -57,6 +54,16 @@ public class AdminMemberController {
             @Valid @RequestBody AdminMemberUpdateRequest request) {
 
         MemberResponse response = memberService.updateMemberByAdmin(id, request);
+        return ResponseEntity.ok(response);
+    }
+
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<MemberResponse> updateMemberStatus(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody AdminMemberStatusUpdateRequest request) {
+
+        MemberResponse response = memberService.updateMemberStatusByAdmin(id, request);
         return ResponseEntity.ok(response);
     }
 }
