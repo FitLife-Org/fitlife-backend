@@ -3,7 +3,7 @@ package com.fitlife.member.service.impl;
 import com.fitlife.common.response.PageResponse;
 import com.fitlife.member.dto.AdminMemberCreateRequest;
 import com.fitlife.member.dto.AdminMemberUpdateRequest;
-import com.fitlife.member.dto.AdminMemberStatusUpdateRequest; // Đảm bảo import DTO này nếu chưa có
+import com.fitlife.member.dto.AdminMemberStatusUpdateRequest;
 import com.fitlife.member.dto.MemberDetailResponse;
 import com.fitlife.member.dto.MemberProfileResponse;
 import com.fitlife.member.dto.MemberResponse;
@@ -285,5 +285,41 @@ public class MemberServiceImpl implements MemberService {
         Member savedMember = memberRepository.save(member);
 
         return memberMapper.toMemberResponse(savedMember);
+    }
+
+    @Override
+    @Transactional
+    public void deleteMemberByAdmin(Long id) {
+        Member member = memberRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin hội viên mang ID: " + id));
+
+        member.setIsDeleted(true);
+        member.setStatus(com.fitlife.member.enums.MemberStatus.INACTIVE);
+        memberRepository.save(member);
+
+        User user = member.getUser();
+        if (user != null) {
+            user.setIsDeleted(true);
+            user.setStatus(com.fitlife.user.enums.UserStatus.INACTIVE);
+            userRepository.save(user);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void restoreMemberByAdmin(Long id) {
+        Member member = memberRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin hội viên mang ID: " + id));
+
+        member.setIsDeleted(false);
+        member.setStatus(com.fitlife.member.enums.MemberStatus.ACTIVE);
+        memberRepository.save(member);
+
+        User user = member.getUser();
+        if (user != null) {
+            user.setIsDeleted(false);
+            user.setStatus(com.fitlife.user.enums.UserStatus.ACTIVE);
+            userRepository.save(user);
+        }
     }
 }

@@ -82,3 +82,12 @@ Authorization: Bearer {{accessToken}}
 {
   "status": "ACTIVE"
 }
+
+
+###8 Chức năng Admin xóa mềm hồ sơ hội viên theo ID (Bật cờ is_deleted = true)
+DELETE {{baseUrl}}/admin/members/1
+Authorization: Bearer {{accessToken}}
+
+### Chức năng Admin khôi phục hội viên sau khi xóa mềm (is_deleted quay về false)
+PATCH {{baseUrl}}/admin/members/1/restore
+Authorization: Bearer {{accessToken}}

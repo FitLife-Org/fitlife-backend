@@ -18,4 +18,8 @@ public interface MemberService {
     List<MemberResponse> getAllMembers();
     MemberResponse updateMemberByAdmin(Long id, AdminMemberUpdateRequest request);
     MemberResponse updateMemberStatusByAdmin(Long id, AdminMemberStatusUpdateRequest request);
+    void deleteMemberByAdmin(Long id);
+
+    void restoreMemberByAdmin(Long id);
+
 }

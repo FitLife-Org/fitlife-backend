@@ -66,4 +66,18 @@ public class AdminMemberController {
         MemberResponse response = memberService.updateMemberStatusByAdmin(id, request);
         return ResponseEntity.ok(response);
     }
+
+
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteMemberByAdmin(@PathVariable("id") Long id) {
+        memberService.deleteMemberByAdmin(id);
+        return ResponseEntity.ok("Xóa mềm hồ sơ hội viên và tài khoản liên quan thành công!");
+    }
+
+    @PatchMapping("/{id}/restore")
+    public ResponseEntity<String> restoreMemberByAdmin(@PathVariable("id") Long id) {
+        memberService.restoreMemberByAdmin(id);
+        return ResponseEntity.ok("Khôi phục tài khoản hội viên và hồ sơ liên quan thành công!");
+    }
 }
