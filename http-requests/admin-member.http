@@ -12,8 +12,12 @@
 
 GET {{baseUrl}}/admin/members?page=0&size=10&keyword=member&status=ACTIVE
 Accept: application/json
-Authorization: Bearer {{adminToken}}
+Authorization: Bearer {{accessToken}}
 
+
+> {%
+    client.global.set("accessToken", response.body.data.accessToken);
+%}
 ### 2. Admin get member detail by id - success
 
 GET {{baseUrl}}/admin/members/1
@@ -24,4 +28,66 @@ Authorization: Bearer {{adminToken}}
 
 GET {{baseUrl}}/admin/members?page=0&size=10
 Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+
+###4 . Tạo mới hội viên thành công
+POST {{baseUrl}}/admin/members
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "username": "hoivien_fitlife_99",
+  "email": "fitlife99@gmail.com",
+  "password": "password123",
+  "fullName": "Nguyễn Văn Hội Viên",
+  "phone": "0912345678",
+  "gender": "MALE",
+  "dateOfBirth": "1998-05-20",
+  "fitnessGoal": "LOSE_FAT"
+}
+
+###5. Xem thông tin hội viên theo mã thành công
+GET {{baseUrl}}/admin/members/code/MEM001
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+cd
+
+
+###6Chức năng Admin cập nhật hồ sơ hội viên theo ID
+PUT {{baseUrl}}/admin/members/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "fullName": "Nguyễn Văn Hội trâm Sau Sửa",
+  "email": "fitlife99_updated@gmail.com",
+  "phone": "0999888777",
+  "gender": "FEMALE",
+  "dateOfBirth": "1998-05-20",
+  "fitnessGoal": "GAIN_MUSCLE",
+  "status": "ACTIVE"
+}
+
+
+
+### 7Chức năng Admin thay đổi trạng thái hoạt động của Hội viên ACTIVE, INACTIVE
+PATCH {{baseUrl}}/admin/members/1/status
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "status": "ACTIVE"
+}
+
+
+###8 Chức năng Admin xóa mềm hồ sơ hội viên theo ID (Bật cờ is_deleted = true)
+DELETE {{baseUrl}}/admin/members/1
+Authorization: Bearer {{accessToken}}
+
+### Chức năng Admin khôi phục hội viên sau khi xóa mềm (is_deleted quay về false)
+PATCH {{baseUrl}}/admin/members/1/restore
 Authorization: Bearer {{accessToken}}

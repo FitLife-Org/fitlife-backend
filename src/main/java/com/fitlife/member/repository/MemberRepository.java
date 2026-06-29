@@ -19,4 +19,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     boolean existsByUserId(Long userId);
 
     boolean existsByMemberCode(String memberCode);
+
+    java.util.Optional<com.fitlife.member.entity.Member> findByMemberCodeAndIsDeletedFalse(String memberCode);
 }
