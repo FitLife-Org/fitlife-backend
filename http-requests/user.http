@@ -375,3 +375,80 @@ Content-Type: application/json
     "ROLE_ADMIN"
   ]
 }
+
+### Login as staff
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "identifier": "staff01",
+  "password": "123456"
+}
+
+> {%
+    client.global.set("user_token", response.body.data.accessToken);
+%}
+
+### Current user - Get profile
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{user_token}}
+
+### Current user - Get profile
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{user_token}}
+
+### Current user - Change password successfully
+PUT {{baseUrl}}/users/me/change-password
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "currentPassword": "123456",
+  "newPassword": "1234567",
+  "confirmPassword": "1234567"
+}
+
+### Login with old password should fail
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "identifier": "staff01",
+  "password": "1234567"
+}
+
+### Current user - Change password with wrong current password
+PUT {{baseUrl}}/users/me/change-password
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "currentPassword": "wrong-password",
+  "newPassword": "12345678",
+  "confirmPassword": "12345678"
+}
+
+### Current user - Change password confirm not match
+PUT {{baseUrl}}/users/me/change-password
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "currentPassword": "1234567",
+  "newPassword": "12345678",
+  "confirmPassword": "99999999"
+}
+
+### Current user - Change password same as old
+PUT {{baseUrl}}/users/me/change-password
+Authorization: Bearer {{user_token}}
+Content-Type: application/json
+
+{
+  "currentPassword": "1234567",
+  "newPassword": "1234567",
+  "confirmPassword": "1234567"
+}
+
+### Current user - Get profile without token
+GET {{baseUrl}}/users/me

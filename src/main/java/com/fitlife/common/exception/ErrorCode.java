@@ -160,7 +160,13 @@ public enum ErrorCode {
             5014,
             "Account has been deleted",
             HttpStatus.FORBIDDEN
-    );
+    ),
+
+    CURRENT_PASSWORD_INCORRECT(
+            5015,
+            "Current password is incorrect",
+            HttpStatus.BAD_REQUEST
+    ),;
 
     private final int code;
     private final String message;
