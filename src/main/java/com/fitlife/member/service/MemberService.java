@@ -1,25 +1,38 @@
 package com.fitlife.member.service;
 
 import com.fitlife.common.response.PageResponse;
-import com.fitlife.member.dto.*;
+import com.fitlife.member.dto.request.AdminMemberStatusUpdateRequest;
+import com.fitlife.member.dto.request.MemberCreateRequest;
+import com.fitlife.member.dto.request.MemberUpdateRequest;
+import com.fitlife.member.dto.request.MyMemberUpdateRequest;
+import com.fitlife.member.dto.response.MemberResponse;
+import com.fitlife.member.dto.response.MemberSummaryResponse;
+import com.fitlife.member.enums.MemberStatus;
 import org.springframework.data.domain.Pageable;
-
-import java.util.List;
 
 public interface MemberService {
 
+    MemberResponse createMemberByAdmin(MemberCreateRequest request);
 
-    MemberResponse createMemberByAdmin(AdminMemberCreateRequest request);
-    MemberProfileResponse getMyProfile(String username);
-    MemberProfileResponse updateMyProfile(String username, MemberUpdateRequest request);
-    PageResponse<MemberResponse> getAllMembersForAdmin(String keyword, String status, Pageable pageable);
-    MemberDetailResponse getMemberDetailForAdmin(Long id);
-    MemberDetailResponse getMemberByCodeForAdmin(String memberCode);
-    List<MemberResponse> getAllMembers();
-    MemberResponse updateMemberByAdmin(Long id, AdminMemberUpdateRequest request);
+    PageResponse<MemberSummaryResponse> getAllMembersForAdmin(
+            String keyword,
+            MemberStatus status,
+            Pageable pageable
+    );
+
+    MemberResponse getMemberDetailForAdmin(Long id);
+
+    MemberResponse getMemberByCodeForAdmin(String memberCode);
+
+    MemberResponse updateMemberByAdmin(Long id, MemberUpdateRequest request);
+
     MemberResponse updateMemberStatusByAdmin(Long id, AdminMemberStatusUpdateRequest request);
+
+    MemberResponse getMyProfile(String username);
+
+    MemberResponse updateMyProfile(String username, MyMemberUpdateRequest request);
+
     void deleteMemberByAdmin(Long id);
 
     void restoreMemberByAdmin(Long id);
-
 }

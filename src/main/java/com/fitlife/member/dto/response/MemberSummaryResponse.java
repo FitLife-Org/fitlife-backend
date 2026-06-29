@@ -1,10 +1,12 @@
-package com.fitlife.member.dto;
+package com.fitlife.member.dto.response;
 
+import com.fitlife.member.enums.FitnessGoal;
+import com.fitlife.member.enums.MemberStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import java.math.BigDecimal;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -12,21 +14,22 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class MemberDetailResponse {
+public class MemberSummaryResponse {
+
     private Long id;
+    private Long userId;
+
     private String username;
     private String memberCode;
+
     private String fullName;
     private String phone;
     private String email;
-    private String gender;
-    private LocalDate dateOfBirth;
-    private String avatarUrl;
-    private BigDecimal height;
-    private BigDecimal weight;
-    private BigDecimal bmi;
-    private String fitnessGoal;
-    private String status;
+
+    private FitnessGoal fitnessGoal;
+    private MemberStatus status;
+    private LocalDate joinDate;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
