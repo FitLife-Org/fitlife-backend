@@ -2,6 +2,7 @@ package com.fitlife.member.controller;
 
 import com.fitlife.common.response.PageResponse;
 import com.fitlife.member.dto.AdminMemberCreateRequest;
+import com.fitlife.member.dto.AdminMemberUpdateRequest;
 import com.fitlife.member.dto.MemberDetailResponse;
 import com.fitlife.member.dto.MemberResponse;
 import com.fitlife.member.service.MemberService;
@@ -50,4 +51,12 @@ public class AdminMemberController {
     }
 
 
+    @PutMapping("/{id}")
+    public ResponseEntity<MemberResponse> updateMemberByAdmin(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody AdminMemberUpdateRequest request) {
+
+        MemberResponse response = memberService.updateMemberByAdmin(id, request);
+        return ResponseEntity.ok(response);
+    }
 }

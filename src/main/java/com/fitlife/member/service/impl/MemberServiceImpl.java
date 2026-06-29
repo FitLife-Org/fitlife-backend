@@ -2,6 +2,7 @@ package com.fitlife.member.service.impl;
 
 import com.fitlife.common.response.PageResponse;
 import com.fitlife.member.dto.AdminMemberCreateRequest;
+import com.fitlife.member.dto.AdminMemberUpdateRequest;
 import com.fitlife.member.dto.MemberDetailResponse;
 import com.fitlife.member.dto.MemberProfileResponse;
 import com.fitlife.member.dto.MemberResponse;
@@ -85,6 +86,67 @@ public class MemberServiceImpl implements MemberService {
             member.setGender(null);
         }
 
+        Member savedMember = memberRepository.save(member);
+
+        return memberMapper.toMemberResponse(savedMember);
+    }
+
+    @Override
+    @Transactional
+    public MemberResponse updateMemberByAdmin(Long id, AdminMemberUpdateRequest request) {
+        Member member = memberRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin hội viên mang ID: " + id));
+
+        User user = member.getUser();
+
+        if (!member.getEmail().equalsIgnoreCase(request.getEmail())) {
+            if (userRepository.existsByEmail(request.getEmail())) {
+                throw new RuntimeException("Địa chỉ Email này đã tồn tại trong hệ thống!");
+            }
+            member.setEmail(request.getEmail());
+            if (user != null) {
+                user.setEmail(request.getEmail());
+            }
+        }
+
+        member.setFullName(request.getFullName());
+        member.setPhone(request.getPhone());
+        member.setDateOfBirth(request.getDateOfBirth());
+        member.setFitnessGoal(request.getFitnessGoal());
+
+        if (user != null) {
+            user.setFullName(request.getFullName());
+            user.setPhone(request.getPhone());
+        }
+
+        if (request.getGender() != null && !request.getGender().trim().isEmpty()) {
+            try {
+                member.setGender(Gender.valueOf(request.getGender().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Định dạng giới tính không hợp lệ: " + request.getGender());
+            }
+        } else {
+            member.setGender(null);
+        }
+
+        if (request.getStatus() != null && !request.getStatus().trim().isEmpty()) {
+            try {
+                member.setStatus(com.fitlife.member.enums.MemberStatus.valueOf(request.getStatus().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Trạng thái hội viên không hợp lệ: " + request.getStatus());
+            }
+
+            if (user != null) {
+                try {
+                    user.setStatus(com.fitlife.user.enums.UserStatus.valueOf(request.getStatus().toUpperCase()));
+                } catch (Exception e) {
+                }
+            }
+        }
+
+        if (user != null) {
+            userRepository.save(user);
+        }
         Member savedMember = memberRepository.save(member);
 
         return memberMapper.toMemberResponse(savedMember);
@@ -194,7 +256,6 @@ public class MemberServiceImpl implements MemberService {
     public MemberDetailResponse getMemberByCodeForAdmin(String memberCode) {
         Member member = memberRepository.findByMemberCodeAndIsDeletedFalse(memberCode)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin hội viên mang mã: " + memberCode));
-
 
         return memberMapper.toDetailResponse(member);
     }

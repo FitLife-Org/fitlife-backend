@@ -52,4 +52,21 @@ Authorization: Bearer {{accessToken}}
 GET {{baseUrl}}/admin/members/code/MEM001
 Accept: application/json
 Authorization: Bearer {{accessToken}}
+cd
 
+
+###6Chức năng Admin cập nhật hồ sơ hội viên theo ID
+PUT {{baseUrl}}/admin/members/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "fullName": "Nguyễn Văn Hội trâm Sau Sửa",
+  "email": "fitlife99_updated@gmail.com",
+  "phone": "0999888777",
+  "gender": "FEMALE",
+  "dateOfBirth": "1998-05-20",
+  "fitnessGoal": "GAIN_MUSCLE",
+  "status": "ACTIVE"
+}
