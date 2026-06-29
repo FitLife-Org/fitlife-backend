@@ -1,4 +1,4 @@
-package com.fitlife.member.dto;
+package com.fitlife.member.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

@@ -2,6 +2,7 @@ package com.fitlife.member.entity;
 
 import com.fitlife.member.enums.Gender;
 import com.fitlife.member.enums.MemberStatus;
+import com.fitlife.member.enums.FitnessGoal;
 import com.fitlife.user.entity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -26,20 +27,19 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-@Getter
-@Setter
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 @Entity
 @Table(name = "members")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Member {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // One user has one member profile
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
@@ -47,43 +47,38 @@ public class Member {
     @Column(name = "member_code", nullable = false, unique = true, length = 50)
     private String memberCode;
 
-    @Column(name = "full_name", nullable = false, length = 150)
-    private String fullName;
-
-    @Column(name = "phone", length = 20)
-    private String phone;
-
-    @Column(name = "email", length = 150)
-    private String email;
-
     @Enumerated(EnumType.STRING)
-    @Column(name = "gender", length = 20)
+    @Column(length = 20)
     private Gender gender;
 
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
 
-    @Column(name = "avatar_url", length = 500)
-    private String avatarUrl;
+    @Column(length = 255)
+    private String address;
 
-    @Column(name = "height_cm", precision = 5, scale = 2)
-    private BigDecimal heightCm;
+    @Column(name = "emergency_contact_name", length = 100)
+    private String emergencyContactName;
 
-    @Column(name = "weight_kg", precision = 5, scale = 2)
-    private BigDecimal weightKg;
+    @Column(name = "emergency_contact_phone", length = 20)
+    private String emergencyContactPhone;
 
-    @Column(name = "bmi", precision = 5, scale = 2)
-    private BigDecimal bmi;
-
-    @Column(name = "fitness_goal", length = 100)
-    private String fitnessGoal;
+    @Column(name = "join_date", nullable = false)
+    private LocalDate joinDate;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 30)
+    @Column(name = "fitness_goal", length = 50)
+    private FitnessGoal fitnessGoal;
+
+    @Column(name = "health_note", columnDefinition = "TEXT")
+    private String healthNote;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
     private MemberStatus status;
 
     @Column(name = "is_deleted", nullable = false)
-    private Boolean isDeleted;
+    private Boolean isDeleted = false;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
