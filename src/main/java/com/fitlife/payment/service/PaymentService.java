@@ -7,6 +7,7 @@ import com.fitlife.payment.dto.request.PaymentCreateRequest;
 import com.fitlife.payment.dto.request.PaymentFailRequest;
 import com.fitlife.payment.dto.response.PaymentDetailResponse;
 import com.fitlife.payment.dto.response.PaymentResponse;
+import com.fitlife.payment.enums.PaymentMethod;
 import com.fitlife.payment.enums.PaymentStatus;
 import org.springframework.data.domain.Pageable;
 
@@ -18,7 +19,13 @@ public interface PaymentService {
 
     PaymentDetailResponse getMyPaymentById(Long paymentId);
 
-    PageResponse<PaymentResponse> getAllPayments(PaymentStatus status, Pageable pageable);
+    PageResponse<PaymentResponse> getAllPayments(
+            PaymentStatus status,
+            PaymentMethod method,
+            Long memberId,
+            Long invoiceId,
+            Pageable pageable
+    );
 
     PaymentDetailResponse getPaymentByIdForAdmin(Long paymentId);
 

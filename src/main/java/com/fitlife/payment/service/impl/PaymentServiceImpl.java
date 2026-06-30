@@ -32,6 +32,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.fitlife.payment.enums.PaymentMethod;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -116,15 +117,18 @@ public class PaymentServiceImpl implements PaymentService {
     @Transactional(readOnly = true)
     public PageResponse<PaymentResponse> getAllPayments(
             PaymentStatus status,
+            PaymentMethod method,
+            Long memberId,
+            Long invoiceId,
             Pageable pageable
     ) {
-        Page<Payment> paymentPage;
-
-        if (status != null) {
-            paymentPage = paymentRepository.findByPaymentStatus(status, pageable);
-        } else {
-            paymentPage = paymentRepository.findAll(pageable);
-        }
+        Page<Payment> paymentPage = paymentRepository.searchAdminPayments(
+                status,
+                method,
+                memberId,
+                invoiceId,
+                pageable
+        );
 
         return PageResponse.from(paymentPage, paymentMapper::toResponse);
     }

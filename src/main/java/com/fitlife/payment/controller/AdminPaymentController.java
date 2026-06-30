@@ -7,6 +7,7 @@ import com.fitlife.payment.dto.request.PaymentConfirmRequest;
 import com.fitlife.payment.dto.request.PaymentFailRequest;
 import com.fitlife.payment.dto.response.PaymentDetailResponse;
 import com.fitlife.payment.dto.response.PaymentResponse;
+import com.fitlife.payment.enums.PaymentMethod;
 import com.fitlife.payment.enums.PaymentStatus;
 import com.fitlife.payment.service.PaymentService;
 import jakarta.validation.Valid;
@@ -24,10 +25,19 @@ public class AdminPaymentController {
     @GetMapping
     public ApiResponse<PageResponse<PaymentResponse>> getAllPayments(
             @RequestParam(required = false) PaymentStatus status,
+            @RequestParam(required = false) PaymentMethod method,
+            @RequestParam(required = false) Long memberId,
+            @RequestParam(required = false) Long invoiceId,
             Pageable pageable
     ) {
         return ApiResponse.<PageResponse<PaymentResponse>>builder()
-                .data(paymentService.getAllPayments(status, pageable))
+                .data(paymentService.getAllPayments(
+                        status,
+                        method,
+                        memberId,
+                        invoiceId,
+                        pageable
+                ))
                 .build();
     }
 
