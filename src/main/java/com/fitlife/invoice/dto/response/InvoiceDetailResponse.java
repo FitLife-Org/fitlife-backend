@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @Builder
-public class InvoiceResponse {
+public class InvoiceDetailResponse {
 
     private Long id;
 
@@ -19,7 +19,13 @@ public class InvoiceResponse {
 
     private Long memberId;
 
+    private String memberCode;
+
+    private String memberName;
+
     private Long subscriptionId;
+
+    private String packageName;
 
     private BigDecimal totalAmount;
 
@@ -35,5 +41,11 @@ public class InvoiceResponse {
 
     private LocalDateTime cancelledAt;
 
+    private String cancelReason;
+
     private String note;
+
+    private LocalDateTime createdAt;
+
+    private LocalDateTime updatedAt;
 }
