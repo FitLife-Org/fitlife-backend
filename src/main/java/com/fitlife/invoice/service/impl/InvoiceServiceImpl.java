@@ -130,6 +130,14 @@ public class InvoiceServiceImpl implements InvoiceService {
             throw new AppException(ErrorCode.INVOICE_CANCELLED);
         }
 
+        if (invoice.getStatus() == InvoiceStatus.REFUNDED) {
+            throw new AppException(ErrorCode.INVALID_INVOICE_STATUS);
+        }
+
+        if (invoice.getStatus() != InvoiceStatus.UNPAID) {
+            throw new AppException(ErrorCode.INVALID_INVOICE_STATUS);
+        }
+
         invoice.setStatus(InvoiceStatus.CANCELLED);
         invoice.setCancelledAt(LocalDateTime.now());
         invoice.setCancelReason(request.getReason());

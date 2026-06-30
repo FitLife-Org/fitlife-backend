@@ -8,7 +8,17 @@ GET {{baseUrl}}/invoices/2
 Authorization: Bearer {{accessToken}}
 Accept: application/json
 
-### Admin get all invoices
-GET {{baseUrl}}/admin/invoices
+### Admin get invoice detail
+GET {{baseUrl}}/admin/invoices/2
 Authorization: Bearer {{adminToken}}
 Accept: application/json
+
+### Admin cancel unpaid invoice
+PATCH {{baseUrl}}/admin/invoices/2/cancel
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "reason": "Member hủy đăng ký trước khi thanh toán"
+}
