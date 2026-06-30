@@ -1,29 +1,49 @@
-package com.fitlife.subscription.dto;
+package com.fitlife.subscription.dto.response;
 
-import io.swagger.v3.oas.annotations.media.Schema;
+import com.fitlife.subscription.enums.SubscriptionStatus;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
 @Builder
-@Schema(name = "SubscriptionResponse", description = "ThĂ´ng tin subscription tráº£ vá» tá»« há»‡ thá»‘ng")
 public class SubscriptionResponse {
-    @Schema(description = "ID subscription", example = "5001")
+
     private Long id;
-    @Schema(description = "ID há»™i viĂªn", example = "100")
+
     private Long memberId;
-    @Schema(description = "ID gĂ³i táº­p", example = "1")
-    private Long packageId;
-    @Schema(description = "TĂªn gĂ³i táº­p", example = "Premium 12 Months")
-    private String packageName;
-    @Schema(description = "NgĂ y báº¯t Ä‘áº§u", example = "2026-04-27")
+    private String memberCode;
+    private String memberName;
+
+    private Long gymPackageId;
+    private String gymPackageCode;
+    private String gymPackageName;
+
+    private BigDecimal packagePrice;
+    private Integer durationDays;
+
     private LocalDate startDate;
-    @Schema(description = "NgĂ y káº¿t thĂºc", example = "2027-04-26")
     private LocalDate endDate;
-    @Schema(description = "Tráº¡ng thĂ¡i subscription", example = "PENDING")
-    private String status;
+
+    private SubscriptionStatus status;
+
+    private Boolean autoRenew;
+
+    private String note;
+
+    /*
+     * Invoice sinh ra sau khi tạo subscription.
+     */
+    private Long invoiceId;
+    private String invoiceCode;
+    private BigDecimal invoiceFinalAmount;
+    private String invoiceStatus;
+
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

@@ -1,12 +1,12 @@
 package com.fitlife.user.service.impl;
 
+import com.fitlife.common.dto.PageResponse;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.security.CustomUserDetails;
 import com.fitlife.user.dto.request.AdminUpdateUserRequest;
 import com.fitlife.user.dto.request.AdminUserSearchRequest;
 import com.fitlife.user.dto.response.AdminUserResponse;
-import com.fitlife.user.dto.response.PageResponse;
 import com.fitlife.user.dto.response.AdminUserDetailResponse;
 import com.fitlife.user.entity.User;
 import com.fitlife.user.enums.UserStatus;
@@ -26,8 +26,6 @@ import org.springframework.stereotype.Service;
 import com.fitlife.user.dto.request.AdminCreateInternalUserRequest;
 import com.fitlife.user.entity.Role;
 import com.fitlife.user.enums.AuthProvider;
-import com.fitlife.user.repository.RoleRepository;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import com.fitlife.user.dto.request.AdminUpdateUserStatusRequest;
 
 import java.util.Set;
@@ -35,17 +33,12 @@ import java.util.Set;
 import java.util.List;
 
 import com.fitlife.user.dto.request.AdminUpdateUserRolesRequest;
-import com.fitlife.user.entity.Role;
-import com.fitlife.user.repository.RoleRepository;
 
 import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.fitlife.user.dto.request.ChangePasswordRequest;
 import com.fitlife.user.dto.response.UserProfileResponse;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Service
 @RequiredArgsConstructor
@@ -86,19 +79,7 @@ public class UserServiceImpl implements UserService {
                 pageable
         );
 
-        List<AdminUserResponse> content = userPage.getContent()
-                .stream()
-                .map(userMapper::toAdminUserResponse)
-                .toList();
-
-        return PageResponse.<AdminUserResponse>builder()
-                .content(content)
-                .page(userPage.getNumber())
-                .size(userPage.getSize())
-                .totalElements(userPage.getTotalElements())
-                .totalPages(userPage.getTotalPages())
-                .last(userPage.isLast())
-                .build();
+        return PageResponse.from(userPage, userMapper::toAdminUserResponse);
     }
 
     @Override

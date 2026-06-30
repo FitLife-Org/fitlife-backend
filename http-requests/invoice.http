@@ -1,0 +1,14 @@
+### Get my invoices
+GET {{baseUrl}}/invoices/my
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+### Get my invoice detail
+GET {{baseUrl}}/invoices/2
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+### Admin get all invoices
+GET {{baseUrl}}/admin/invoices
+Authorization: Bearer {{adminToken}}
+Accept: application/json

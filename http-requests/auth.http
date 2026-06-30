@@ -29,12 +29,26 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "identifier": "Member01",
-  "password": "123456"
+  "identifier": "hoivien_fitlife_1011",
+  "password": "password123"
 }
 
 > {%
     client.global.set("accessToken", response.body.data.accessToken);
+%}
+
+### 2. Admin login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "identifier": "admin",
+  "password": "123456"
+}
+
+> {%
+    client.global.set("adminToken", response.body.data.accessToken);
 %}
 
 ### 3. Login Member by username and save token - success

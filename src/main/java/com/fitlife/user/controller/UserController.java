@@ -1,6 +1,6 @@
 package com.fitlife.user.controller;
 
-import com.fitlife.common.response.ApiResponse;
+import com.fitlife.common.dto.ApiResponse;
 import com.fitlife.user.dto.request.ChangePasswordRequest;
 import com.fitlife.user.dto.response.UserProfileResponse;
 import com.fitlife.user.service.UserService;
