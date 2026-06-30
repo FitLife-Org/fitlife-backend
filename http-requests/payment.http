@@ -1,0 +1,11 @@
+### Member create payment
+POST {{baseUrl}}/payments
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "invoiceId": 5,
+  "paymentMethod": "BANK_TRANSFER",
+  "note": "Đã chuyển khoản, chờ xác nhận"
+}

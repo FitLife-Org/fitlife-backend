@@ -12,9 +12,9 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     Optional<Payment> findByPaymentCode(String paymentCode);
 
-    Page<Payment> findByInvoiceId(Long invoiceId, Pageable pageable);
-
     Page<Payment> findByMemberId(Long memberId, Pageable pageable);
+
+    Page<Payment> findByInvoiceId(Long invoiceId, Pageable pageable);
 
     Page<Payment> findByPaymentStatus(PaymentStatus paymentStatus, Pageable pageable);
 
