@@ -8,8 +8,13 @@ GET {{baseUrl}}/invoices/2
 Authorization: Bearer {{accessToken}}
 Accept: application/json
 
+### Admin get all invoices
+GET {{baseUrl}}/admin/invoices
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
 ### Admin get invoice detail
-GET {{baseUrl}}/admin/invoices/2
+GET {{baseUrl}}/admin/invoices/6
 Authorization: Bearer {{adminToken}}
 Accept: application/json
 
@@ -22,3 +27,34 @@ Accept: application/json
 {
   "reason": "Member hủy đăng ký trước khi thanh toán"
 }
+
+### Admin filter invoices by status
+GET {{baseUrl}}/admin/invoices?status=UNPAID
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+### Admin filter invoices by member
+GET {{baseUrl}}/admin/invoices?memberId=6
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+### Admin filter invoices by member and status
+GET {{baseUrl}}/admin/invoices?memberId=6&status=UNPAID
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+### Admin generate invoice manually
+POST {{baseUrl}}/admin/invoices/generate
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "subscriptionId": 6,
+  "note": "Tạo invoice thủ công cho subscription chưa có hóa đơn"
+}
+
+### Admin get payments by invoice
+GET {{baseUrl}}/admin/invoices/6/payments
+Authorization: Bearer {{adminToken}}
+Accept: application/json

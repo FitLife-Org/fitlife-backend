@@ -19,4 +19,10 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     Page<Invoice> findByMemberId(Long memberId, Pageable pageable);
 
     Page<Invoice> findByStatus(InvoiceStatus status, Pageable pageable);
+
+    Page<Invoice> findByMemberIdAndStatus(
+            Long memberId,
+            InvoiceStatus status,
+            Pageable pageable
+    );
 }

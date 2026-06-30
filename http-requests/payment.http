@@ -5,7 +5,48 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "invoiceId": 5,
+  "invoiceId": 6,
   "paymentMethod": "BANK_TRANSFER",
   "note": "Đã chuyển khoản, chờ xác nhận"
+}
+
+### Member view my history payments
+GET {{baseUrl}}/payments/my
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### Member view my detail payment
+GET {{baseUrl}}/payments/2
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### Admin view all payments
+GET {{baseUrl}}/admin/payments
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+### Admin view payment detail
+GET {{baseUrl}}/admin/payments/2
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+### Admin confirm payment
+PATCH {{baseUrl}}/admin/payments/2/confirm
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "transactionNo": "BANK-20260630-0001",
+  "note": "Đã nhận tiền chuyển khoản"
+}
+
+### Admin fail payment
+PATCH {{baseUrl}}/admin/payments/3/fail
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "reason": "Không tìm thấy giao dịch chuyển khoản"
 }

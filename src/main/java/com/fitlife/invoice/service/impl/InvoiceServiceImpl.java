@@ -14,6 +14,7 @@ import com.fitlife.invoice.repository.InvoiceRepository;
 import com.fitlife.invoice.service.InvoiceService;
 import com.fitlife.member.entity.Member;
 import com.fitlife.member.repository.MemberRepository;
+import com.fitlife.payment.entity.Payment;
 import com.fitlife.security.CustomUserDetails;
 import com.fitlife.subscription.entity.Subscription;
 import com.fitlife.subscription.enums.SubscriptionStatus;
@@ -25,6 +26,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.fitlife.payment.dto.response.PaymentResponse;
+import com.fitlife.payment.mapper.PaymentMapper;
+import com.fitlife.payment.repository.PaymentRepository;
+import com.fitlife.invoice.dto.request.InvoiceGenerateRequest;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -37,6 +42,8 @@ public class InvoiceServiceImpl implements InvoiceService {
     private final SubscriptionRepository subscriptionRepository;
     private final MemberRepository memberRepository;
     private final InvoiceMapper invoiceMapper;
+    private final PaymentRepository paymentRepository;
+    private final PaymentMapper paymentMapper;
 
     @Override
     @Transactional
@@ -97,14 +104,6 @@ public class InvoiceServiceImpl implements InvoiceService {
         }
 
         return invoiceMapper.toDetailResponse(invoice);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public PageResponse<InvoiceResponse> getAllInvoices(Pageable pageable) {
-        Page<Invoice> invoicePage = invoiceRepository.findAll(pageable);
-
-        return PageResponse.from(invoicePage, invoiceMapper::toResponse);
     }
 
     @Override
@@ -195,5 +194,123 @@ public class InvoiceServiceImpl implements InvoiceService {
 
         return memberRepository.findByUserIdAndIsDeletedFalse(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_FOUND));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<InvoiceResponse> getAllInvoices(
+            InvoiceStatus status,
+            Long memberId,
+            Pageable pageable
+    ) {
+        Page<Invoice> invoicePage;
+
+        if (memberId != null && status != null) {
+            invoicePage = invoiceRepository.findByMemberIdAndStatus(
+                    memberId,
+                    status,
+                    pageable
+            );
+        } else if (memberId != null) {
+            invoicePage = invoiceRepository.findByMemberId(
+                    memberId,
+                    pageable
+            );
+        } else if (status != null) {
+            invoicePage = invoiceRepository.findByStatus(
+                    status,
+                    pageable
+            );
+        } else {
+            invoicePage = invoiceRepository.findAll(pageable);
+        }
+
+        return PageResponse.from(invoicePage, invoiceMapper::toResponse);
+    }
+
+    @Override
+    @Transactional
+    public InvoiceDetailResponse generateInvoiceForSubscription(InvoiceGenerateRequest request) {
+        Subscription subscription = subscriptionRepository.findById(request.getSubscriptionId())
+                .orElseThrow(() -> new AppException(ErrorCode.SUBSCRIPTION_NOT_FOUND));
+
+        Invoice invoice = createInvoiceForSubscription(subscription);
+
+        if (request.getNote() != null && !request.getNote().isBlank()) {
+            invoice.setNote(request.getNote().trim());
+            invoice = invoiceRepository.save(invoice);
+        }
+
+        return invoiceMapper.toDetailResponse(invoice);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<PaymentResponse> getPaymentsByInvoiceId(
+            Long invoiceId,
+            Pageable pageable
+    ) {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new AppException(ErrorCode.INVOICE_NOT_FOUND));
+
+        Page<Payment> paymentPage = paymentRepository.findByInvoiceId(
+                invoice.getId(),
+                pageable
+        );
+
+        return PageResponse.from(paymentPage, paymentMapper::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Invoice getInvoiceEntityForPayment(Long invoiceId) {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new AppException(ErrorCode.INVOICE_NOT_FOUND));
+
+        if (invoice.getStatus() == InvoiceStatus.PAID) {
+            throw new AppException(ErrorCode.CANNOT_CREATE_PAYMENT_FOR_PAID_INVOICE);
+        }
+
+        if (invoice.getStatus() == InvoiceStatus.CANCELLED) {
+            throw new AppException(ErrorCode.CANNOT_CREATE_PAYMENT_FOR_CANCELLED_INVOICE);
+        }
+
+        if (invoice.getStatus() == InvoiceStatus.REFUNDED) {
+            throw new AppException(ErrorCode.INVALID_INVOICE_STATUS);
+        }
+
+        if (invoice.getStatus() != InvoiceStatus.UNPAID) {
+            throw new AppException(ErrorCode.INVALID_INVOICE_STATUS);
+        }
+
+        return invoice;
+    }
+
+    @Override
+    @Transactional
+    public Invoice markInvoiceAsPaid(Long invoiceId) {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new AppException(ErrorCode.INVOICE_NOT_FOUND));
+
+        if (invoice.getStatus() == InvoiceStatus.PAID) {
+            throw new AppException(ErrorCode.INVOICE_ALREADY_PAID);
+        }
+
+        if (invoice.getStatus() == InvoiceStatus.CANCELLED) {
+            throw new AppException(ErrorCode.INVOICE_CANCELLED);
+        }
+
+        if (invoice.getStatus() == InvoiceStatus.REFUNDED) {
+            throw new AppException(ErrorCode.INVALID_INVOICE_STATUS);
+        }
+
+        if (invoice.getStatus() != InvoiceStatus.UNPAID) {
+            throw new AppException(ErrorCode.INVALID_INVOICE_STATUS);
+        }
+
+        invoice.setStatus(InvoiceStatus.PAID);
+        invoice.setPaidAt(LocalDateTime.now());
+
+        return invoiceRepository.save(invoice);
     }
 }

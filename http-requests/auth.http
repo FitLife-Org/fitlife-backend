@@ -29,7 +29,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "identifier": "hoivien_fitlife_1011",
+  "identifier": "hoivien_fitlife_15",
   "password": "password123"
 }
 
