@@ -8,14 +8,14 @@ Authorization: Bearer {{accessToken}}
 POST {{baseUrl}}/admin/members
 Content-Type: application/json
 Accept: application/json
-Authorization: Bearer {{accessToken}}
+Authorization: Bearer {{adminToken}}
 
 {
-  "username": "hoivien_fitlife_100",
-  "email": "fitlife100@gmail.com",
+  "username": "hoivien_fitlife_15",
+  "email": "fitlife15@gmail.com",
   "password": "password123",
-  "fullName": "Nguyễn Văn Hội Viên B",
-  "phone": "0912345678",
+  "fullName": "Nguyễn Văn Hội Viên 15",
+  "phone": "0912345615",
   "gender": "MALE",
   "dateOfBirth": "1998-05-20",
   "address": "Hà Nội",

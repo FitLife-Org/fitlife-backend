@@ -4,7 +4,7 @@
 //import com.fitlife.ai.service.AiService;
 //import com.fitlife.ai.dto.AiWorkoutRequest;
 //import com.fitlife.ai.entity.AiWorkoutPlan;
-//import com.fitlife.common.response.ApiResponse;
+//import com.fitlife.common.dto.response.ApiResponse;
 //import io.swagger.v3.oas.annotations.Operation;
 //import io.swagger.v3.oas.annotations.tags.Tag;
 //import jakarta.validation.Valid;

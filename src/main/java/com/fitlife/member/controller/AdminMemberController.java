@@ -1,6 +1,6 @@
 package com.fitlife.member.controller;
 
-import com.fitlife.common.response.PageResponse;
+import com.fitlife.common.dto.PageResponse;
 import com.fitlife.member.dto.request.AdminMemberStatusUpdateRequest;
 import com.fitlife.member.dto.request.MemberCreateRequest;
 import com.fitlife.member.dto.request.MemberUpdateRequest;

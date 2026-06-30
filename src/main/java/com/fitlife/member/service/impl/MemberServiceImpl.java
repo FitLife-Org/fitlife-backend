@@ -1,6 +1,5 @@
 package com.fitlife.member.service.impl;
 
-import com.fitlife.common.response.PageResponse;
 import com.fitlife.member.dto.request.AdminMemberStatusUpdateRequest;
 import com.fitlife.member.dto.request.MemberCreateRequest;
 import com.fitlife.member.dto.request.MemberUpdateRequest;
@@ -12,6 +11,7 @@ import com.fitlife.member.enums.MemberStatus;
 import com.fitlife.member.mapper.MemberMapper;
 import com.fitlife.member.repository.MemberRepository;
 import com.fitlife.member.service.MemberService;
+import com.fitlife.common.dto.PageResponse;
 import com.fitlife.user.entity.Role;
 import com.fitlife.user.entity.User;
 import com.fitlife.user.enums.AuthProvider;
@@ -96,16 +96,7 @@ public class MemberServiceImpl implements MemberService {
 
         var page = memberRepository.searchMembers(searchKeyword, status, pageable);
 
-        return PageResponse.<MemberSummaryResponse>builder()
-                .currentPage(page.getNumber() + 1)
-                .totalPages(page.getTotalPages() == 0 ? 1 : page.getTotalPages())
-                .pageSize(page.getSize())
-                .totalElements(page.getTotalElements())
-                .data(page.getContent()
-                        .stream()
-                        .map(memberMapper::toSummaryResponse)
-                        .toList())
-                .build();
+        return PageResponse.from(page, memberMapper::toSummaryResponse);
     }
 
     @Override

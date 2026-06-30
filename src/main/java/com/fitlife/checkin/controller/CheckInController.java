@@ -2,7 +2,7 @@
 //
 //import com.fitlife.checkin.dto.CheckInResponse;
 //import com.fitlife.checkin.service.CheckInService;
-//import com.fitlife.common.response.ApiResponse;
+//import com.fitlife.common.dto.response.ApiResponse;
 //import com.fitlife.auth.entity.User;
 //import com.fitlife.auth.repository.UserRepository;
 //import io.swagger.v3.oas.annotations.Operation;

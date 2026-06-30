@@ -56,6 +56,9 @@ public class SecurityConfiguration {
                         // Public package view
                         .requestMatchers(HttpMethod.GET, "/packages/**").permitAll()
 
+                        .requestMatchers("/payments/**").hasRole("MEMBER")
+                        .requestMatchers("/admin/payments/**").hasAnyRole("ADMIN", "STAFF")
+
                         // Preflight CORS
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 

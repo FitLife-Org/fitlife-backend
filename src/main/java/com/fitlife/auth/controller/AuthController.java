@@ -3,7 +3,7 @@ package com.fitlife.auth.controller;
 import com.fitlife.auth.dto.request.*;
 import com.fitlife.auth.dto.response.AuthResponse;
 import com.fitlife.auth.service.AuthService;
-import com.fitlife.common.response.ApiResponse;
+import com.fitlife.common.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;

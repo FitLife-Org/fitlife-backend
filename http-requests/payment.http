@@ -1,0 +1,77 @@
+### Member create payment
+POST {{baseUrl}}/payments
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "invoiceId": 6,
+  "paymentMethod": "BANK_TRANSFER",
+  "note": "Đã chuyển khoản, chờ xác nhận"
+}
+
+### Member view my history payments
+GET {{baseUrl}}/payments/my
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### Member view my detail payment
+GET {{baseUrl}}/payments/2
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+### Admin view all payments
+GET {{baseUrl}}/admin/payments
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+### Admin view payment detail
+GET {{baseUrl}}/admin/payments/2
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+### Admin confirm payment
+PATCH {{baseUrl}}/admin/payments/2/confirm
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "transactionNo": "BANK-20260630-0001",
+  "note": "Đã nhận tiền chuyển khoản"
+}
+
+### Admin fail payment
+PATCH {{baseUrl}}/admin/payments/3/fail
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "reason": "Không tìm thấy giao dịch chuyển khoản"
+}
+
+### PAY-API-09 Admin filter payments by status
+GET {{baseUrl}}/admin/payments?status=PENDING
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+### PAY-API-11 Admin filter payments by member
+GET {{baseUrl}}/admin/payments?memberId=6
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+### PAY-API-12 Admin filter payments by invoice
+GET {{baseUrl}}/admin/payments?invoiceId=6
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+### Admin filter payments by invoice and status
+GET {{baseUrl}}/admin/payments?invoiceId=6&status=PENDING
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+### Admin filter payments by member and method
+GET {{baseUrl}}/admin/payments?memberId=6&method=BANK_TRANSFER
+Authorization: Bearer {{adminToken}}
+Accept: application/json
