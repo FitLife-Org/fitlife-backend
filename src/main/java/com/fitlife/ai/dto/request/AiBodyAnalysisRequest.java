@@ -1,6 +1,8 @@
 package com.fitlife.ai.dto.request;
 
-import jakarta.validation.constraints.NotBlank;
+import com.fitlife.member.enums.FitnessGoal;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -10,8 +12,9 @@ public class AiBodyAnalysisRequest {
 
     private Long bodyMetricId;
 
-    @NotBlank(message = "AI_GOAL_REQUIRED")
-    private String goal;
+    @NotNull(message = "AI_GOAL_REQUIRED")
+    private FitnessGoal goal;
 
+    @Size(max = 1000, message = "AI_USER_NOTE_TOO_LONG")
     private String userNote;
 }

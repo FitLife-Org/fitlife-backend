@@ -2,9 +2,11 @@ package com.fitlife.ai.dto.request;
 
 import com.fitlife.ai.enums.ActivityLevel;
 import com.fitlife.ai.enums.ExperienceLevel;
+import com.fitlife.member.enums.FitnessGoal;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -12,8 +14,8 @@ import lombok.Setter;
 @Setter
 public class AiWorkoutPlanRequest {
 
-    @NotBlank(message = "AI_GOAL_REQUIRED")
-    private String goal;
+    @NotNull(message = "AI_GOAL_REQUIRED")
+    private FitnessGoal goal;
 
     private ExperienceLevel experienceLevel;
 
@@ -27,5 +29,6 @@ public class AiWorkoutPlanRequest {
     @Max(value = 240, message = "WORKOUT_DURATION_INVALID")
     private Integer workoutDurationMinutes;
 
+    @Size(max = 1000, message = "AI_USER_NOTE_TOO_LONG")
     private String userNote;
 }
