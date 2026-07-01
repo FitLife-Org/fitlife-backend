@@ -18,8 +18,10 @@ public class GymPackageResponse {
     private String code;
     private String name;
     private String packageType;
-    private BigDecimal price;
-    private Integer durationDays;
+    private BigDecimal basePrice;
+    private Boolean hasAiWorkoutPlan;
+    private Boolean hasNutritionPlan;
+    private Integer ptSessionsPerMonth;
     private String description;
     private String benefits;
     private String thumbnailUrl;

@@ -15,7 +15,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/packages")
+@RequestMapping
 @RequiredArgsConstructor
 @Tag(name = "GymPackage", description = "APIs for managing gym packages")
 @SecurityRequirement(name = "bearerAuth")
@@ -23,7 +23,7 @@ public class GymPackageController {
 
     private final GymPackageService gymPackageService;
 
-    @GetMapping
+    @GetMapping("/gym-packages")
     @Operation(summary = "Get list of gym packages with pagination and filtering")
     public ApiResponse<PageResponse<GymPackageResponse>> getPackagesList(
             @RequestParam(value = "page", defaultValue = "1") int page,
@@ -37,7 +37,7 @@ public class GymPackageController {
         return ApiResponse.success("Lấy danh sách gói tập thành công", response);
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/gym-packages/{id}")
     @Operation(summary = "Get details of a specific gym package by ID")
     public ApiResponse<GymPackageResponse> getPackageById(
             @PathVariable("id") Long id
@@ -46,7 +46,7 @@ public class GymPackageController {
         return ApiResponse.success("Lấy chi tiết gói tập thành công", response);
     }
 
-    @PostMapping
+    @PostMapping("/admin/gym-packages")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Create a new gym package")
     public ApiResponse<GymPackageResponse> createPackage(
@@ -56,7 +56,7 @@ public class GymPackageController {
         return ApiResponse.created("Tạo gói tập thành công", response);
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/admin/gym-packages/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Update a gym package")
     public ApiResponse<GymPackageResponse> updatePackage(
@@ -67,7 +67,7 @@ public class GymPackageController {
         return ApiResponse.success("Cập nhật gói tập thành công", response);
     }
 
-    @PatchMapping("/{id}/visibility")
+    @PatchMapping("/admin/gym-packages/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Show/Hide (update status) of a gym package")
     public ApiResponse<GymPackageResponse> updateVisibility(
@@ -78,7 +78,7 @@ public class GymPackageController {
         return ApiResponse.success("Cập nhật trạng thái hiển thị gói tập thành công", response);
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/admin/gym-packages/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Soft delete a gym package")
     public ApiResponse<Void> deletePackage(

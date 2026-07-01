@@ -25,13 +25,15 @@ public class GymPackageUpdateRequest {
     @Size(max = 50, message = "Loại gói tập không được vượt quá 50 ký tự")
     private String packageType;
 
-    @NotNull(message = "Giá tiền không được để trống")
-    @Min(value = 0, message = "Giá tiền phải lớn hơn hoặc bằng 0")
-    private BigDecimal price;
+    @NotNull(message = "Giá tiền cơ bản không được để trống")
+    @Min(value = 0, message = "Giá tiền cơ bản phải lớn hơn hoặc bằng 0")
+    private BigDecimal basePrice;
 
-    @NotNull(message = "Thời gian tập (ngày) không được để trống")
-    @Min(value = 1, message = "Thời gian tập phải tối thiểu là 1 ngày")
-    private Integer durationDays;
+    private Boolean hasAiWorkoutPlan;
+
+    private Boolean hasNutritionPlan;
+
+    private Integer ptSessionsPerMonth;
 
     private String description;
 
