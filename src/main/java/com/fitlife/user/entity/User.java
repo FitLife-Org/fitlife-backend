@@ -1,25 +1,9 @@
 package com.fitlife.user.entity;
 
-import com.fitlife.role.entity.Role;
 import com.fitlife.user.enums.AuthProvider;
 import com.fitlife.user.enums.UserStatus;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import jakarta.persistence.*;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -40,16 +24,16 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "username", unique = true, length = 100)
+    @Column(name = "username", nullable = false, unique = true, length = 100)
     private String username;
 
-    @Column(name = "email", nullable = false, unique = true, length = 150)
+    @Column(name = "email", unique = true, length = 150)
     private String email;
 
     @Column(name = "password_hash", length = 255)
     private String passwordHash;
 
-    @Column(name = "full_name", nullable = false, length = 150)
+    @Column(name = "full_name", length = 150)
     private String fullName;
 
     @Column(name = "phone", unique = true, length = 20)
@@ -60,17 +44,20 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
-    private UserStatus status;
+    @Builder.Default
+    private UserStatus status = UserStatus.ACTIVE;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "auth_provider", nullable = false, length = 30)
-    private AuthProvider authProvider;
+    @Builder.Default
+    private AuthProvider authProvider = AuthProvider.LOCAL;
 
     @Column(name = "provider_id", length = 255)
     private String providerId;
 
     @Column(name = "email_verified", nullable = false)
-    private Boolean emailVerified;
+    @Builder.Default
+    private Boolean emailVerified = false;
 
     @Column(name = "reset_token", length = 255)
     private String resetToken;
@@ -79,7 +66,8 @@ public class User {
     private LocalDateTime resetTokenExpiry;
 
     @Column(name = "is_deleted", nullable = false)
-    private Boolean isDeleted;
+    @Builder.Default
+    private Boolean isDeleted = false;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
@@ -95,6 +83,6 @@ public class User {
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
-    @Column(name = "updated_at")
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 }

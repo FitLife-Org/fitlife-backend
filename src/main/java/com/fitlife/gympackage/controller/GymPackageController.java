@@ -1,100 +1,90 @@
-//package com.fitlife.gympackage.controller;
-//
-//import com.fitlife.common.response.ApiResponse;
-//import com.fitlife.common.response.PageResponse;
-//import com.fitlife.gympackage.dto.GymPackageRequest;
-//import com.fitlife.gympackage.dto.GymPackageResponse;
-//import com.fitlife.gympackage.service.GymPackageService;
-//import io.swagger.v3.oas.annotations.Operation;
-//import io.swagger.v3.oas.annotations.Parameter;
-//import io.swagger.v3.oas.annotations.security.SecurityRequirements;
-//import io.swagger.v3.oas.annotations.tags.Tag;
-//import jakarta.validation.Valid;
-//import lombok.RequiredArgsConstructor;
-//import org.springframework.http.HttpStatus;
-//import org.springframework.http.ResponseEntity;
-//import org.springframework.security.access.prepost.PreAuthorize;
-//import org.springframework.web.bind.annotation.*;
-//
-//@RestController
-//@RequestMapping("/api/v1/packages")
-//@RequiredArgsConstructor
-//@Tag(name = "Package Management", description = "Quáº£n lĂ½ gĂ³i táº­p, tráº¡ng thĂ¡i vĂ  danh sĂ¡ch public/admin")
-//public class GymPackageController {
-//
-//    private final GymPackageService packageService;
-//    @GetMapping
-//    @PreAuthorize("permitAll()")
-//    @SecurityRequirements()
-//    @Operation(summary = "Danh sĂ¡ch gĂ³i táº­p cĂ´ng khai", description = "Láº¥y danh sĂ¡ch cĂ¡c gĂ³i táº­p Ä‘ang hoáº¡t Ä‘á»™ng dĂ nh cho khĂ¡ch truy cáº­p.")
-//    public ResponseEntity<ApiResponse<PageResponse<GymPackageResponse>>> getActivePackages(
-//            @Parameter(description = "Trang hiá»‡n táº¡i, báº¯t Ä‘áº§u tá»« 1", example = "1")
-//            @RequestParam(defaultValue = "1") int page,
-//            @Parameter(description = "KĂ­ch thÆ°á»›c trang", example = "10")
-//            @RequestParam(defaultValue = "10") int size,
-//            @Parameter(description = "TrÆ°á»ng sáº¯p xáº¿p", example = "id")
-//            @RequestParam(defaultValue = "id") String sortBy,
-//            @Parameter(description = "Chiá»u sáº¯p xáº¿p: ASC hoáº·c DESC", example = "DESC")
-//            @RequestParam(defaultValue = "DESC") String sortDir,
-//            @Parameter(description = "Tá»« khĂ³a tĂ¬m kiáº¿m gĂ³i táº­p", example = "Premium")
-//            @RequestParam(required = false) String keyword
-//    ) {
-//        PageResponse<GymPackageResponse> result = packageService.getAllPackages(page, size, sortBy, sortDir, keyword);
-//        return ResponseEntity.ok(ApiResponse.success(result, "Láº¥y danh sĂ¡ch gĂ³i táº­p thĂ nh cĂ´ng"));
-//    }
-//    @GetMapping("/{id}")
-//    @PreAuthorize("permitAll()")
-//    @SecurityRequirements()
-//    @Operation(summary = "Chi tiáº¿t gĂ³i táº­p cĂ´ng khai", description = "Xem thĂ´ng tin chi tiáº¿t má»™t gĂ³i táº­p theo ID.")
-//    public ResponseEntity<ApiResponse<GymPackageResponse>> getPackageById(@PathVariable Long id) {
-//        GymPackageResponse result = packageService.getPackageById(id);
-//        return ResponseEntity.ok(ApiResponse.success(result, "Láº¥y thĂ´ng tin chi tiáº¿t gĂ³i táº­p thĂ nh cĂ´ng"));
-//    }
-//
-//    @GetMapping("/admin")
-//    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN')")
-//    @Operation(summary = "Danh sĂ¡ch gĂ³i táº­p cho admin", description = "Láº¥y danh sĂ¡ch gĂ³i táº­p dĂ nh cho quáº£n trá»‹ viĂªn vá»›i phĂ¢n trang vĂ  lá»c.")
-//    public ResponseEntity<ApiResponse<PageResponse<GymPackageResponse>>> getAllPackagesForAdmin(
-//            @Parameter(description = "Trang hiá»‡n táº¡i, báº¯t Ä‘áº§u tá»« 1", example = "1")
-//            @RequestParam(defaultValue = "1") int page,
-//            @Parameter(description = "KĂ­ch thÆ°á»›c trang", example = "10")
-//            @RequestParam(defaultValue = "10") int size,
-//            @Parameter(description = "TrÆ°á»ng sáº¯p xáº¿p", example = "id")
-//            @RequestParam(defaultValue = "id") String sortBy,
-//            @Parameter(description = "Chiá»u sáº¯p xáº¿p: ASC hoáº·c DESC", example = "DESC")
-//            @RequestParam(defaultValue = "DESC") String sortDir,
-//            @Parameter(description = "Tá»« khĂ³a tĂ¬m kiáº¿m gĂ³i táº­p", example = "Basic")
-//            @RequestParam(required = false) String keyword
-//    ) {
-//        PageResponse<GymPackageResponse> result = packageService.getAllPackages(page, size, sortBy, sortDir, keyword);
-//        return ResponseEntity.ok(ApiResponse.success(result, "Láº¥y danh sĂ¡ch quáº£n lĂ½ gĂ³i táº­p (Admin) thĂ nh cĂ´ng"));
-//    }
-//
-//    @PostMapping
-//    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN')")
-//    @Operation(summary = "Táº¡o gĂ³i táº­p", description = "Táº¡o má»›i má»™t gĂ³i táº­p dĂ nh cho há»‡ thá»‘ng quáº£n trá»‹.")
-//    public ResponseEntity<ApiResponse<GymPackageResponse>> createPackage(@Valid @RequestBody GymPackageRequest request) {
-//        GymPackageResponse result = packageService.createPackage(request);
-//        return ResponseEntity.status(HttpStatus.CREATED)
-//                .body(ApiResponse.created(result, "Táº¡o gĂ³i táº­p má»›i thĂ nh cĂ´ng"));
-//    }
-//
-//    @PutMapping("/{id}")
-//    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN')")
-//    @Operation(summary = "Cáº­p nháº­t gĂ³i táº­p", description = "Cáº­p nháº­t thĂ´ng tin gĂ³i táº­p theo ID.")
-//    public ResponseEntity<ApiResponse<GymPackageResponse>> updatePackage(
-//            @PathVariable Long id,
-//            @Valid @RequestBody GymPackageRequest request) {
-//
-//        GymPackageResponse result = packageService.updatePackage(id, request);
-//        return ResponseEntity.ok(ApiResponse.success(result, "Cáº­p nháº­t thĂ´ng tin gĂ³i táº­p thĂ nh cĂ´ng"));
-//    }
-//
-//    @PatchMapping("/{id}/toggle-status")
-//    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN')")
-//    @Operation(summary = "Báº­t/táº¯t tráº¡ng thĂ¡i gĂ³i táº­p", description = "Chuyá»ƒn tráº¡ng thĂ¡i hoáº¡t Ä‘á»™ng cá»§a gĂ³i táº­p theo ID.")
-//    public ResponseEntity<ApiResponse<String>> togglePackageStatus(@PathVariable Long id) {
-//        packageService.togglePackageStatus(id);
-//        return ResponseEntity.ok(ApiResponse.success(null, "Cáº­p nháº­t tráº¡ng thĂ¡i gĂ³i táº­p thĂ nh cĂ´ng"));
-//    }
-//}
+package com.fitlife.gympackage.controller;
+
+import com.fitlife.common.response.ApiResponse;
+import com.fitlife.common.response.PageResponse;
+import com.fitlife.gympackage.dto.*;
+import com.fitlife.gympackage.service.GymPackageService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/packages")
+@RequiredArgsConstructor
+@Tag(name = "GymPackage", description = "APIs for managing gym packages")
+@SecurityRequirement(name = "bearerAuth")
+public class GymPackageController {
+
+    private final GymPackageService gymPackageService;
+
+    @GetMapping
+    @Operation(summary = "Get list of gym packages with pagination and filtering")
+    public ApiResponse<PageResponse<GymPackageResponse>> getPackagesList(
+            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size,
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "packageType", required = false) String packageType,
+            @RequestParam(value = "status", required = false) String status
+    ) {
+        Pageable pageable = PageRequest.of(page - 1, size);
+        PageResponse<GymPackageResponse> response = gymPackageService.getPackagesList(keyword, packageType, status, pageable);
+        return ApiResponse.success("Lấy danh sách gói tập thành công", response);
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Get details of a specific gym package by ID")
+    public ApiResponse<GymPackageResponse> getPackageById(
+            @PathVariable("id") Long id
+    ) {
+        GymPackageResponse response = gymPackageService.getPackageById(id);
+        return ApiResponse.success("Lấy chi tiết gói tập thành công", response);
+    }
+
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Create a new gym package")
+    public ApiResponse<GymPackageResponse> createPackage(
+            @Valid @RequestBody GymPackageCreateRequest request
+    ) {
+        GymPackageResponse response = gymPackageService.createPackage(request);
+        return ApiResponse.created("Tạo gói tập thành công", response);
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Update a gym package")
+    public ApiResponse<GymPackageResponse> updatePackage(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody GymPackageUpdateRequest request
+    ) {
+        GymPackageResponse response = gymPackageService.updatePackage(id, request);
+        return ApiResponse.success("Cập nhật gói tập thành công", response);
+    }
+
+    @PatchMapping("/{id}/visibility")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Show/Hide (update status) of a gym package")
+    public ApiResponse<GymPackageResponse> updateVisibility(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody GymPackageVisibilityRequest request
+    ) {
+        GymPackageResponse response = gymPackageService.updateVisibility(id, request);
+        return ApiResponse.success("Cập nhật trạng thái hiển thị gói tập thành công", response);
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Soft delete a gym package")
+    public ApiResponse<Void> deletePackage(
+            @PathVariable("id") Long id
+    ) {
+        gymPackageService.deletePackage(id);
+        return ApiResponse.success("Xóa mềm gói tập thành công");
+    }
+}

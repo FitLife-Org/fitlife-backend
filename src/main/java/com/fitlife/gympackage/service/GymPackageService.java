@@ -1,25 +1,20 @@
 package com.fitlife.gympackage.service;
 
 import com.fitlife.common.response.PageResponse;
-import com.fitlife.gympackage.dto.GymPackageRequest;
-import com.fitlife.gympackage.dto.GymPackageResponse;
+import com.fitlife.gympackage.dto.*;
+import org.springframework.data.domain.Pageable;
 
 public interface GymPackageService {
 
-    // Láº¥y danh sĂ¡ch cĂ³ phĂ¢n trang vĂ  tĂ¬m kiáº¿m
-    PageResponse<GymPackageResponse> getAllPackages(int page, int size, String sortBy, String sortDir, String keyword);
+    PageResponse<GymPackageResponse> getPackagesList(String keyword, String packageType, String status, Pageable pageable);
 
-    // Láº¥y chi tiáº¿t 1 gĂ³i táº­p
     GymPackageResponse getPackageById(Long id);
 
-    // Táº¡o gĂ³i táº­p má»›i
-    default GymPackageResponse createPackage(GymPackageRequest request) {
-        return null;
-    }
+    GymPackageResponse createPackage(GymPackageCreateRequest request);
 
-    // Cáº­p nháº­t thĂ´ng tin gĂ³i táº­p
-    GymPackageResponse updatePackage(Long id, GymPackageRequest request);
+    GymPackageResponse updatePackage(Long id, GymPackageUpdateRequest request);
 
-    // XĂ³a má»m (Äá»•i tráº¡ng thĂ¡i ACTIVE/INACTIVE)
-    void togglePackageStatus(Long id);
+    GymPackageResponse updateVisibility(Long id, GymPackageVisibilityRequest request);
+
+    void deletePackage(Long id);
 }

@@ -4,25 +4,29 @@ import com.fitlife.gympackage.entity.GymPackage;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
 
 @Repository
 public interface GymPackageRepository extends JpaRepository<GymPackage, Long> {
 
-    // Check if a package with the given name already exists
-    boolean existsByName(String name);
+    Optional<GymPackage> findByIdAndIsDeletedFalse(Long id);
 
-    // Pagination & Filter for name
-    Page<GymPackage> findByNameContainingIgnoreCase(String name, Pageable pageable);
+    Optional<GymPackage> findByCodeAndIsDeletedFalse(String code);
 
-    // Lá»c theo keyword vĂ  CHá»ˆ Láº¤Y GĂ“I ACTIVE
-    Page<GymPackage> findByNameContainingIgnoreCaseAndStatus(String name, String status, Pageable pageable);
+    boolean existsByCodeAndIsDeletedFalse(String code);
 
-    // Náº¿u khĂ´ng cĂ³ keyword, chá»‰ láº¥y gĂ³i ACTIVE
-    Page<GymPackage> findByStatus(String status, Pageable pageable);
-
-    Page<GymPackage> findByNameContainingIgnoreCaseAndIsDeletedFalse(String trim, Pageable pageable);
-
-
-    Page<GymPackage> findByIsDeletedFalse(Pageable pageable);
+    @Query("SELECT gp FROM GymPackage gp WHERE gp.isDeleted = false " +
+           "AND (:keyword IS NULL OR LOWER(gp.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(gp.code) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+           "AND (:packageType IS NULL OR gp.packageType = :packageType) " +
+           "AND (:status IS NULL OR gp.status = :status)")
+    Page<GymPackage> searchPackages(
+            @Param("keyword") String keyword,
+            @Param("packageType") String packageType,
+            @Param("status") String status,
+            Pageable pageable
+    );
 }

@@ -25,10 +25,17 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST
     ),
 
+    METHOD_NOT_SUPPORTED(
+            1002,
+            "Request method is not supported",
+            HttpStatus.METHOD_NOT_ALLOWED
+    ),
+
     // User errors
     USER_NOT_FOUND(
             2001,
             "User not found",
+            // "If the email exists, a password reset email has been sent", // Avoid strangers snooping on emails
             HttpStatus.NOT_FOUND
     ),
 
@@ -60,6 +67,32 @@ public enum ErrorCode {
     MEMBER_NO_ACCOUNT(
             3002,
             "Member does not have a login account",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    // Equipment errors
+    EQUIPMENT_NOT_FOUND(
+            6001,
+            "Equipment not found",
+            HttpStatus.NOT_FOUND
+    ),
+
+    EQUIPMENT_CODE_ALREADY_EXISTS(
+            6002,
+            "Equipment code already exists",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    // Package errors
+    PACKAGE_NOT_FOUND(
+            7001,
+            "Package not found",
+            HttpStatus.NOT_FOUND
+    ),
+
+    PACKAGE_CODE_ALREADY_EXISTS(
+            7002,
+            "Package code already exists",
             HttpStatus.BAD_REQUEST
     ),
 
@@ -111,6 +144,48 @@ public enum ErrorCode {
             5007,
             "Reset token has expired",
             HttpStatus.BAD_REQUEST
+    ),
+
+    PASSWORD_CONFIRM_NOT_MATCH(
+            5008,
+            "Password confirmation does not match",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    OTP_INVALID(
+            5009,
+            "OTP is invalid",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    OTP_EXPIRED(
+            5010,
+            "OTP has expired",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    NEW_PASSWORD_SAME_AS_OLD(
+            5011,
+            "New password must be different from old password",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    ACCOUNT_LOCKED(
+            5012,
+            "Account is locked",
+            HttpStatus.FORBIDDEN
+    ),
+
+    ACCOUNT_INACTIVE(
+            5013,
+            "Account is inactive",
+            HttpStatus.FORBIDDEN
+    ),
+
+    ACCOUNT_DELETED(
+            5014,
+            "Account has been deleted",
+            HttpStatus.FORBIDDEN
     );
 
     private final int code;

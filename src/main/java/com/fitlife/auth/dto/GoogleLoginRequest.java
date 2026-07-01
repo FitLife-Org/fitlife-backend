@@ -5,9 +5,9 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
-@Schema(name = "GoogleLoginRequest", description = "Payload Ä‘Äƒng nháº­p báº±ng Google ID token")
+@Schema(name = "GoogleLoginRequest", description = "Payload Đăng nhập bằng Google ID token")
 public class GoogleLoginRequest {
     @Schema(description = "Google ID token", example = "eyJhbGciOiJSUzI1NiIs...")
-    @NotBlank(message = "Google Token khĂ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng")
+    @NotBlank(message = "Google Token không được để trống")
     private String token;
 }
