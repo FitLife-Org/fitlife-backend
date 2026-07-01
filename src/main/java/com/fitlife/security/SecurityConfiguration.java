@@ -54,7 +54,8 @@ public class SecurityConfiguration {
                         .requestMatchers("/auth/**").permitAll()
 
                         // Public package view
-                        .requestMatchers(HttpMethod.GET, "/packages/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/gym-packages/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/package-durations/**").permitAll()
 
                         // Preflight CORS
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
