@@ -2,17 +2,19 @@ package com.fitlife.gympackage.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "gym_packages")
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@Entity
+@Table(name = "gym_packages")
 public class GymPackage {
 
     @Id
@@ -26,10 +28,9 @@ public class GymPackage {
     private String name;
 
     @Column(name = "package_type", nullable = false, length = 50)
-    @Builder.Default
-    private String packageType = "BASIC";
+    private String packageType;
 
-    @Column(name = "price", nullable = false)
+    @Column(name = "price", nullable = false, precision = 12, scale = 2)
     private BigDecimal price;
 
     @Column(name = "duration_days", nullable = false)
@@ -41,31 +42,22 @@ public class GymPackage {
     @Column(name = "benefits", columnDefinition = "TEXT")
     private String benefits;
 
+    @Column(name = "thumbnail_url", length = 500)
+    private String thumbnailUrl;
+
     @Column(name = "status", nullable = false, length = 30)
     @Builder.Default
     private String status = "ACTIVE";
 
-    @Column(name = "thumbnail_url", length = 500)
-    private String thumbnailUrl;
-
-    @Column(name = "is_deleted")
+    @Column(name = "is_deleted", nullable = false)
     @Builder.Default
     private Boolean isDeleted = false;
 
-    @Column(name = "created_at", updatable = false)
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
 }

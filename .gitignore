@@ -2,25 +2,58 @@
 # FitLife Project - .gitignore
 # ==========================================
 
-# 1. Compiled class file
+# 1. Compiled class file / build output
 *.class
 target/
+out/
+build/
 
-# 2. IDE specific files (IntelliJ IDEA, Eclipse)
+# 2. Maven wrapper / Maven temporary files
+.mvn/wrapper/maven-wrapper.jar
+*.releaseBackup
+*.versionBackup
+*.next
+release.properties
+
+# 3. IDE specific files
 .idea/
 *.iml
 *.iws
 .project
 .classpath
 .settings/
+.vscode/
 
-# 3. OS generated files
+# 4. OS generated files
 .DS_Store
 Thumbs.db
 
-# 4. Log file
+# 5. Logs
 *.log
+logs/
 
-# 5. Environment variables / Secrets (NEVER PUSH SECRETS TO GITHUB)
+# 6. Environment variables / secrets
 .env
-application-secret.yml
+.env.*
+!.env.example
+
+# 7. Spring Boot local config / secrets
+src/main/resources/application-local.yml
+src/main/resources/application-secrets.yml
+src/main/resources/application-dev-local.yml
+src/main/resources/application-prod-local.yml
+
+# 8. HTTP client private environment
+http-client.private.env.json
+http-requests/http-client.private.env.json
+
+# 9. Uploaded files / local storage
+uploads/
+storage/
+tmp/
+temp/
+
+# 10. Node / Frontend if placed in same repository
+node_modules/
+dist/
+coverage/

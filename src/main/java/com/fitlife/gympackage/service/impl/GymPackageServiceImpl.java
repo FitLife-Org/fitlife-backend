@@ -1,17 +1,18 @@
 package com.fitlife.gympackage.service.impl;
 
+import com.fitlife.common.exception.AppException;
+import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.common.response.PageResponse;
-import com.fitlife.gympackage.dto.GymPackageRequest;
-import com.fitlife.gympackage.dto.GymPackageResponse;
+import com.fitlife.gympackage.dto.*;
 import com.fitlife.gympackage.entity.GymPackage;
 import com.fitlife.gympackage.mapper.GymPackageMapper;
 import com.fitlife.gympackage.repository.GymPackageRepository;
 import com.fitlife.gympackage.service.GymPackageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,104 +25,114 @@ public class GymPackageServiceImpl implements GymPackageService {
     private final GymPackageRepository gymPackageRepository;
     private final GymPackageMapper gymPackageMapper;
 
-    @Transactional
     @Override
-    public GymPackageResponse createPackage(GymPackageRequest request) {
-        // Business Validation: Kiá»ƒm tra trĂ¹ng tĂªn (Chá»‰ Service má»›i lĂ m Ä‘Æ°á»£c)
-        if (gymPackageRepository.existsByName(request.getName())) {
-            throw new RuntimeException("TĂªn gĂ³i táº­p Ä‘Ă£ tá»“n táº¡i: " + request.getName());
-        }
-
-        GymPackage newPackage = gymPackageMapper.toEntity(request);
-        newPackage.setCode(generatePackageCode(request.getName()));
-        newPackage.setPackageType("BASIC");
-        newPackage.setStatus("ACTIVE");
-
-        return gymPackageMapper.toResponse(gymPackageRepository.save(newPackage));
-    }
-
     @Transactional(readOnly = true)
-    @Override
-    public PageResponse<GymPackageResponse> getAllPackages(int page, int size, String sortBy, String sortDir, String keyword) {
-        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name())
-                ? Sort.by(sortBy).ascending()
-                : Sort.by(sortBy).descending();
+    public PageResponse<GymPackageResponse> getPackagesList(String keyword, String packageType, String status, Pageable pageable) {
+        String searchKeyword = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
+        String searchPackageType = (packageType == null || packageType.isBlank() || "Tất cả".equalsIgnoreCase(packageType) || "ALL".equalsIgnoreCase(packageType)) ? null : packageType.trim();
 
-        Pageable pageable = PageRequest.of(Math.max(0, page - 1), size, sort);
-
-        Page<GymPackage> packagePage;
-        if (keyword != null && !keyword.trim().isEmpty()) {
-            packagePage = gymPackageRepository.findByNameContainingIgnoreCaseAndIsDeletedFalse(keyword.trim(), pageable);
-        } else {
-            packagePage = gymPackageRepository.findByIsDeletedFalse(pageable);
+        // Enforce visibility based on user authority
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAdminOrStaff = false;
+        if (auth != null && auth.isAuthenticated()) {
+            isAdminOrStaff = auth.getAuthorities().stream()
+                    .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()) || "ROLE_STAFF".equals(a.getAuthority()));
         }
 
-        List<GymPackageResponse> content = packagePage.getContent().stream()
+        String searchStatus;
+        if (isAdminOrStaff) {
+            searchStatus = (status == null || status.isBlank() || "Tất cả".equalsIgnoreCase(status) || "ALL".equalsIgnoreCase(status)) ? null : status.trim();
+        } else {
+            searchStatus = "ACTIVE"; // Guests & Members can only see ACTIVE packages
+        }
+
+        Page<GymPackage> pageResult = gymPackageRepository.searchPackages(searchKeyword, searchPackageType, searchStatus, pageable);
+
+        List<GymPackageResponse> dtoList = pageResult.getContent().stream()
                 .map(gymPackageMapper::toResponse)
                 .toList();
 
         return PageResponse.<GymPackageResponse>builder()
-                .currentPage(page)
-                .totalPages(packagePage.getTotalPages())
-                .pageSize(packagePage.getSize())
-                .totalElements(packagePage.getTotalElements())
-                .data(content)
+                .currentPage(pageResult.getNumber() + 1)
+                .totalPages(pageResult.getTotalPages() == 0 ? 1 : pageResult.getTotalPages())
+                .pageSize(pageResult.getSize())
+                .totalElements(pageResult.getTotalElements())
+                .data(dtoList)
                 .build();
     }
 
+    @Override
     @Transactional(readOnly = true)
-    @Override
     public GymPackageResponse getPackageById(Long id) {
-        GymPackage gymPackage = gymPackageRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("KhĂ´ng tĂ¬m tháº¥y gĂ³i táº­p vá»›i ID: " + id));
+        GymPackage pkg = gymPackageRepository.findByIdAndIsDeletedFalse(id)
+                .orElseThrow(() -> new AppException(ErrorCode.PACKAGE_NOT_FOUND));
 
-        // Cháº·n khĂ´ng cho xem gĂ³i Ä‘Ă£ xĂ³a
-        if (Boolean.TRUE.equals(gymPackage.getIsDeleted())) {
-            throw new RuntimeException("GĂ³i táº­p nĂ y Ä‘Ă£ bá»‹ xĂ³a khá»i há»‡ thá»‘ng!");
+        // Enforce visibility: guests & members cannot view INACTIVE packages
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAdminOrStaff = false;
+        if (auth != null && auth.isAuthenticated()) {
+            isAdminOrStaff = auth.getAuthorities().stream()
+                    .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()) || "ROLE_STAFF".equals(a.getAuthority()));
         }
 
-        return gymPackageMapper.toResponse(gymPackage);
+        if (!isAdminOrStaff && !"ACTIVE".equals(pkg.getStatus())) {
+            throw new AppException(ErrorCode.PACKAGE_NOT_FOUND);
+        }
+
+        return gymPackageMapper.toResponse(pkg);
     }
 
-    @Transactional
     @Override
-    public GymPackageResponse updatePackage(Long id, GymPackageRequest request) {
-        GymPackage gymPackage = gymPackageRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("KhĂ´ng tĂ¬m tháº¥y gĂ³i táº­p vá»›i ID: " + id));
-
-        if (Boolean.TRUE.equals(gymPackage.getIsDeleted())) {
-            throw new RuntimeException("KhĂ´ng thá»ƒ cáº­p nháº­t gĂ³i táº­p Ä‘Ă£ bá»‹ xĂ³a!");
-        }
-
-        // Kiá»ƒm tra trĂ¹ng tĂªn nhÆ°ng bá» qua tĂªn hiá»‡n táº¡i cá»§a chĂ­nh nĂ³
-        if (!gymPackage.getName().equals(request.getName()) && gymPackageRepository.existsByName(request.getName())) {
-            throw new RuntimeException("TĂªn gĂ³i táº­p Ä‘Ă£ tá»“n táº¡i: " + request.getName());
-        }
-
-        gymPackageMapper.updateFromRequest(request, gymPackage);
-
-        return gymPackageMapper.toResponse(gymPackageRepository.save(gymPackage));
-    }
-
-    // ÄĂƒ Sá»¬A THĂ€NH ÄĂNG Báº¢N CHáº¤T Cá»¦A SOFT DELETE
     @Transactional
-    @Override
-    public void togglePackageStatus(Long id) {
-        GymPackage gymPackage = gymPackageRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("KhĂ´ng tĂ¬m tháº¥y gĂ³i táº­p vá»›i ID: " + id));
+    public GymPackageResponse createPackage(GymPackageCreateRequest request) {
+        if (gymPackageRepository.existsByCodeAndIsDeletedFalse(request.getCode())) {
+            throw new AppException(ErrorCode.PACKAGE_CODE_ALREADY_EXISTS);
+        }
 
-        // Soft Delete: Gáº¯n cá» isDeleted = true thay vĂ¬ gá»i repository.delete()
-        gymPackage.setIsDeleted(true);
-        gymPackage.setStatus("INACTIVE"); // KĂ¨m theo dá»«ng bĂ¡n
-        gymPackageRepository.save(gymPackage);
+        GymPackage pkg = gymPackageMapper.toEntity(request);
+        pkg.setIsDeleted(false);
+        if (pkg.getStatus() == null || pkg.getStatus().isBlank()) {
+            pkg.setStatus("ACTIVE");
+        }
+
+        GymPackage saved = gymPackageRepository.save(pkg);
+        return gymPackageMapper.toResponse(saved);
     }
 
-    private String generatePackageCode(String name) {
-        String normalized = name == null ? "PKG" : name.trim().toUpperCase().replaceAll("[^A-Z0-9]+", "_");
-        if (normalized.isBlank()) {
-            normalized = "PKG";
+    @Override
+    @Transactional
+    public GymPackageResponse updatePackage(Long id, GymPackageUpdateRequest request) {
+        GymPackage pkg = gymPackageRepository.findByIdAndIsDeletedFalse(id)
+                .orElseThrow(() -> new AppException(ErrorCode.PACKAGE_NOT_FOUND));
+
+        gymPackageMapper.updateEntityFromRequest(request, pkg);
+
+        if (pkg.getStatus() == null || pkg.getStatus().isBlank()) {
+            pkg.setStatus("ACTIVE");
         }
-        String candidate = normalized.length() > 20 ? normalized.substring(0, 20) : normalized;
-        return candidate + "_" + System.currentTimeMillis();
+
+        GymPackage saved = gymPackageRepository.save(pkg);
+        return gymPackageMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public GymPackageResponse updateVisibility(Long id, GymPackageVisibilityRequest request) {
+        GymPackage pkg = gymPackageRepository.findByIdAndIsDeletedFalse(id)
+                .orElseThrow(() -> new AppException(ErrorCode.PACKAGE_NOT_FOUND));
+
+        pkg.setStatus(request.getStatus().toUpperCase());
+        GymPackage saved = gymPackageRepository.save(pkg);
+        return gymPackageMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public void deletePackage(Long id) {
+        GymPackage pkg = gymPackageRepository.findByIdAndIsDeletedFalse(id)
+                .orElseThrow(() -> new AppException(ErrorCode.PACKAGE_NOT_FOUND));
+
+        pkg.setIsDeleted(true);
+        gymPackageRepository.save(pkg);
     }
 }
