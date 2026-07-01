@@ -44,4 +44,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
             @Param("status") MemberStatus status,
             Pageable pageable
     );
+
+
 }
