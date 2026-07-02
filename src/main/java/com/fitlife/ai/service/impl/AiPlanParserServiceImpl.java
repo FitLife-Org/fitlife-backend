@@ -25,7 +25,15 @@ public class AiPlanParserServiceImpl implements AiPlanParserService {
     @Override
     public AiGeneratedPlanResponse parseGeneratedPlan(String rawResponse) {
         try {
+            System.out.println("===== RAW GEMINI TEXT START =====");
+            System.out.println(rawResponse);
+            System.out.println("===== RAW GEMINI TEXT END =====");
+
             String cleanedJson = cleanJson(rawResponse);
+
+            System.out.println("===== CLEANED GEMINI JSON START =====");
+            System.out.println(cleanedJson);
+            System.out.println("===== CLEANED GEMINI JSON END =====");
 
             AiGeneratedPlanResponse planResponse = objectMapper.readValue(
                     cleanedJson,
@@ -33,13 +41,17 @@ public class AiPlanParserServiceImpl implements AiPlanParserService {
             );
 
             if (planResponse.getSummary() == null || planResponse.getSummary().isBlank()) {
-                throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
+                planResponse.setSummary("AI đã tạo kế hoạch tập luyện cá nhân hóa.");
+            }
+
+            if (planResponse.getWarnings() == null) {
+                planResponse.setWarnings(List.of("Kế hoạch chỉ mang tính tham khảo."));
             }
 
             return planResponse;
-        } catch (AppException exception) {
-            throw exception;
         } catch (Exception exception) {
+            System.out.println("===== AI PARSE ERROR =====");
+            exception.printStackTrace();
             throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
         }
     }
@@ -61,14 +73,14 @@ public class AiPlanParserServiceImpl implements AiPlanParserService {
 
         if (planResponse.getWorkoutPlan() != null) {
             for (AiGeneratedWorkoutDayResponse day : planResponse.getWorkoutPlan()) {
-                String dayTitle = day.getFocus() == null || day.getFocus().isBlank()
+                String title = day.getFocus() == null || day.getFocus().isBlank()
                         ? "Workout Day " + day.getDayNo()
                         : day.getFocus();
 
                 items.add(AiPlanItem.builder()
                         .aiSuggestion(aiSuggestion)
                         .itemType(AiPlanItemType.WORKOUT_DAY)
-                        .title(dayTitle)
+                        .title(title)
                         .description(day.getFocus())
                         .dayNo(day.getDayNo())
                         .dayOfWeek(day.getDayOfWeek())
@@ -80,7 +92,7 @@ public class AiPlanParserServiceImpl implements AiPlanParserService {
                         items.add(AiPlanItem.builder()
                                 .aiSuggestion(aiSuggestion)
                                 .itemType(AiPlanItemType.EXERCISE)
-                                .title(exercise.getName())
+                                .title(exercise.getName() == null ? "Exercise" : exercise.getName())
                                 .description(exercise.getNote())
                                 .dayNo(day.getDayNo())
                                 .dayOfWeek(day.getDayOfWeek())
@@ -96,20 +108,34 @@ public class AiPlanParserServiceImpl implements AiPlanParserService {
         }
 
         AiGeneratedNutritionResponse nutrition = planResponse.getNutritionPlan();
-        if (nutrition != null && nutrition.getMeals() != null) {
-            for (AiGeneratedMealResponse meal : nutrition.getMeals()) {
-                items.add(AiPlanItem.builder()
-                        .aiSuggestion(aiSuggestion)
-                        .itemType(AiPlanItemType.MEAL)
-                        .title(meal.getMealName())
-                        .description(meal.getFoodItems())
-                        .mealName(meal.getMealName())
-                        .calories(meal.getCalories())
-                        .proteinGrams(meal.getProteinGrams())
-                        .carbsGrams(meal.getCarbsGrams())
-                        .fatGrams(meal.getFatGrams())
-                        .sortOrder(sortOrder++)
-                        .build());
+        if (nutrition != null) {
+            items.add(AiPlanItem.builder()
+                    .aiSuggestion(aiSuggestion)
+                    .itemType(AiPlanItemType.NUTRITION)
+                    .title("Nutrition Summary")
+                    .description("Target calories: " + nutrition.getTargetCalories())
+                    .calories(nutrition.getTargetCalories())
+                    .proteinGrams(nutrition.getProteinGrams())
+                    .carbsGrams(nutrition.getCarbsGrams())
+                    .fatGrams(nutrition.getFatGrams())
+                    .sortOrder(sortOrder++)
+                    .build());
+
+            if (nutrition.getMeals() != null) {
+                for (AiGeneratedMealResponse meal : nutrition.getMeals()) {
+                    items.add(AiPlanItem.builder()
+                            .aiSuggestion(aiSuggestion)
+                            .itemType(AiPlanItemType.MEAL)
+                            .title(meal.getMealName() == null ? "Meal" : meal.getMealName())
+                            .description(meal.getFoodItems())
+                            .mealName(meal.getMealName())
+                            .calories(meal.getCalories())
+                            .proteinGrams(meal.getProteinGrams())
+                            .carbsGrams(meal.getCarbsGrams())
+                            .fatGrams(meal.getFatGrams())
+                            .sortOrder(sortOrder++)
+                            .build());
+                }
             }
         }
 
@@ -125,17 +151,31 @@ public class AiPlanParserServiceImpl implements AiPlanParserService {
             }
         }
 
-        aiPlanItemRepository.saveAll(items);
+        if (!items.isEmpty()) {
+            aiPlanItemRepository.saveAll(items);
+        }
     }
 
     private String cleanJson(String rawResponse) {
-        if (rawResponse == null) {
+        if (rawResponse == null || rawResponse.isBlank()) {
             throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
         }
 
-        return rawResponse
+        String cleaned = rawResponse
                 .replace("```json", "")
+                .replace("```JSON", "")
+                .replace("```Json", "")
                 .replace("```", "")
                 .trim();
+
+        int firstBrace = cleaned.indexOf("{");
+        int lastBrace = cleaned.lastIndexOf("}");
+
+        if (firstBrace < 0 || lastBrace < 0 || lastBrace <= firstBrace) {
+            System.out.println("No valid JSON object found in Gemini response");
+            throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
+        }
+
+        return cleaned.substring(firstBrace, lastBrace + 1).trim();
     }
 }

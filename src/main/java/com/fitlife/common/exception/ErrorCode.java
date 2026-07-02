@@ -425,6 +425,11 @@ public enum ErrorCode {
             12005,
             "AI feedback already exists",
             HttpStatus.BAD_REQUEST
+    ),
+    AI_RESPONSE_TRUNCATED(
+            12006,
+            "AI response was truncated. Please try again with a shorter request.",
+            HttpStatus.BAD_GATEWAY
     );
 
     private final int code;

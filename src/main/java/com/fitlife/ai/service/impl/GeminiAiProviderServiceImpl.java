@@ -72,11 +72,28 @@ public class GeminiAiProviderServiceImpl implements AiProviderService {
 
     private String extractText(String responseBody) {
         try {
+            System.out.println("===== GEMINI FULL API RESPONSE START =====");
+            System.out.println(responseBody);
+            System.out.println("===== GEMINI FULL API RESPONSE END =====");
+
             JsonNode root = objectMapper.readTree(responseBody);
 
-            JsonNode textNode = root
-                    .path("candidates")
-                    .path(0)
+            JsonNode candidates = root.path("candidates");
+
+            if (!candidates.isArray() || candidates.isEmpty()) {
+                throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
+            }
+
+            JsonNode firstCandidate = candidates.path(0);
+
+            String finishReason = firstCandidate.path("finishReason").asText(null);
+            System.out.println("Gemini finishReason = " + finishReason);
+
+            if ("MAX_TOKENS".equalsIgnoreCase(finishReason)) {
+                throw new AppException(ErrorCode.AI_RESPONSE_TRUNCATED);
+            }
+
+            JsonNode textNode = firstCandidate
                     .path("content")
                     .path("parts")
                     .path(0)
@@ -90,6 +107,7 @@ public class GeminiAiProviderServiceImpl implements AiProviderService {
         } catch (AppException exception) {
             throw exception;
         } catch (Exception exception) {
+            exception.printStackTrace();
             throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
         }
     }
