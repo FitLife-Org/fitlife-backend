@@ -38,4 +38,11 @@ public class AdminSubscriptionController {
                 .data(subscriptionService.cancelSubscription(id))
                 .build();
     }
+
+    @PatchMapping("/{id}/expire")
+    public ApiResponse<SubscriptionResponse> expireSubscription(@PathVariable Long id) {
+        return ApiResponse.<SubscriptionResponse>builder()
+                .data(subscriptionService.expireSubscription(id))
+                .build();
+    }
 }
