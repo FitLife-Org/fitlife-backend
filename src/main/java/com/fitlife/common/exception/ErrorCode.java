@@ -237,6 +237,24 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST
     ),
 
+    DURATION_NOT_FOUND(
+            7006,
+            "Duration not found",
+            HttpStatus.NOT_FOUND
+    ),
+
+    DURATION_INACTIVE(
+            7007,
+            "Duration is inactive",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    DURATION_CODE_ALREADY_EXISTS(
+            7008,
+            "Duration code already exists",
+            HttpStatus.BAD_REQUEST
+    ),
+
 
     // =========================
     // Subscription errors: 8000 - 8999

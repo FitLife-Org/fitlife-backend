@@ -30,11 +30,20 @@ public class GymPackage {
     @Column(name = "package_type", nullable = false, length = 50)
     private String packageType;
 
-    @Column(name = "price", nullable = false, precision = 12, scale = 2)
-    private BigDecimal price;
+    @Column(name = "base_price", nullable = false, precision = 12, scale = 2)
+    private BigDecimal basePrice;
 
-    @Column(name = "duration_days", nullable = false)
-    private Integer durationDays;
+    @Column(name = "has_ai_workout_plan", nullable = false)
+    @Builder.Default
+    private Boolean hasAiWorkoutPlan = false;
+
+    @Column(name = "has_nutrition_plan", nullable = false)
+    @Builder.Default
+    private Boolean hasNutritionPlan = false;
+
+    @Column(name = "pt_sessions_per_month", nullable = false)
+    @Builder.Default
+    private Integer ptSessionsPerMonth = 0;
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
