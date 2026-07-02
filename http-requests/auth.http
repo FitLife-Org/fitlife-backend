@@ -58,7 +58,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "identifier": "Member01",
+  "identifier": "member01",
   "password": "123456"
 }
 

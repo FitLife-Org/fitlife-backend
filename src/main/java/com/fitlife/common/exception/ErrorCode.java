@@ -385,6 +385,69 @@ public enum ErrorCode {
             10008,
             "Cannot create payment for cancelled invoice",
             HttpStatus.BAD_REQUEST
+    ),
+
+    BODY_METRIC_NOT_FOUND(
+        11001,
+                "Body metric not found",
+        HttpStatus.NOT_FOUND
+        ),
+
+    WEIGHT_INVALID(
+        11002,
+                "Weight is invalid",
+        HttpStatus.BAD_REQUEST
+        ),
+
+    HEIGHT_INVALID(11003,
+                "Height is invalid",
+        HttpStatus.BAD_REQUEST
+        ),
+
+    BODY_FAT_INVALID(
+        11004,
+                "Body fat percent is invalid",
+        HttpStatus.BAD_REQUEST
+        ),
+
+    MUSCLE_MASS_INVALID(
+        11005,
+                "Muscle mass is invalid",
+        HttpStatus.BAD_REQUEST
+        ),
+    AI_SUGGESTION_NOT_FOUND(
+            12001,
+            "AI suggestion not found",
+            HttpStatus.NOT_FOUND
+    ),
+
+    AI_PROVIDER_ERROR(
+            12002,
+            "AI provider error",
+            HttpStatus.BAD_GATEWAY
+    ),
+
+    AI_RESPONSE_INVALID(
+            12003,
+            "AI response is invalid",
+            HttpStatus.BAD_GATEWAY
+    ),
+
+    AI_LIMIT_EXCEEDED(
+            12004,
+            "AI daily limit exceeded",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    AI_FEEDBACK_ALREADY_EXISTS(
+            12005,
+            "AI feedback already exists",
+            HttpStatus.BAD_REQUEST
+    ),
+    AI_RESPONSE_TRUNCATED(
+            12006,
+            "AI response was truncated. Please try again with a shorter request.",
+            HttpStatus.BAD_GATEWAY
     );
 
     private final int code;

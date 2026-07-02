@@ -2,7 +2,7 @@
 ### Admin get member list
 GET {{baseUrl}}/admin/members?page=1&size=10&keyword=member&status=ACTIVE
 Accept: application/json
-Authorization: Bearer {{accessToken}}
+Authorization: Bearer {{adminToken}}
 
 ### Admin create member
 POST {{baseUrl}}/admin/members
