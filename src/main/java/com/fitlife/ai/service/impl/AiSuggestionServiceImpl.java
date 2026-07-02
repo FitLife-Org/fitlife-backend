@@ -3,6 +3,7 @@ package com.fitlife.ai.service.impl;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fitlife.ai.dto.internal.*;
+import com.fitlife.ai.dto.request.AiBodyAnalysisRequest;
 import com.fitlife.ai.dto.request.AiFeedbackRequest;
 import com.fitlife.ai.dto.request.AiFullPlanRequest;
 import com.fitlife.ai.dto.response.*;
@@ -46,7 +47,7 @@ import java.util.Optional;
 @Transactional
 public class AiSuggestionServiceImpl implements AiSuggestionService {
 
-    private static final int DAILY_AI_LIMIT = 5;
+    private static final int DAILY_AI_LIMIT = 50;
 
     private final AiSuggestionRepository aiSuggestionRepository;
     private final AiPlanItemRepository aiPlanItemRepository;
@@ -331,7 +332,8 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
         }
 
         try {
-            return objectMapper.readValue(json, new TypeReference<>() {});
+            return objectMapper.readValue(json, new TypeReference<>() {
+            });
         } catch (Exception exception) {
             throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
         }
@@ -436,5 +438,120 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 .createdAt(feedback.getCreatedAt())
                 .updatedAt(feedback.getUpdatedAt())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public AiSuggestionDetailResponse analyzeBodyMetric(AiBodyAnalysisRequest request) {
+        Member currentMember = getCurrentMember();
+        User currentUser = currentMember.getUser();
+
+        checkDailyLimit(currentMember.getId());
+
+        BodyMetric latestBodyMetric = bodyMetricRepository
+                .findTopByMemberIdOrderByRecordedAtDesc(currentMember.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.BODY_METRIC_NOT_FOUND));
+
+        AiInputSnapshot snapshot = buildBodyAnalysisInputSnapshot(
+                currentMember,
+                currentUser,
+                latestBodyMetric,
+                request
+        );
+
+        AiSuggestion aiSuggestion = AiSuggestion.builder()
+                .member(currentMember)
+                .latestBodyMetric(latestBodyMetric)
+                .suggestionType(AiSuggestionType.BODY_ANALYSIS)
+                .status(AiSuggestionStatus.PENDING)
+                .goal(currentMember.getFitnessGoal() == null ? null : currentMember.getFitnessGoal().name())
+                .experienceLevel(null)
+                .activityLevel(null)
+                .workoutDaysPerWeek(null)
+                .workoutDurationMinutes(null)
+                .userNote(request.getUserNote())
+                .inputSnapshot(toJson(snapshot))
+                .createdBy(currentUser)
+                .updatedBy(currentUser)
+                .deleted(false)
+                .build();
+
+        AiSuggestion savedSuggestion = aiSuggestionRepository.save(aiSuggestion);
+
+        try {
+            String prompt = aiPromptBuilderService.buildBodyAnalysisPrompt(snapshot);
+
+            String rawAiResponse = aiProviderService.generate(prompt);
+
+            AiGeneratedBodyAnalysisResponse analysisResponse =
+                    aiPlanParserService.parseBodyAnalysis(rawAiResponse);
+
+            savedSuggestion.setAiResponse(toJson(analysisResponse));
+            savedSuggestion.setSummary(analysisResponse.getSummary());
+            savedSuggestion.setWarningMessage(buildWarningMessage(analysisResponse.getWarnings()));
+            savedSuggestion.setStatus(AiSuggestionStatus.SUCCESS);
+            savedSuggestion.setErrorMessage(null);
+
+            AiSuggestion updatedSuggestion = aiSuggestionRepository.save(savedSuggestion);
+
+            aiPlanParserService.saveBodyAnalysisItems(updatedSuggestion, analysisResponse);
+
+            List<AiPlanItem> items = aiPlanItemRepository
+                    .findByAiSuggestionIdOrderBySortOrderAsc(updatedSuggestion.getId());
+
+            return toSuggestionDetailResponse(updatedSuggestion, items, null);
+        } catch (AppException exception) {
+            savedSuggestion.setStatus(AiSuggestionStatus.FAILED);
+            savedSuggestion.setErrorMessage(exception.getMessage());
+            aiSuggestionRepository.save(savedSuggestion);
+            throw exception;
+        } catch (Exception exception) {
+            savedSuggestion.setStatus(AiSuggestionStatus.FAILED);
+            savedSuggestion.setErrorMessage(exception.getMessage());
+            aiSuggestionRepository.save(savedSuggestion);
+            throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
+        }
+    }
+
+    private AiInputSnapshot buildBodyAnalysisInputSnapshot(
+            Member member,
+            User user,
+            BodyMetric latestBodyMetric,
+            AiBodyAnalysisRequest request
+    ) {
+        return AiInputSnapshot.builder()
+                .member(AiInputMemberSnapshot.builder()
+                        .memberId(member.getId())
+                        .memberCode(member.getMemberCode())
+                        .gender(member.getGender() == null ? null : member.getGender().name())
+                        .dateOfBirth(member.getDateOfBirth())
+                        .age(calculateAge(member.getDateOfBirth()))
+                        .joinDate(member.getJoinDate())
+                        .fitnessGoal(member.getFitnessGoal() == null ? null : member.getFitnessGoal().name())
+                        .healthNote(member.getHealthNote())
+                        .build())
+                .user(AiInputUserSnapshot.builder()
+                        .fullName(user.getFullName())
+                        .email(user.getEmail())
+                        .phone(user.getPhone())
+                        .build())
+                .latestBodyMetric(buildBodyMetricSnapshot(latestBodyMetric))
+                .request(AiInputRequestSnapshot.builder()
+                        .goal(member.getFitnessGoal() == null ? null : member.getFitnessGoal().name())
+                        .experienceLevel(null)
+                        .activityLevel(null)
+                        .workoutDaysPerWeek(null)
+                        .workoutDurationMinutes(null)
+                        .userNote(request.getUserNote())
+                        .build())
+                .build();
+    }
+
+    private String buildWarningMessage(List<String> warnings) {
+        if (warnings == null || warnings.isEmpty()) {
+            return null;
+        }
+
+        return String.join(" ", warnings).trim();
     }
 }

@@ -1,5 +1,6 @@
 package com.fitlife.ai.controller;
 
+import com.fitlife.ai.dto.request.AiBodyAnalysisRequest;
 import com.fitlife.ai.dto.request.AiFeedbackRequest;
 import com.fitlife.ai.dto.request.AiFullPlanRequest;
 import com.fitlife.ai.dto.response.AiFeedbackResponse;
@@ -27,6 +28,16 @@ public class AiSuggestionController {
         return ApiResponse.<AiSuggestionResponse>builder()
                 .message("AI full plan created successfully")
                 .data(aiSuggestionService.createFullPlan(request))
+                .build();
+    }
+
+    @PostMapping("/body-analysis")
+    public ApiResponse<AiSuggestionDetailResponse> analyzeBodyMetric(
+            @Valid @RequestBody AiBodyAnalysisRequest request
+    ) {
+        return ApiResponse.<AiSuggestionDetailResponse>builder()
+                .message("AI body metric analysis created successfully")
+                .data(aiSuggestionService.analyzeBodyMetric(request))
                 .build();
     }
 

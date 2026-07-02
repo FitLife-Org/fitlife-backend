@@ -24,3 +24,21 @@ Content-Type: application/json
   "workoutDurationMinutes": 60,
   "userNote": "I want to lose belly fat and gain lean muscle. I have no injuries."
 }
+
+### Body metric analysis by AI - Vietnamese
+POST http://localhost:8080/api/v1/ai/suggestions/body-analysis
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "userNote": "Tôi muốn biết chỉ số hiện tại có phù hợp để giảm mỡ tăng cơ không"
+}
+
+### Body metric analysis by AI - English note
+POST http://localhost:8080/api/v1/ai/suggestions/body-analysis
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "userNote": "I want to know if my current body metrics are suitable for losing fat and gaining lean muscle."
+}

@@ -113,4 +113,63 @@ public class AiPromptBuilderServiceImpl implements AiPromptBuilderService {
             throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
         }
     }
+
+    @Override
+    public String buildBodyAnalysisPrompt(AiInputSnapshot snapshot) {
+        try {
+            String inputJson = objectMapper.writerWithDefaultPrettyPrinter()
+                    .writeValueAsString(snapshot);
+
+            return """
+                You are a fitness AI assistant for FitLife.
+
+                The user note may be written in Vietnamese or English.
+                You must understand both languages.
+                However, all user-facing text in JSON values must be written in Vietnamese.
+
+                Task:
+                - Analyze the member's latest body metrics.
+                - Explain BMI, body fat, muscle mass, and general fitness direction.
+                - Give safe and practical recommendations for a normal gym member in Vietnam.
+
+                Important rules:
+                - Return ONLY valid JSON.
+                - Do not use markdown.
+                - Do not wrap with ```json.
+                - Do not add explanation outside JSON.
+                - JSON keys must remain in English.
+                - Do not use snake_case.
+                - Keep every field concise.
+                - summary must be under 40 Vietnamese words.
+                - bodyAnalysis must be under 80 Vietnamese words.
+                - recommendation must be under 80 Vietnamese words.
+                - warnings must contain at most 2 items.
+
+                Safety rules:
+                - Do not diagnose diseases.
+                - Do not give medical treatment advice.
+                - Do not claim medical certainty.
+                - If data is missing, mention it in warnings.
+                - If healthNote exists, advise consulting a trainer or doctor.
+
+                Input data:
+                %s
+
+                Return JSON exactly with this structure:
+                {
+                  "summary": "Tóm tắt ngắn bằng tiếng Việt",
+                  "bodyAnalysis": "Phân tích tổng quan chỉ số cơ thể bằng tiếng Việt",
+                  "bmiAssessment": "Nhận xét BMI bằng tiếng Việt",
+                  "bodyFatAssessment": "Nhận xét tỷ lệ mỡ bằng tiếng Việt",
+                  "muscleAssessment": "Nhận xét khối lượng cơ bằng tiếng Việt",
+                  "recommendation": "Gợi ý hướng tập luyện và dinh dưỡng ngắn bằng tiếng Việt",
+                  "warnings": [
+                    "Lưu ý an toàn bằng tiếng Việt"
+                  ]
+                }
+                """.formatted(inputJson);
+        } catch (Exception exception) {
+            throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
+        }
+    }
 }

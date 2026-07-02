@@ -178,4 +178,91 @@ public class AiPlanParserServiceImpl implements AiPlanParserService {
 
         return cleaned.substring(firstBrace, lastBrace + 1).trim();
     }
+
+    @Override
+    public AiGeneratedBodyAnalysisResponse parseBodyAnalysis(String rawResponse) {
+        try {
+            System.out.println("===== RAW GEMINI BODY ANALYSIS START =====");
+            System.out.println(rawResponse);
+            System.out.println("===== RAW GEMINI BODY ANALYSIS END =====");
+
+            String cleanedJson = cleanJson(rawResponse);
+
+            System.out.println("===== CLEANED BODY ANALYSIS JSON START =====");
+            System.out.println(cleanedJson);
+            System.out.println("===== CLEANED BODY ANALYSIS JSON END =====");
+
+            AiGeneratedBodyAnalysisResponse response = objectMapper.readValue(
+                    cleanedJson,
+                    AiGeneratedBodyAnalysisResponse.class
+            );
+
+            if (response.getSummary() == null || response.getSummary().isBlank()) {
+                response.setSummary("AI đã phân tích chỉ số cơ thể hiện tại.");
+            }
+
+            if (response.getWarnings() == null) {
+                response.setWarnings(List.of("Kết quả chỉ mang tính tham khảo."));
+            }
+
+            return response;
+        } catch (Exception exception) {
+            System.out.println("===== AI BODY ANALYSIS PARSE ERROR =====");
+            exception.printStackTrace();
+            throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
+        }
+    }
+
+    @Override
+    public void saveBodyAnalysisItems(
+            AiSuggestion aiSuggestion,
+            AiGeneratedBodyAnalysisResponse response
+    ) {
+        List<AiPlanItem> items = new ArrayList<>();
+        int sortOrder = 0;
+
+        StringBuilder description = new StringBuilder();
+
+        if (response.getBodyAnalysis() != null && !response.getBodyAnalysis().isBlank()) {
+            description.append(response.getBodyAnalysis()).append("\n\n");
+        }
+
+        if (response.getBmiAssessment() != null && !response.getBmiAssessment().isBlank()) {
+            description.append("BMI: ").append(response.getBmiAssessment()).append("\n\n");
+        }
+
+        if (response.getBodyFatAssessment() != null && !response.getBodyFatAssessment().isBlank()) {
+            description.append("Tỷ lệ mỡ: ").append(response.getBodyFatAssessment()).append("\n\n");
+        }
+
+        if (response.getMuscleAssessment() != null && !response.getMuscleAssessment().isBlank()) {
+            description.append("Khối lượng cơ: ").append(response.getMuscleAssessment()).append("\n\n");
+        }
+
+        if (response.getRecommendation() != null && !response.getRecommendation().isBlank()) {
+            description.append("Gợi ý: ").append(response.getRecommendation());
+        }
+
+        items.add(AiPlanItem.builder()
+                .aiSuggestion(aiSuggestion)
+                .itemType(AiPlanItemType.BODY_ANALYSIS)
+                .title("Phân tích chỉ số cơ thể")
+                .description(description.toString())
+                .sortOrder(sortOrder++)
+                .build());
+
+        if (response.getWarnings() != null) {
+            for (String warning : response.getWarnings()) {
+                items.add(AiPlanItem.builder()
+                        .aiSuggestion(aiSuggestion)
+                        .itemType(AiPlanItemType.WARNING)
+                        .title("Lưu ý")
+                        .description(warning)
+                        .sortOrder(sortOrder++)
+                        .build());
+            }
+        }
+
+        aiPlanItemRepository.saveAll(items);
+    }
 }

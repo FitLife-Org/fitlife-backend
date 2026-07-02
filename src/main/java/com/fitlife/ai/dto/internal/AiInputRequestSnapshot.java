@@ -2,12 +2,16 @@ package com.fitlife.ai.dto.internal;
 
 import com.fitlife.ai.enums.ActivityLevel;
 import com.fitlife.ai.enums.ExperienceLevel;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class AiInputRequestSnapshot {
 
@@ -20,8 +24,6 @@ public class AiInputRequestSnapshot {
     private Integer workoutDaysPerWeek;
 
     private Integer workoutDurationMinutes;
-
-    private Integer mealsPerDay;
 
     private String userNote;
 }
