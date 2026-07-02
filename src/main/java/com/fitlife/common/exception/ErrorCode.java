@@ -396,7 +396,36 @@ public enum ErrorCode {
         11005,
                 "Muscle mass is invalid",
         HttpStatus.BAD_REQUEST
-        );
+        ),
+    AI_SUGGESTION_NOT_FOUND(
+            12001,
+            "AI suggestion not found",
+            HttpStatus.NOT_FOUND
+    ),
+
+    AI_PROVIDER_ERROR(
+            12002,
+            "AI provider error",
+            HttpStatus.BAD_GATEWAY
+    ),
+
+    AI_RESPONSE_INVALID(
+            12003,
+            "AI response is invalid",
+            HttpStatus.BAD_GATEWAY
+    ),
+
+    AI_LIMIT_EXCEEDED(
+            12004,
+            "AI daily limit exceeded",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    AI_FEEDBACK_ALREADY_EXISTS(
+            12005,
+            "AI feedback already exists",
+            HttpStatus.BAD_REQUEST
+    );
 
     private final int code;
     private final String message;

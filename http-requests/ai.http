@@ -1,0 +1,33 @@
+
+
+### Create AI full plan
+POST {{baseUrl}}/ai/suggestions/full-plan
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "goal": "BODY_RECOMPOSITION",
+  "experienceLevel": "BEGINNER",
+  "activityLevel": "MODERATE",
+  "workoutDaysPerWeek": 4,
+  "workoutDurationMinutes": 60,
+  "userNote": "Muốn giảm mỡ bụng, tăng cơ nhẹ, không có chấn thương"
+}
+
+### Get my AI suggestions
+GET {{baseUrl}}/ai/suggestions/my?page=0&size=10
+Authorization: Bearer {{accessToken}}
+
+### Get AI suggestion detail
+GET {{baseUrl}}/ai/suggestions/{{aiSuggestionId}}
+Authorization: Bearer {{accessToken}}
+
+### Submit feedback
+POST {{baseUrl}}/ai/suggestions/{{aiSuggestionId}}/feedback
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "rating": 5,
+  "comment": "Kế hoạch dễ hiểu và phù hợp"
+}

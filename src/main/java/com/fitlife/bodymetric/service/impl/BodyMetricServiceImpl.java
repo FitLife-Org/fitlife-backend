@@ -168,11 +168,11 @@ public class BodyMetricServiceImpl implements BodyMetricService {
     }
 
     private Member getCurrentMember() {
-        String username = SecurityContextHolder.getContext()
+        String principal = SecurityContextHolder.getContext()
                 .getAuthentication()
                 .getName();
 
-        User user = userRepository.findByUsername(username)
+        User user = userRepository.findByUsernameOrEmail(principal, principal)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         return memberRepository.findByUserId(user.getId())
