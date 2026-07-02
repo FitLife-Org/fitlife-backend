@@ -24,8 +24,18 @@ public class SubscriptionResponse {
     private String gymPackageCode;
     private String gymPackageName;
 
-    private BigDecimal packagePrice;
-    private Integer durationDays;
+    private Long packageDurationId;
+    private String packageDurationCode;
+    private String packageDurationName;
+    private Integer months;
+
+    private BigDecimal basePrice;
+    private BigDecimal originalPrice;
+    private BigDecimal discountAmount;
+    private BigDecimal finalPrice;
+
+    private Integer ptSessionsTotal;
+    private Integer ptSessionsUsed;
 
     private LocalDate startDate;
     private LocalDate endDate;
@@ -36,9 +46,6 @@ public class SubscriptionResponse {
 
     private String note;
 
-    /*
-     * Invoice sinh ra sau khi tạo subscription.
-     */
     private Long invoiceId;
     private String invoiceCode;
     private BigDecimal invoiceFinalAmount;
