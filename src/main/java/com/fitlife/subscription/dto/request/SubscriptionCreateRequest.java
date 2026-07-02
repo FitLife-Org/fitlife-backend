@@ -11,6 +11,9 @@ public class SubscriptionCreateRequest {
     @NotNull(message = "GYM_PACKAGE_ID_REQUIRED")
     private Long gymPackageId;
 
+    @NotNull(message = "PACKAGE_DURATION_ID_REQUIRED")
+    private Long packageDurationId;
+
     private Boolean autoRenew;
 
     private String note;

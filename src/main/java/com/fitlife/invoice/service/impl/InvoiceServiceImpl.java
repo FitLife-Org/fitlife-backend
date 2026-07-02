@@ -155,19 +155,16 @@ public class InvoiceServiceImpl implements InvoiceService {
     }
 
     private InvoiceAmountSnapshot resolveInvoiceAmount(Subscription subscription) {
-        if (subscription.getGymPackage() == null
-                || subscription.getGymPackage().getPrice() == null) {
-            throw new AppException(ErrorCode.GYM_PACKAGE_NOT_FOUND);
+        if (subscription.getOriginalPrice() == null
+                || subscription.getDiscountAmount() == null
+                || subscription.getFinalPrice() == null) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
-        BigDecimal totalAmount = subscription.getGymPackage().getPrice();
-        BigDecimal discountAmount = BigDecimal.ZERO;
-        BigDecimal finalAmount = totalAmount;
-
         return new InvoiceAmountSnapshot(
-                totalAmount,
-                discountAmount,
-                finalAmount
+                subscription.getOriginalPrice(),
+                subscription.getDiscountAmount(),
+                subscription.getFinalPrice()
         );
     }
 

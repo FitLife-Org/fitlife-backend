@@ -282,19 +282,18 @@ public class PaymentServiceImpl implements PaymentService {
             throw new AppException(ErrorCode.INVALID_SUBSCRIPTION_STATUS);
         }
 
-        LocalDate startDate = LocalDate.now();
-
-        Integer durationDays = subscription.getGymPackage() != null
-                ? subscription.getGymPackage().getDurationDays()
-                : null;
-
-        if (durationDays == null || durationDays <= 0) {
+        if (subscription.getPackageDuration() == null
+                || subscription.getPackageDuration().getMonths() == null
+                || subscription.getPackageDuration().getMonths() <= 0) {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
+        LocalDate startDate = LocalDate.now();
+        Integer months = subscription.getPackageDuration().getMonths();
+
         subscription.setStatus(SubscriptionStatus.ACTIVE);
         subscription.setStartDate(startDate);
-        subscription.setEndDate(startDate.plusDays(durationDays));
+        subscription.setEndDate(startDate.plusMonths(months));
     }
 
     private Member getCurrentMember() {

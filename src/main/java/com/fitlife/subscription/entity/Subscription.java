@@ -1,11 +1,13 @@
 package com.fitlife.subscription.entity;
 
 import com.fitlife.gympackage.entity.GymPackage;
+import com.fitlife.gympackage.entity.PackageDuration;
 import com.fitlife.member.entity.Member;
 import com.fitlife.subscription.enums.SubscriptionStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -20,6 +22,7 @@ import java.time.LocalDateTime;
         indexes = {
                 @Index(name = "idx_subscriptions_member", columnList = "member_id"),
                 @Index(name = "idx_subscriptions_package", columnList = "gym_package_id"),
+                @Index(name = "idx_subscriptions_duration", columnList = "package_duration_id"),
                 @Index(name = "idx_subscriptions_status", columnList = "status"),
                 @Index(name = "idx_subscriptions_dates", columnList = "start_date, end_date")
         }
@@ -30,25 +33,33 @@ public class Subscription {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /*
-     * Member đăng ký gói.
-     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
-    /*
-     * Hiện tại chưa có PackageDuration nên vẫn dùng gym_package_id.
-     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "gym_package_id", nullable = false)
     private GymPackage gymPackage;
 
-    /*
-     * Sau V5:
-     * Khi mới tạo subscription: null
-     * Khi payment SUCCESS: set startDate/endDate
-     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "package_duration_id", nullable = false)
+    private PackageDuration packageDuration;
+
+    @Column(name = "original_price", nullable = false, precision = 12, scale = 2)
+    private BigDecimal originalPrice;
+
+    @Column(name = "discount_amount", nullable = false, precision = 12, scale = 2)
+    private BigDecimal discountAmount;
+
+    @Column(name = "final_price", nullable = false, precision = 12, scale = 2)
+    private BigDecimal finalPrice;
+
+    @Column(name = "pt_sessions_total", nullable = false)
+    private Integer ptSessionsTotal;
+
+    @Column(name = "pt_sessions_used", nullable = false)
+    private Integer ptSessionsUsed;
+
     @Column(name = "start_date")
     private LocalDate startDate;
 
@@ -81,6 +92,18 @@ public class Subscription {
 
         if (autoRenew == null) {
             autoRenew = false;
+        }
+
+        if (discountAmount == null) {
+            discountAmount = BigDecimal.ZERO;
+        }
+
+        if (ptSessionsTotal == null) {
+            ptSessionsTotal = 0;
+        }
+
+        if (ptSessionsUsed == null) {
+            ptSessionsUsed = 0;
         }
 
         createdAt = now;
