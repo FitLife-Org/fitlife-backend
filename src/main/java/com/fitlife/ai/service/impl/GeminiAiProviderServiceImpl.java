@@ -36,10 +36,9 @@ public class GeminiAiProviderServiceImpl implements AiProviderService {
             Map<String, Object> requestBody = buildRequestBody(prompt);
 
             String responseBody = geminiRestClient.post()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/models/{model}:generateContent")
-                            .queryParam("key", geminiProperties.getApiKey())
-                            .build(geminiProperties.getModel()))
+                    .uri("/models/{model}:generateContent?key={apiKey}",
+                            geminiProperties.getModel(),
+                            geminiProperties.getApiKey())
                     .body(requestBody)
                     .retrieve()
                     .body(String.class);
