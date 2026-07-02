@@ -18,7 +18,9 @@ public class AiSuggestionResponse {
     private Long id;
 
     private Long memberId;
+
     private String memberCode;
+
     private String memberName;
 
     private AiSuggestionType suggestionType;
@@ -26,16 +28,20 @@ public class AiSuggestionResponse {
     private String goal;
 
     private ExperienceLevel experienceLevel;
+
     private ActivityLevel activityLevel;
 
     private Integer workoutDaysPerWeek;
+
     private Integer workoutDurationMinutes;
 
     private String summary;
+
     private String warningMessage;
 
     private AiSuggestionStatus status;
 
     private LocalDateTime createdAt;
+
     private LocalDateTime updatedAt;
 }
