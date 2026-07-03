@@ -1,9 +1,12 @@
-POST {{baseUrl}}/subscriptions
+### Member create subscription
+POST http://localhost:8080/api/v1/subscriptions
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
+Accept: application/json
 
 {
-  "gymPackageId": 1,
+  "gymPackageId": 4,
+  "packageDurationId": 1,
   "autoRenew": false,
-  "note": "Đăng ký gói tập"
+  "note": "Đăng ký gói BASIC 1 tháng"
 }
