@@ -3,12 +3,15 @@ package com.fitlife.subscription.service.impl;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.gympackage.entity.GymPackage;
+import com.fitlife.gympackage.entity.PackageDuration;
 import com.fitlife.gympackage.repository.GymPackageRepository;
+import com.fitlife.gympackage.repository.PackageDurationRepository;
 import com.fitlife.invoice.entity.Invoice;
 import com.fitlife.invoice.service.InvoiceService;
 import com.fitlife.member.entity.Member;
 import com.fitlife.member.repository.MemberRepository;
 import com.fitlife.subscription.dto.request.SubscriptionCreateRequest;
+import com.fitlife.subscription.dto.response.SubscriptionPreviewResponse;
 import com.fitlife.subscription.dto.response.SubscriptionResponse;
 import com.fitlife.subscription.entity.Subscription;
 import com.fitlife.subscription.enums.SubscriptionStatus;
@@ -25,12 +28,16 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 public class SubscriptionServiceImpl implements SubscriptionService {
 
     private final SubscriptionRepository subscriptionRepository;
     private final GymPackageRepository gymPackageRepository;
+    private final PackageDurationRepository packageDurationRepository;
     private final MemberRepository memberRepository;
     private final UserRepository userRepository;
     private final InvoiceService invoiceService;
@@ -52,6 +59,13 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             throw new AppException(ErrorCode.GYM_PACKAGE_INACTIVE);
         }
 
+        PackageDuration packageDuration = packageDurationRepository.findById(request.getPackageDurationId())
+                .orElseThrow(() -> new AppException(ErrorCode.DURATION_NOT_FOUND));
+
+        if (!"ACTIVE".equalsIgnoreCase(packageDuration.getStatus())) {
+            throw new AppException(ErrorCode.DURATION_INACTIVE);
+        }
+
         /*
          * MVP rule:
          * Không cho member có 2 gói ACTIVE cùng lúc.
@@ -67,9 +81,27 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             throw new AppException(ErrorCode.ACTIVE_SUBSCRIPTION_EXISTS);
         }
 
+        // Calculate snapshot values
+        BigDecimal basePrice = gymPackage.getBasePrice();
+        Integer months = packageDuration.getMonths();
+        BigDecimal originalPrice = basePrice.multiply(BigDecimal.valueOf(months));
+        BigDecimal discountPercent = packageDuration.getDiscountPercent();
+        BigDecimal discountAmount = originalPrice.multiply(discountPercent)
+                .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+        BigDecimal finalPrice = originalPrice.subtract(discountAmount);
+
+        Integer ptSessionsPerMonth = gymPackage.getPtSessionsPerMonth() != null ? gymPackage.getPtSessionsPerMonth() : 0;
+        Integer ptSessionsTotal = ptSessionsPerMonth * months;
+
         Subscription subscription = Subscription.builder()
                 .member(member)
                 .gymPackage(gymPackage)
+                .packageDuration(packageDuration)
+                .originalPrice(originalPrice)
+                .discountAmount(discountAmount)
+                .finalPrice(finalPrice)
+                .ptSessionsTotal(ptSessionsTotal)
+                .ptSessionsUsed(0)
                 .startDate(null)
                 .endDate(null)
                 .status(SubscriptionStatus.PENDING_PAYMENT)
@@ -81,11 +113,56 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
         /*
          * Tạo invoice ngay sau khi subscription được tạo.
-         * Invoice amount hiện tại lấy từ gymPackage.price trong InvoiceService.
+         * Invoice amount hiện tại lấy từ subscription.finalPrice trong InvoiceService.
          */
         Invoice invoice = invoiceService.createInvoiceForSubscription(savedSubscription);
 
         return subscriptionMapper.toResponse(savedSubscription, invoice);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SubscriptionPreviewResponse previewPrice(SubscriptionCreateRequest request) {
+        GymPackage gymPackage = gymPackageRepository.findById(request.getGymPackageId())
+                .orElseThrow(() -> new AppException(ErrorCode.GYM_PACKAGE_NOT_FOUND));
+
+        if (Boolean.TRUE.equals(gymPackage.getIsDeleted())) {
+            throw new AppException(ErrorCode.GYM_PACKAGE_NOT_FOUND);
+        }
+
+        if (!"ACTIVE".equalsIgnoreCase(gymPackage.getStatus())) {
+            throw new AppException(ErrorCode.GYM_PACKAGE_INACTIVE);
+        }
+
+        PackageDuration packageDuration = packageDurationRepository.findById(request.getPackageDurationId())
+                .orElseThrow(() -> new AppException(ErrorCode.DURATION_NOT_FOUND));
+
+        if (!"ACTIVE".equalsIgnoreCase(packageDuration.getStatus())) {
+            throw new AppException(ErrorCode.DURATION_INACTIVE);
+        }
+
+        BigDecimal basePrice = gymPackage.getBasePrice();
+        Integer months = packageDuration.getMonths();
+        BigDecimal originalPrice = basePrice.multiply(BigDecimal.valueOf(months));
+        BigDecimal discountPercent = packageDuration.getDiscountPercent();
+        BigDecimal discountAmount = originalPrice.multiply(discountPercent)
+                .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+        BigDecimal finalPrice = originalPrice.subtract(discountAmount);
+
+        Integer ptSessionsPerMonth = gymPackage.getPtSessionsPerMonth() != null ? gymPackage.getPtSessionsPerMonth() : 0;
+        Integer ptSessionsTotal = ptSessionsPerMonth * months;
+
+        return SubscriptionPreviewResponse.builder()
+                .packageName(gymPackage.getName())
+                .durationName(packageDuration.getName())
+                .basePrice(basePrice)
+                .months(months)
+                .originalPrice(originalPrice)
+                .discountPercent(discountPercent)
+                .discountAmount(discountAmount)
+                .finalPrice(finalPrice)
+                .ptSessionsTotal(ptSessionsTotal)
+                .build();
     }
 
     @Override
@@ -166,6 +243,23 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         }
 
         subscription.setStatus(SubscriptionStatus.CANCELLED);
+
+        Subscription savedSubscription = subscriptionRepository.save(subscription);
+
+        return subscriptionMapper.toResponse(savedSubscription);
+    }
+
+    @Override
+    @Transactional
+    public SubscriptionResponse expireSubscription(Long subscriptionId) {
+        Subscription subscription = subscriptionRepository.findById(subscriptionId)
+                .orElseThrow(() -> new AppException(ErrorCode.SUBSCRIPTION_NOT_FOUND));
+
+        if (subscription.getStatus() == SubscriptionStatus.EXPIRED) {
+            throw new AppException(ErrorCode.INVALID_SUBSCRIPTION_STATUS);
+        }
+
+        subscription.setStatus(SubscriptionStatus.EXPIRED);
 
         Subscription savedSubscription = subscriptionRepository.save(subscription);
 
