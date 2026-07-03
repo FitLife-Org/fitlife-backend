@@ -59,6 +59,38 @@ public class GymPackageController {
         return ApiResponse.created("Tạo gói tập thành công", response);
     }
 
+    @GetMapping("/admin/gym-packages")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @Operation(summary = "Admin get list of gym packages with pagination and filtering")
+    public ApiResponse<PageResponse<GymPackageResponse>> getPackagesListForAdmin(
+            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size,
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "packageType", required = false) String packageType,
+            @RequestParam(value = "status", required = false) String status
+    ) {
+        Pageable pageable = PageRequest.of(page - 1, size);
+
+        PageResponse<GymPackageResponse> response = gymPackageService.getPackagesList(
+                keyword,
+                packageType,
+                status,
+                pageable
+        );
+
+        return ApiResponse.success("Admin lấy danh sách gói tập thành công", response);
+    }
+
+    @GetMapping("/admin/gym-packages/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @Operation(summary = "Admin get details of a specific gym package by ID")
+    public ApiResponse<GymPackageResponse> getPackageByIdForAdmin(
+            @PathVariable("id") Long id
+    ) {
+        GymPackageResponse response = gymPackageService.getPackageById(id);
+        return ApiResponse.success("Admin lấy chi tiết gói tập thành công", response);
+    }
+
     @PutMapping("/admin/gym-packages/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Update a gym package")
