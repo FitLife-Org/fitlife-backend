@@ -6,12 +6,15 @@ import com.fitlife.ai.dto.request.AiFullPlanRequest;
 import com.fitlife.ai.dto.response.AiFeedbackResponse;
 import com.fitlife.ai.dto.response.AiSuggestionDetailResponse;
 import com.fitlife.ai.dto.response.AiSuggestionResponse;
+import com.fitlife.ai.enums.AiSuggestionStatus;
+import com.fitlife.ai.enums.AiSuggestionType;
 import com.fitlife.ai.service.AiSuggestionService;
 import com.fitlife.common.dto.ApiResponse;
 import com.fitlife.common.dto.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -70,6 +73,18 @@ public class AiSuggestionController {
         return ApiResponse.<AiFeedbackResponse>builder()
                 .message("AI feedback submitted successfully")
                 .data(aiSuggestionService.submitFeedback(id, request))
+                .build();
+    }
+
+    @GetMapping("/my/filter")
+    public ApiResponse<PageResponse<AiSuggestionResponse>> getMySuggestionsByType(
+            @RequestParam(required = false) AiSuggestionType suggestionType,
+            @RequestParam(required = false) AiSuggestionStatus status,
+            Pageable pageable
+    ) {
+        return ApiResponse.<PageResponse<AiSuggestionResponse>>builder()
+                .message("Get my AI suggestions successfully")
+                .data(aiSuggestionService.getMySuggestionsByFilter(suggestionType, status, pageable))
                 .build();
     }
 }

@@ -13,11 +13,11 @@ public class GeminiProperties {
 
     private String apiKey;
 
-    private String model = "gemini-3.5-flash";
+    private String model = "gemini-3.1-flash-lite";
 
     private String baseUrl = "https://generativelanguage.googleapis.com/v1beta";
 
-    private Double temperature = 0.4;
+    private Double temperature = 0.2;
 
-    private Integer maxOutputTokens = 4096;
+    private Integer maxOutputTokens = 8192;
 }

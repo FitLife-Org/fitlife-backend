@@ -42,3 +42,19 @@ Content-Type: application/json
 {
   "userNote": "I want to know if my current body metrics are suitable for losing fat and gaining lean muscle."
 }
+
+### Get my AI history
+GET http://localhost:8080/api/v1/ai/suggestions/my?page=0&size=10
+Authorization: Bearer {{accessToken}}
+
+### Get my AI history by type
+GET http://localhost:8080/api/v1/ai/suggestions/my/filter?suggestionType=BODY_ANALYSIS&page=0&size=10
+Authorization: Bearer {{accessToken}}
+
+### Get my AI history by status
+GET http://localhost:8080/api/v1/ai/suggestions/my/filter?status=SUCCESS&page=0&size=10
+Authorization: Bearer {{accessToken}}
+
+### Get my AI history by type and status
+GET http://localhost:8080/api/v1/ai/suggestions/my/filter?suggestionType=FULL_PLAN&status=SUCCESS&page=0&size=10
+Authorization: Bearer {{accessToken}}

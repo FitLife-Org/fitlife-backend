@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 public interface AiSuggestionRepository extends JpaRepository<AiSuggestion, Long> {
@@ -22,12 +23,40 @@ public interface AiSuggestionRepository extends JpaRepository<AiSuggestion, Long
             Long memberId
     );
 
-    Page<AiSuggestion> findByDeletedFalseOrderByCreatedAtDesc(Pageable pageable);
+    Page<AiSuggestion> findByDeletedFalseOrderByCreatedAtDesc(
+            Pageable pageable
+    );
 
     long countByMemberIdAndCreatedAtBetweenAndDeletedFalse(
             Long memberId,
             LocalDateTime from,
             LocalDateTime to
+    );
+
+    long countByMemberIdAndStatusInAndCreatedAtBetweenAndDeletedFalse(
+            Long memberId,
+            List<AiSuggestionStatus> statuses,
+            LocalDateTime from,
+            LocalDateTime to
+    );
+
+    Page<AiSuggestion> findByMemberIdAndSuggestionTypeAndDeletedFalseOrderByCreatedAtDesc(
+            Long memberId,
+            AiSuggestionType suggestionType,
+            Pageable pageable
+    );
+
+    Page<AiSuggestion> findByMemberIdAndStatusAndDeletedFalseOrderByCreatedAtDesc(
+            Long memberId,
+            AiSuggestionStatus status,
+            Pageable pageable
+    );
+
+    Page<AiSuggestion> findByMemberIdAndSuggestionTypeAndStatusAndDeletedFalseOrderByCreatedAtDesc(
+            Long memberId,
+            AiSuggestionType suggestionType,
+            AiSuggestionStatus status,
+            Pageable pageable
     );
 
     Page<AiSuggestion> findBySuggestionTypeAndStatusAndDeletedFalseOrderByCreatedAtDesc(

@@ -554,4 +554,57 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
 
         return String.join(" ", warnings).trim();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<AiSuggestionResponse> getMySuggestionsByFilter(
+            AiSuggestionType suggestionType,
+            AiSuggestionStatus status,
+            Pageable pageable
+    ) {
+        Member currentMember = getCurrentMember();
+
+        Page<AiSuggestion> page;
+
+        if (suggestionType != null && status != null) {
+            page = aiSuggestionRepository
+                    .findByMemberIdAndSuggestionTypeAndStatusAndDeletedFalseOrderByCreatedAtDesc(
+                            currentMember.getId(),
+                            suggestionType,
+                            status,
+                            pageable
+                    );
+        } else if (suggestionType != null) {
+            page = aiSuggestionRepository
+                    .findByMemberIdAndSuggestionTypeAndDeletedFalseOrderByCreatedAtDesc(
+                            currentMember.getId(),
+                            suggestionType,
+                            pageable
+                    );
+        } else if (status != null) {
+            page = aiSuggestionRepository
+                    .findByMemberIdAndStatusAndDeletedFalseOrderByCreatedAtDesc(
+                            currentMember.getId(),
+                            status,
+                            pageable
+                    );
+        } else {
+            page = aiSuggestionRepository
+                    .findByMemberIdAndDeletedFalseOrderByCreatedAtDesc(
+                            currentMember.getId(),
+                            pageable
+                    );
+        }
+
+        return PageResponse.<AiSuggestionResponse>builder()
+                .content(page.getContent()
+                        .stream()
+                        .map(this::toSuggestionResponse)
+                        .toList())
+                .page(page.getNumber())
+                .size(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .build();
+    }
 }

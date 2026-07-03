@@ -6,6 +6,8 @@ import com.fitlife.ai.dto.request.AiFullPlanRequest;
 import com.fitlife.ai.dto.response.AiFeedbackResponse;
 import com.fitlife.ai.dto.response.AiSuggestionDetailResponse;
 import com.fitlife.ai.dto.response.AiSuggestionResponse;
+import com.fitlife.ai.enums.AiSuggestionStatus;
+import com.fitlife.ai.enums.AiSuggestionType;
 import com.fitlife.common.dto.PageResponse;
 import org.springframework.data.domain.Pageable;
 
@@ -20,4 +22,10 @@ public interface AiSuggestionService {
     AiFeedbackResponse submitFeedback(Long aiSuggestionId, AiFeedbackRequest request);
 
     AiSuggestionDetailResponse analyzeBodyMetric(AiBodyAnalysisRequest request);
+
+    PageResponse<AiSuggestionResponse> getMySuggestionsByFilter(
+            AiSuggestionType suggestionType,
+            AiSuggestionStatus status,
+            Pageable pageable
+    );
 }
