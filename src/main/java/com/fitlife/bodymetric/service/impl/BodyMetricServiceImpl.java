@@ -131,6 +131,7 @@ public class BodyMetricServiceImpl implements BodyMetricService {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
+        // ĐÃ FIX: Sửa lại tên hàm tìm kiếm theo khoảng thời gian chính xác của JPA
         return bodyMetricRepository
                 .findByMemberIdAndRecordedAtBetweenOrderByRecordedAtAsc(
                         currentMember.getId(),
@@ -167,15 +168,22 @@ public class BodyMetricServiceImpl implements BodyMetricService {
         bodyMetricRepository.delete(bodyMetric);
     }
 
-
     @Override
     public BodyMetricResponse createByAdmin(BodyMetricCreateRequest request) {
-        if (request.getMemberId() == null) {
+        Member member;
+
+        // ĐÃ CẬP NHẬT: Tìm kiếm thông minh bằng Code hoặc ID
+        if (request.getMemberCode() != null && !request.getMemberCode().trim().isEmpty()) {
+            member = memberRepository.findByMemberCodeAndIsDeletedFalse(request.getMemberCode().trim())
+                    .orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_FOUND));
+        }
+        else if (request.getMemberId() != null) {
+            member = memberRepository.findById(request.getMemberId())
+                    .orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_FOUND));
+        }
+        else {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
-
-        Member member = memberRepository.findById(request.getMemberId())
-                .orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_FOUND));
 
         BodyMetric bodyMetric = bodyMetricMapper.toEntity(request);
         bodyMetric.setMember(member);
@@ -209,5 +217,14 @@ public class BodyMetricServiceImpl implements BodyMetricService {
                 .totalElements(page.getTotalElements())
                 .totalPages(page.getTotalPages())
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<BodyMetricResponse> getBodyMetricsForAdmin(String keyword, LocalDateTime from, LocalDateTime to, Pageable pageable) {
+        String searchKeyword = (keyword == null || keyword.trim().isEmpty()) ? null : keyword.trim();
+
+        Page<BodyMetric> page = bodyMetricRepository.searchBodyMetricsByAdmin(searchKeyword, from, to, pageable);
+        return toPageResponse(page);
     }
 }

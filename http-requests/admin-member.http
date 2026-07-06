@@ -87,4 +87,17 @@ Authorization: Bearer {{adminToken}}
   "memberId": 1,
   "weightKg": 50.5,
   "heightCm": 175
-}}
+}
+
+
+#### Admin get body metrics list - All
+GET {{baseUrl}}/admin/body-metrics?page=0&size=10
+Accept: application/json
+Authorization: Bearer {{adminToken}}
+
+
+
+### Admin get body metrics by member code
+GET {{baseUrl}}/admin/body-metrics?keyword=MEM002
+Accept: application/json
+Authorization: Bearer {{adminToken}}

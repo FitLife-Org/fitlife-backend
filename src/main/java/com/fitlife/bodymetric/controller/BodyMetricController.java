@@ -173,4 +173,20 @@ public class BodyMetricController {
                 .data(bodyMetricService.createByAdmin(request))
                 .build();
     }
+
+    @GetMapping("/admin/body-metrics")
+    public ApiResponse<PageResponse<BodyMetricResponse>> getBodyMetricsForAdmin(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) LocalDateTime from,
+            @RequestParam(required = false) LocalDateTime to,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+
+        return ApiResponse.<PageResponse<BodyMetricResponse>>builder()
+                .message("Get body metrics for admin successfully")
+                .data(bodyMetricService.getBodyMetricsForAdmin(keyword, from, to, pageable))
+                .build();
+    }
 }

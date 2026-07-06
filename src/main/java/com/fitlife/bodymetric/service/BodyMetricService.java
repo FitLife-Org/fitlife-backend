@@ -31,6 +31,7 @@ public interface BodyMetricService {
 
     void deleteMyBodyMetric(Long id);
 
-
     BodyMetricResponse createByAdmin(BodyMetricCreateRequest request);
+
+    PageResponse<BodyMetricResponse> getBodyMetricsForAdmin(String keyword, LocalDateTime from, LocalDateTime to, Pageable pageable);
 }
