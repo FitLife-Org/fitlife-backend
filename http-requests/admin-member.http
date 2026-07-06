@@ -119,3 +119,17 @@ Authorization: Bearer {{adminToken}}
 GET {{baseUrl}}/admin/body-metrics/member/1/latest
 Accept: application/json
 Authorization: Bearer {{adminToken}}
+
+### Admin update body metric by ID
+PUT {{baseUrl}}/admin/body-metrics/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "weightKg": 65.5,
+  "heightCm": 170,
+  "fatPercentage": 18.5,
+  "muscleMassKg": 50.2,
+  "recordedAt": "2026-07-06T23:00:00"
+}

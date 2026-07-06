@@ -266,4 +266,18 @@ class BodyMetricServiceImpl implements BodyMetricService {
 
         return bodyMetricMapper.toResponse(bodyMetric);
     }
+
+
+    @Override
+    public BodyMetricResponse updateByAdmin(Long id, BodyMetricUpdateRequest request) {
+        BodyMetric bodyMetric = bodyMetricRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.BODY_METRIC_NOT_FOUND));
+        bodyMetricMapper.updateEntity(bodyMetric, request);
+
+        bodyMetric.calculateBmiIfPossible();
+
+        BodyMetric updatedBodyMetric = bodyMetricRepository.save(bodyMetric);
+
+        return bodyMetricMapper.toResponse(updatedBodyMetric);
+    }
 }

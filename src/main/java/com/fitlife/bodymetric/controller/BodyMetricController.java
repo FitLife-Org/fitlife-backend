@@ -212,4 +212,13 @@ public class BodyMetricController {
         BodyMetricResponse response = bodyMetricService.getLatestBodyMetricByMemberForAdmin(memberId);
         return ResponseEntity.ok(response);
     }
+
+    @PutMapping("/admin/body-metrics/{id}")
+    public ResponseEntity<BodyMetricResponse> updateByAdmin(
+            @PathVariable Long id,
+            @RequestBody @Valid BodyMetricUpdateRequest request
+    ) {
+        BodyMetricResponse response = bodyMetricService.updateByAdmin(id, request);
+        return ResponseEntity.ok(response);
+    }
 }
