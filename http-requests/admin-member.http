@@ -133,3 +133,17 @@ Authorization: Bearer {{adminToken}}
   "muscleMassKg": 50.2,
   "recordedAt": "2026-07-06T23:00:00"
 }
+
+###2. Gọi API Xóa mềm Body Metric
+DELETE {{baseUrl}}/admin/body-metrics/1
+Authorization: Bearer {{adminToken}}
+
+
+
+
+
+
+
+
+
+

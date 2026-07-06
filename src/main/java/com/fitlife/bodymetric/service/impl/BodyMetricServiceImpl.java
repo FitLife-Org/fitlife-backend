@@ -280,4 +280,16 @@ class BodyMetricServiceImpl implements BodyMetricService {
 
         return bodyMetricMapper.toResponse(updatedBodyMetric);
     }
+
+
+    @Override
+    public void deleteByAdmin(Long id) {
+        BodyMetric bodyMetric = bodyMetricRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.BODY_METRIC_NOT_FOUND));
+
+        bodyMetric.setDeleted(true);
+
+        bodyMetricRepository.save(bodyMetric);
+    }
+
 }

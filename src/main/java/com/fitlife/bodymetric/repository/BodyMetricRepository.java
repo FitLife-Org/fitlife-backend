@@ -26,6 +26,7 @@ public interface BodyMetricRepository extends JpaRepository<BodyMetric, Long> {
             LocalDateTime from,
             LocalDateTime to
     );
+
     @Query("SELECT b FROM BodyMetric b JOIN b.member m JOIN m.user u WHERE " +
             "(:keyword IS NULL OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
             "OR LOWER(m.memberCode) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
@@ -41,8 +42,4 @@ public interface BodyMetricRepository extends JpaRepository<BodyMetric, Long> {
 
     @Query("SELECT b FROM BodyMetric b LEFT JOIN FETCH b.member WHERE b.id = :id")
     Optional<BodyMetric> findByIdWithMember(@Param("id") Long id);
-
-
-
-
 }

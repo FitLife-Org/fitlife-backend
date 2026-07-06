@@ -221,4 +221,10 @@ public class BodyMetricController {
         BodyMetricResponse response = bodyMetricService.updateByAdmin(id, request);
         return ResponseEntity.ok(response);
     }
+
+    @DeleteMapping("/admin/body-metrics/{id}")
+    public ResponseEntity<Void> deleteByAdmin(@PathVariable Long id) {
+        bodyMetricService.deleteByAdmin(id);
+        return ResponseEntity.noContent().build();
+    }
 }

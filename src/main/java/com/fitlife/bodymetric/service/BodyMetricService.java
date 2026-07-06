@@ -43,4 +43,6 @@ public interface BodyMetricService {
     BodyMetricResponse getLatestBodyMetricByMemberForAdmin(Long memberId);
     BodyMetricResponse updateByAdmin(Long id, BodyMetricUpdateRequest request);
 
+
+    void deleteByAdmin(Long id);
 }
