@@ -98,6 +98,13 @@ Authorization: Bearer {{adminToken}}
 
 
 ### Admin get body metrics by member code
-GET {{baseUrl}}/admin/body-metrics?keyword=MEM002
+GET {{baseUrl}}/admin/body-metrics?keyword=MEM001
 Accept: application/json
 Authorization: Bearer {{adminToken}}
+
+
+### Admin get body metric detail by ID
+GET {{baseUrl}}/admin/body-metrics/1
+Accept: application/json
+Authorization: Bearer {{adminToken}}
+

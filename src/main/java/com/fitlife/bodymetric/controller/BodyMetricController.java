@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -188,5 +189,11 @@ public class BodyMetricController {
                 .message("Get body metrics for admin successfully")
                 .data(bodyMetricService.getBodyMetricsForAdmin(keyword, from, to, pageable))
                 .build();
+    }
+
+    @GetMapping("/admin/body-metrics/{id}")
+    public ResponseEntity<BodyMetricResponse> getBodyMetricDetailForAdmin(@PathVariable Long id) {
+        BodyMetricResponse response = bodyMetricService.getBodyMetricDetailForAdmin(id);
+        return ResponseEntity.ok(response);
     }
 }

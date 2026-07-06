@@ -27,7 +27,8 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class BodyMetricServiceImpl implements BodyMetricService {
+public
+class BodyMetricServiceImpl implements BodyMetricService {
 
     private final BodyMetricRepository bodyMetricRepository;
     private final MemberRepository memberRepository;
@@ -226,5 +227,13 @@ public class BodyMetricServiceImpl implements BodyMetricService {
 
         Page<BodyMetric> page = bodyMetricRepository.searchBodyMetricsByAdmin(searchKeyword, from, to, pageable);
         return toPageResponse(page);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public BodyMetricResponse getBodyMetricDetailForAdmin(Long id) {
+        BodyMetric bodyMetric = bodyMetricRepository.findById(id) // hoặc .findByIdWithMember(id) nếu làm bước 1
+                .orElseThrow(() -> new AppException(ErrorCode.BODY_METRIC_NOT_FOUND));
+        return bodyMetricMapper.toResponse(bodyMetric);
     }
 }

@@ -33,5 +33,7 @@ public interface BodyMetricService {
 
     BodyMetricResponse createByAdmin(BodyMetricCreateRequest request);
 
+
     PageResponse<BodyMetricResponse> getBodyMetricsForAdmin(String keyword, LocalDateTime from, LocalDateTime to, Pageable pageable);
+    BodyMetricResponse getBodyMetricDetailForAdmin(Long id);
 }
