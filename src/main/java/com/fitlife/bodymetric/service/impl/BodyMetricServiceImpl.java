@@ -236,4 +236,17 @@ class BodyMetricServiceImpl implements BodyMetricService {
                 .orElseThrow(() -> new AppException(ErrorCode.BODY_METRIC_NOT_FOUND));
         return bodyMetricMapper.toResponse(bodyMetric);
     }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<BodyMetricResponse> getBodyMetricsByMemberForAdmin(Long memberId, Pageable pageable) {
+        if (!memberRepository.existsById(memberId)) {
+            throw new AppException(ErrorCode.MEMBER_NOT_FOUND);
+        }
+        Page<BodyMetric> page = bodyMetricRepository
+                .findByMemberIdOrderByRecordedAtDesc(memberId, pageable);
+
+        return toPageResponse(page);
+    }
 }

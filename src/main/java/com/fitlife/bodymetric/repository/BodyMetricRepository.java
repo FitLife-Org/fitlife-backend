@@ -38,7 +38,11 @@ public interface BodyMetricRepository extends JpaRepository<BodyMetric, Long> {
             @Param("to") LocalDateTime to,
             Pageable pageable
     );
-    // Trong BodyMetricRepository.java
+
     @Query("SELECT b FROM BodyMetric b LEFT JOIN FETCH b.member WHERE b.id = :id")
     Optional<BodyMetric> findByIdWithMember(@Param("id") Long id);
+
+
+
+
 }

@@ -108,3 +108,8 @@ GET {{baseUrl}}/admin/body-metrics/1
 Accept: application/json
 Authorization: Bearer {{adminToken}}
 
+
+### Admin get body metrics history of a specific member
+GET {{baseUrl}}/admin/body-metrics/member/1?page=0&size=5
+Accept: application/json
+Authorization: Bearer {{adminToken}}
