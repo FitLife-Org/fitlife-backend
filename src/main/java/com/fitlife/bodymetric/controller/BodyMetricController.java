@@ -206,4 +206,10 @@ public class BodyMetricController {
         PageResponse<BodyMetricResponse> response = bodyMetricService.getBodyMetricsByMemberForAdmin(memberId, pageable);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/admin/body-metrics/member/{memberId}/latest")
+    public ResponseEntity<BodyMetricResponse> getLatestBodyMetricByMemberForAdmin(@PathVariable Long memberId) {
+        BodyMetricResponse response = bodyMetricService.getLatestBodyMetricByMemberForAdmin(memberId);
+        return ResponseEntity.ok(response);
+    }
 }

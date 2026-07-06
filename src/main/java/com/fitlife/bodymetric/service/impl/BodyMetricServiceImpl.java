@@ -249,4 +249,21 @@ class BodyMetricServiceImpl implements BodyMetricService {
 
         return toPageResponse(page);
     }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public BodyMetricResponse getLatestBodyMetricByMemberForAdmin(Long memberId) {
+
+        if (!memberRepository.existsById(memberId)) {
+            throw new AppException(ErrorCode.MEMBER_NOT_FOUND);
+        }
+
+        BodyMetric bodyMetric = bodyMetricRepository
+                .findTopByMemberIdOrderByRecordedAtDesc(memberId)
+                .orElseThrow(() -> new AppException(ErrorCode.BODY_METRIC_NOT_FOUND));
+
+
+        return bodyMetricMapper.toResponse(bodyMetric);
+    }
 }

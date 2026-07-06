@@ -113,3 +113,9 @@ Authorization: Bearer {{adminToken}}
 GET {{baseUrl}}/admin/body-metrics/member/1?page=0&size=5
 Accept: application/json
 Authorization: Bearer {{adminToken}}
+
+
+### Admin get the latest body metric of a specific member
+GET {{baseUrl}}/admin/body-metrics/member/1/latest
+Accept: application/json
+Authorization: Bearer {{adminToken}}

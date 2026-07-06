@@ -39,4 +39,6 @@ public interface BodyMetricService {
 
     PageResponse<BodyMetricResponse> getBodyMetricsByMemberForAdmin(Long memberId, Pageable pageable);
 
+
+    BodyMetricResponse getLatestBodyMetricByMemberForAdmin(Long memberId);
 }
