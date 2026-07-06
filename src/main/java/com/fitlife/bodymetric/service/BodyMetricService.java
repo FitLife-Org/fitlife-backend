@@ -30,4 +30,7 @@ public interface BodyMetricService {
     BodyMetricResponse updateMyBodyMetric(Long id, BodyMetricUpdateRequest request);
 
     void deleteMyBodyMetric(Long id);
+
+
+    BodyMetricResponse createByAdmin(BodyMetricCreateRequest request);
 }

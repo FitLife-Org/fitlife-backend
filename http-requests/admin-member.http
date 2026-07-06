@@ -73,3 +73,18 @@ Authorization: Bearer {{accessToken}}
 PATCH {{baseUrl}}/admin/members/1/restore
 Authorization: Bearer {{accessToken}}
 
+
+
+
+
+### Admin create body metric for member
+POST {{baseUrl}}/admin/body-metrics
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "memberId": 1,
+  "weightKg": 50.5,
+  "heightCm": 175
+}}

@@ -167,6 +167,25 @@ public class BodyMetricServiceImpl implements BodyMetricService {
         bodyMetricRepository.delete(bodyMetric);
     }
 
+
+    @Override
+    public BodyMetricResponse createByAdmin(BodyMetricCreateRequest request) {
+        if (request.getMemberId() == null) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
+        Member member = memberRepository.findById(request.getMemberId())
+                .orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_FOUND));
+
+        BodyMetric bodyMetric = bodyMetricMapper.toEntity(request);
+        bodyMetric.setMember(member);
+        bodyMetric.calculateBmiIfPossible();
+
+        BodyMetric savedBodyMetric = bodyMetricRepository.save(bodyMetric);
+
+        return bodyMetricMapper.toResponse(savedBodyMetric);
+    }
+
     private Member getCurrentMember() {
         String principal = SecurityContextHolder.getContext()
                 .getAuthentication()

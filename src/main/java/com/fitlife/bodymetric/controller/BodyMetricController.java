@@ -160,4 +160,17 @@ public class BodyMetricController {
                 .message("Body metric deleted successfully")
                 .build();
     }
+
+    /**
+     * THÊM MỚI: Admin/Staff tạo chỉ số cơ thể cho member (memberId truyền trong Request Body JSON)
+     */
+    @PostMapping("/admin/body-metrics")
+    public ApiResponse<BodyMetricResponse> createByAdmin(
+            @Valid @RequestBody BodyMetricCreateRequest request
+    ) {
+        return ApiResponse.<BodyMetricResponse>builder()
+                .message("Body metric created by admin successfully")
+                .data(bodyMetricService.createByAdmin(request))
+                .build();
+    }
 }
