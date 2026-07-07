@@ -98,4 +98,8 @@ public class BodyMetric {
 
         this.bmi = weightKg.divide(heightSquare, 2, RoundingMode.HALF_UP);
     }
+
+    @Transient
+    @Builder.Default
+    private boolean isDeleted = false;
 }

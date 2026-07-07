@@ -30,4 +30,19 @@ public interface BodyMetricService {
     BodyMetricResponse updateMyBodyMetric(Long id, BodyMetricUpdateRequest request);
 
     void deleteMyBodyMetric(Long id);
+
+    BodyMetricResponse createByAdmin(BodyMetricCreateRequest request);
+
+
+    PageResponse<BodyMetricResponse> getBodyMetricsForAdmin(String keyword, LocalDateTime from, LocalDateTime to, Pageable pageable);
+    BodyMetricResponse getBodyMetricDetailForAdmin(Long id);
+
+    PageResponse<BodyMetricResponse> getBodyMetricsByMemberForAdmin(Long memberId, Pageable pageable);
+
+
+    BodyMetricResponse getLatestBodyMetricByMemberForAdmin(Long memberId);
+    BodyMetricResponse updateByAdmin(Long id, BodyMetricUpdateRequest request);
+
+
+    void deleteByAdmin(Long id);
 }

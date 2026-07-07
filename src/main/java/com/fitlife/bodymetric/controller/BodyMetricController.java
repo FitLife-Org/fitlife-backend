@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -159,5 +160,71 @@ public class BodyMetricController {
         return ApiResponse.<Void>builder()
                 .message("Body metric deleted successfully")
                 .build();
+    }
+
+    /**
+     * THÊM MỚI: Admin/Staff tạo chỉ số cơ thể cho member (memberId truyền trong Request Body JSON)
+     */
+    @PostMapping("/admin/body-metrics")
+    public ApiResponse<BodyMetricResponse> createByAdmin(
+            @Valid @RequestBody BodyMetricCreateRequest request
+    ) {
+        return ApiResponse.<BodyMetricResponse>builder()
+                .message("Body metric created by admin successfully")
+                .data(bodyMetricService.createByAdmin(request))
+                .build();
+    }
+
+    @GetMapping("/admin/body-metrics")
+    public ApiResponse<PageResponse<BodyMetricResponse>> getBodyMetricsForAdmin(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) LocalDateTime from,
+            @RequestParam(required = false) LocalDateTime to,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+
+        return ApiResponse.<PageResponse<BodyMetricResponse>>builder()
+                .message("Get body metrics for admin successfully")
+                .data(bodyMetricService.getBodyMetricsForAdmin(keyword, from, to, pageable))
+                .build();
+    }
+
+    @GetMapping("/admin/body-metrics/{id}")
+    public ResponseEntity<BodyMetricResponse> getBodyMetricDetailForAdmin(@PathVariable Long id) {
+        BodyMetricResponse response = bodyMetricService.getBodyMetricDetailForAdmin(id);
+        return ResponseEntity.ok(response);
+    }
+
+
+    @GetMapping("/admin/body-metrics/member/{memberId}")
+    public ResponseEntity<PageResponse<BodyMetricResponse>> getBodyMetricsByMemberForAdmin(
+            @PathVariable Long memberId,
+            Pageable pageable
+    ) {
+        PageResponse<BodyMetricResponse> response = bodyMetricService.getBodyMetricsByMemberForAdmin(memberId, pageable);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/admin/body-metrics/member/{memberId}/latest")
+    public ResponseEntity<BodyMetricResponse> getLatestBodyMetricByMemberForAdmin(@PathVariable Long memberId) {
+        BodyMetricResponse response = bodyMetricService.getLatestBodyMetricByMemberForAdmin(memberId);
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/admin/body-metrics/{id}")
+    public ResponseEntity<BodyMetricResponse> updateByAdmin(
+            @PathVariable Long id,
+            @RequestBody @Valid BodyMetricUpdateRequest request
+    ) {
+        BodyMetricResponse response = bodyMetricService.updateByAdmin(id, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/admin/body-metrics/{id}")
+    public ResponseEntity<Void> deleteByAdmin(@PathVariable Long id) {
+        bodyMetricService.deleteByAdmin(id);
+        return ResponseEntity.noContent().build();
     }
 }

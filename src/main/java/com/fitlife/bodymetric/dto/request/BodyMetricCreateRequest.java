@@ -18,6 +18,7 @@ public class BodyMetricCreateRequest {
      * Nếu Admin/Staff tạo hộ thì truyền memberId.
      */
     private Long memberId;
+    private String memberCode;
 
     @NotNull(message = "WEIGHT_REQUIRED")
     @DecimalMin(value = "20.00", message = "WEIGHT_INVALID")

@@ -27,7 +27,8 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class BodyMetricServiceImpl implements BodyMetricService {
+public
+class BodyMetricServiceImpl implements BodyMetricService {
 
     private final BodyMetricRepository bodyMetricRepository;
     private final MemberRepository memberRepository;
@@ -131,6 +132,7 @@ public class BodyMetricServiceImpl implements BodyMetricService {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
+        // ĐÃ FIX: Sửa lại tên hàm tìm kiếm theo khoảng thời gian chính xác của JPA
         return bodyMetricRepository
                 .findByMemberIdAndRecordedAtBetweenOrderByRecordedAtAsc(
                         currentMember.getId(),
@@ -167,6 +169,32 @@ public class BodyMetricServiceImpl implements BodyMetricService {
         bodyMetricRepository.delete(bodyMetric);
     }
 
+    @Override
+    public BodyMetricResponse createByAdmin(BodyMetricCreateRequest request) {
+        Member member;
+
+        // ĐÃ CẬP NHẬT: Tìm kiếm thông minh bằng Code hoặc ID
+        if (request.getMemberCode() != null && !request.getMemberCode().trim().isEmpty()) {
+            member = memberRepository.findByMemberCodeAndIsDeletedFalse(request.getMemberCode().trim())
+                    .orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_FOUND));
+        }
+        else if (request.getMemberId() != null) {
+            member = memberRepository.findById(request.getMemberId())
+                    .orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_FOUND));
+        }
+        else {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
+        BodyMetric bodyMetric = bodyMetricMapper.toEntity(request);
+        bodyMetric.setMember(member);
+        bodyMetric.calculateBmiIfPossible();
+
+        BodyMetric savedBodyMetric = bodyMetricRepository.save(bodyMetric);
+
+        return bodyMetricMapper.toResponse(savedBodyMetric);
+    }
+
     private Member getCurrentMember() {
         String principal = SecurityContextHolder.getContext()
                 .getAuthentication()
@@ -191,4 +219,77 @@ public class BodyMetricServiceImpl implements BodyMetricService {
                 .totalPages(page.getTotalPages())
                 .build();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<BodyMetricResponse> getBodyMetricsForAdmin(String keyword, LocalDateTime from, LocalDateTime to, Pageable pageable) {
+        String searchKeyword = (keyword == null || keyword.trim().isEmpty()) ? null : keyword.trim();
+
+        Page<BodyMetric> page = bodyMetricRepository.searchBodyMetricsByAdmin(searchKeyword, from, to, pageable);
+        return toPageResponse(page);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public BodyMetricResponse getBodyMetricDetailForAdmin(Long id) {
+        BodyMetric bodyMetric = bodyMetricRepository.findById(id) // hoặc .findByIdWithMember(id) nếu làm bước 1
+                .orElseThrow(() -> new AppException(ErrorCode.BODY_METRIC_NOT_FOUND));
+        return bodyMetricMapper.toResponse(bodyMetric);
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<BodyMetricResponse> getBodyMetricsByMemberForAdmin(Long memberId, Pageable pageable) {
+        if (!memberRepository.existsById(memberId)) {
+            throw new AppException(ErrorCode.MEMBER_NOT_FOUND);
+        }
+        Page<BodyMetric> page = bodyMetricRepository
+                .findByMemberIdOrderByRecordedAtDesc(memberId, pageable);
+
+        return toPageResponse(page);
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public BodyMetricResponse getLatestBodyMetricByMemberForAdmin(Long memberId) {
+
+        if (!memberRepository.existsById(memberId)) {
+            throw new AppException(ErrorCode.MEMBER_NOT_FOUND);
+        }
+
+        BodyMetric bodyMetric = bodyMetricRepository
+                .findTopByMemberIdOrderByRecordedAtDesc(memberId)
+                .orElseThrow(() -> new AppException(ErrorCode.BODY_METRIC_NOT_FOUND));
+
+
+        return bodyMetricMapper.toResponse(bodyMetric);
+    }
+
+
+    @Override
+    public BodyMetricResponse updateByAdmin(Long id, BodyMetricUpdateRequest request) {
+        BodyMetric bodyMetric = bodyMetricRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.BODY_METRIC_NOT_FOUND));
+        bodyMetricMapper.updateEntity(bodyMetric, request);
+
+        bodyMetric.calculateBmiIfPossible();
+
+        BodyMetric updatedBodyMetric = bodyMetricRepository.save(bodyMetric);
+
+        return bodyMetricMapper.toResponse(updatedBodyMetric);
+    }
+
+
+    @Override
+    public void deleteByAdmin(Long id) {
+        BodyMetric bodyMetric = bodyMetricRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.BODY_METRIC_NOT_FOUND));
+
+        bodyMetric.setDeleted(true);
+
+        bodyMetricRepository.save(bodyMetric);
+    }
+
 }
