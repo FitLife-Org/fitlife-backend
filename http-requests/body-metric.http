@@ -1,212 +1,63 @@
-### Create body metric for member
-POST {{baseUrl}}/body-metrics
-Authorization: Bearer {{accessToken}}
+### Admin create body metric
+POST {{baseUrl}}/admin/body-metrics
 Content-Type: application/json
+Authorization: Bearer {{adminToken}}
 
 {
-  "weightKg": 72.5,
+  "memberId": 1,
+  "weightKg": 70.0,
   "heightCm": 170.0,
-  "bodyFatPercent": 22.5,
-  "muscleMassKg": 30.2,
-  "note": "Lần đo đầu tiên, mục tiêu giảm mỡ nhẹ",
-  "recordedAt": "2026-07-01T09:00:00"
+  "bodyFatPercent": 22.0,
+  "muscleMassKg": 30.0,
+  "note": "Lần đo đầu",
+  "recordedAt": "2026-07-01T08:00:00"
 }
 
-
-### =========================================================
-### 2. MEMBER - Get my body metrics with pagination
-### GET /api/v1/body-metrics/my?page=0&size=10
-### Role: MEMBER
-### =========================================================
-
-GET {{baseUrl}}/body-metrics/my?page=0&size=10
+### Admin get body metrics
+GET {{baseUrl}}/admin/body-metrics?page=0&size=10&memberId=1
 Authorization: Bearer {{accessToken}}
 
-
-### =========================================================
-### 3. MEMBER - Get my body metric detail
-### GET /api/v1/body-metrics/{id}
-### Role: MEMBER
-### =========================================================
-
-GET {{baseUrl}}/body-metrics/{{bodyMetricId}}
+### Admin get body metric detail
+GET {{baseUrl}}/admin/body-metrics/1
 Authorization: Bearer {{accessToken}}
 
-
-### =========================================================
-### 4. MEMBER - Get latest my body metric
-### GET /api/v1/body-metrics/my/latest
-### Role: MEMBER
-### =========================================================
-
-GET {{baseUrl}}/body-metrics/my/latest
+### Admin get body metrics by member
+GET {{baseUrl}}/admin/body-metrics/member/1?page=0&size=10
 Authorization: Bearer {{accessToken}}
 
-
-### =========================================================
-### 5. MEMBER - Get my body metric history by time range
-### GET /api/v1/body-metrics/my/history
-### Role: MEMBER
-### =========================================================
-
-GET {{baseUrl}}/body-metrics/my/history?from=2026-07-01T00:00:00&to=2026-07-31T23:59:59
+### Admin get latest body metric by member
+GET {{baseUrl}}/admin/body-metrics/member/1/latest
 Authorization: Bearer {{accessToken}}
 
-
-### =========================================================
-### 6. MEMBER - Update my body metric
-### PUT /api/v1/body-metrics/{id}
-### Role: MEMBER
-### =========================================================
-
-PUT {{baseUrl}}/body-metrics/{{bodyMetricId}}
-Authorization: Bearer {{accessToken}}
+### Admin update body metric
+PUT {{baseUrl}}/admin/body-metrics/1
 Content-Type: application/json
+Authorization: Bearer {{accessToken}}
 
 {
-  "weightKg": 71.8,
+  "weightKg": 68.5,
   "heightCm": 170.0,
-  "bodyFatPercent": 21.8,
-  "muscleMassKg": 30.6,
-  "note": "Cập nhật sau một tuần tập luyện",
-  "recordedAt": "2026-07-08T09:00:00"
+  "bodyFatPercent": 21.0,
+  "muscleMassKg": 30.5,
+  "note": "Cập nhật chỉ số"
 }
 
-
-### =========================================================
-### 7. MEMBER - Delete my body metric
-### DELETE /api/v1/body-metrics/{id}
-### Role: MEMBER
-### =========================================================
-
-DELETE {{baseUrl}}/body-metrics/{{bodyMetricId}}
+### Admin delete body metric
+DELETE {{baseUrl}}/admin/body-metrics/1
 Authorization: Bearer {{accessToken}}
 
+### Member get my body metrics
+GET {{baseUrl}}/body-metrics/me?page=0&size=10
+Authorization: Bearer {{memberToken}}
 
-### =========================================================
-### 8. ADMIN/STAFF - Create body metric for member
-### POST /api/v1/admin/members/{memberId}/body-metrics
-### Role: ADMIN, STAFF
-### =========================================================
+### Member get my body metric detail
+GET {{baseUrl}}/body-metrics/me/1
+Authorization: Bearer {{memberToken}}
 
-POST {{baseUrl}}/admin/members/{{memberId}}/body-metrics
-Authorization: Bearer {{accessToken}}
-Content-Type: application/json
+### Member get latest my body metric
+GET {{baseUrl}}/body-metrics/me/latest
+Authorization: Bearer {{memberToken}}
 
-{
-  "weightKg": 75.0,
-  "heightCm": 172.0,
-  "bodyFatPercent": 24.0,
-  "muscleMassKg": 31.0,
-  "note": "Staff nhập chỉ số cho member tại quầy",
-  "recordedAt": "2026-07-01T10:00:00"
-}
-
-
-### =========================================================
-### 9. ADMIN/STAFF - Get body metrics by member
-### GET /api/v1/admin/members/{memberId}/body-metrics
-### Role: ADMIN, STAFF
-### =========================================================
-
-GET {{baseUrl}}/admin/members/{{memberId}}/body-metrics?page=0&size=10
-Authorization: Bearer {{accessToken}}
-
-
-### =========================================================
-### 10. ADMIN/STAFF - Get latest body metric by member
-### GET /api/v1/admin/members/{memberId}/body-metrics/latest
-### Role: ADMIN, STAFF
-### =========================================================
-
-GET {{baseUrl}}/admin/members/{{memberId}}/body-metrics/latest
-Authorization: Bearer {{accessToken}}
-
-
-### =========================================================
-### 11. Validation test - Missing weight
-### Expected: WEIGHT_REQUIRED
-### =========================================================
-
-POST {{baseUrl}}/body-metrics
-Authorization: Bearer {{accessToken}}
-Content-Type: application/json
-
-{
-  "heightCm": 170.0,
-  "bodyFatPercent": 22.5,
-  "muscleMassKg": 30.2,
-  "note": "Test thiếu cân nặng"
-}
-
-
-### =========================================================
-### 12. Validation test - Invalid weight
-### Expected: WEIGHT_INVALID
-### =========================================================
-
-POST {{baseUrl}}/body-metrics
-Authorization: Bearer {{accessToken}}
-Content-Type: application/json
-
-{
-  "weightKg": 10.0,
-  "heightCm": 170.0,
-  "bodyFatPercent": 22.5,
-  "muscleMassKg": 30.2,
-  "note": "Test cân nặng không hợp lệ"
-}
-
-
-### =========================================================
-### 13. Validation test - Invalid height
-### Expected: HEIGHT_INVALID
-### =========================================================
-
-POST {{baseUrl}}/body-metrics
-Authorization: Bearer {{accessToken}}
-Content-Type: application/json
-
-{
-  "weightKg": 72.5,
-  "heightCm": 300.0,
-  "bodyFatPercent": 22.5,
-  "muscleMassKg": 30.2,
-  "note": "Test chiều cao không hợp lệ"
-}
-
-
-### =========================================================
-### 14. Validation test - Invalid body fat
-### Expected: BODY_FAT_INVALID
-### =========================================================
-
-POST {{baseUrl}}/body-metrics
-Authorization: Bearer {{accessToken}}
-Content-Type: application/json
-
-{
-  "weightKg": 72.5,
-  "heightCm": 170.0,
-  "bodyFatPercent": 90.0,
-  "muscleMassKg": 30.2,
-  "note": "Test body fat không hợp lệ"
-}
-
-
-### =========================================================
-### 15. Validation test - Invalid muscle mass
-### Expected: MUSCLE_MASS_INVALID
-### =========================================================
-
-POST {{baseUrl}}/body-metrics
-Authorization: Bearer {{accessToken}}
-Content-Type: application/json
-
-{
-  "weightKg": 72.5,
-  "heightCm": 170.0,
-  "bodyFatPercent": 22.5,
-  "muscleMassKg": 250.0,
-  "note": "Test muscle mass không hợp lệ"
-}
+### Member get my body metric history
+GET {{baseUrl}}/body-metrics/me/history?from=2026-07-01T00:00:00&to=2026-07-31T23:59:59
+Authorization: Bearer {{memberToken}}

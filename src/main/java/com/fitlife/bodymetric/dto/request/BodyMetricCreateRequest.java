@@ -3,6 +3,7 @@ package com.fitlife.bodymetric.dto.request;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -13,12 +14,8 @@ import java.time.LocalDateTime;
 @Setter
 public class BodyMetricCreateRequest {
 
-    /**
-     * Nếu Member tự tạo thì BE lấy memberId từ token.
-     * Nếu Admin/Staff tạo hộ thì truyền memberId.
-     */
+    @NotNull(message = "MEMBER_ID_REQUIRED")
     private Long memberId;
-    private String memberCode;
 
     @NotNull(message = "WEIGHT_REQUIRED")
     @DecimalMin(value = "20.00", message = "WEIGHT_INVALID")
@@ -37,6 +34,7 @@ public class BodyMetricCreateRequest {
     @DecimalMax(value = "200.00", message = "MUSCLE_MASS_INVALID")
     private BigDecimal muscleMassKg;
 
+    @Size(max = 1000, message = "NOTE_TOO_LONG")
     private String note;
 
     private LocalDateTime recordedAt;
