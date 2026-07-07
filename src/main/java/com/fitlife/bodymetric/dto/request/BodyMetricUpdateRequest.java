@@ -2,7 +2,7 @@ package com.fitlife.bodymetric.dto.request;
 
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -13,7 +13,6 @@ import java.time.LocalDateTime;
 @Setter
 public class BodyMetricUpdateRequest {
 
-    @NotNull(message = "WEIGHT_REQUIRED")
     @DecimalMin(value = "20.00", message = "WEIGHT_INVALID")
     @DecimalMax(value = "300.00", message = "WEIGHT_INVALID")
     private BigDecimal weightKg;
@@ -30,6 +29,7 @@ public class BodyMetricUpdateRequest {
     @DecimalMax(value = "200.00", message = "MUSCLE_MASS_INVALID")
     private BigDecimal muscleMassKg;
 
+    @Size(max = 1000, message = "NOTE_TOO_LONG")
     private String note;
 
     private LocalDateTime recordedAt;

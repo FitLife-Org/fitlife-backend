@@ -71,7 +71,7 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
         checkDailyLimit(currentMember.getId());
 
         Optional<BodyMetric> latestBodyMetricOptional = bodyMetricRepository
-                .findTopByMemberIdOrderByRecordedAtDesc(currentMember.getId());
+                .findTopByMemberIdAndIsDeletedFalseOrderByRecordedAtDesc(currentMember.getId());
 
         BodyMetric latestBodyMetric = latestBodyMetricOptional.orElse(null);
 
@@ -449,7 +449,7 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
         checkDailyLimit(currentMember.getId());
 
         BodyMetric latestBodyMetric = bodyMetricRepository
-                .findTopByMemberIdOrderByRecordedAtDesc(currentMember.getId())
+                .findTopByMemberIdAndIsDeletedFalseOrderByRecordedAtDesc(currentMember.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.BODY_METRIC_NOT_FOUND));
 
         AiInputSnapshot snapshot = buildBodyAnalysisInputSnapshot(

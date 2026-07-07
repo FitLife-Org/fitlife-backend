@@ -13,33 +13,68 @@ import java.util.Optional;
 
 public interface BodyMetricRepository extends JpaRepository<BodyMetric, Long> {
 
-    Page<BodyMetric> findByMemberIdOrderByRecordedAtDesc(Long memberId, Pageable pageable);
+    Optional<BodyMetric> findByIdAndIsDeletedFalse(Long id);
 
-    Optional<BodyMetric> findTopByMemberIdOrderByRecordedAtDesc(Long memberId);
+    Page<BodyMetric> findByMemberIdAndIsDeletedFalseOrderByRecordedAtDesc(
+            Long memberId,
+            Pageable pageable
+    );
 
-    Optional<BodyMetric> findByIdAndMemberId(Long id, Long memberId);
+    List<BodyMetric> findByMemberIdAndIsDeletedFalseOrderByRecordedAtDesc(
+            Long memberId
+    );
 
-    boolean existsByIdAndMemberId(Long id, Long memberId);
+    Optional<BodyMetric> findTopByMemberIdAndIsDeletedFalseOrderByRecordedAtDesc(
+            Long memberId
+    );
 
-    List<BodyMetric> findByMemberIdAndRecordedAtBetweenOrderByRecordedAtAsc(
+    Optional<BodyMetric> findByIdAndMemberIdAndIsDeletedFalse(
+            Long id,
+            Long memberId
+    );
+
+    boolean existsByIdAndMemberIdAndIsDeletedFalse(
+            Long id,
+            Long memberId
+    );
+
+    List<BodyMetric> findByMemberIdAndIsDeletedFalseAndRecordedAtBetweenOrderByRecordedAtAsc(
             Long memberId,
             LocalDateTime from,
             LocalDateTime to
     );
 
-    @Query("SELECT b FROM BodyMetric b JOIN b.member m JOIN m.user u WHERE " +
-            "(:keyword IS NULL OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-            "OR LOWER(m.memberCode) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
-            "AND (:from IS NULL OR b.recordedAt >= :from) " +
-            "AND (:to IS NULL OR b.recordedAt <= :to) " +
-            "ORDER BY b.recordedAt DESC")
+    @Query("""
+        SELECT b
+        FROM BodyMetric b
+        JOIN b.member m
+        JOIN m.user u
+        WHERE b.isDeleted = false
+          AND (:memberId IS NULL OR m.id = :memberId)
+          AND (:keyword IS NULL OR :keyword = ''
+               OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%'))
+               OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%'))
+               OR u.phone LIKE CONCAT('%', :keyword, '%')
+               OR LOWER(m.memberCode) LIKE LOWER(CONCAT('%', :keyword, '%')))
+          AND (:from IS NULL OR b.recordedAt >= :from)
+          AND (:to IS NULL OR b.recordedAt <= :to)
+        ORDER BY b.recordedAt DESC
+    """)
     Page<BodyMetric> searchBodyMetricsByAdmin(
+            @Param("memberId") Long memberId,
             @Param("keyword") String keyword,
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to,
             Pageable pageable
     );
 
-    @Query("SELECT b FROM BodyMetric b LEFT JOIN FETCH b.member WHERE b.id = :id")
+    @Query("""
+        SELECT b
+        FROM BodyMetric b
+        JOIN FETCH b.member m
+        JOIN FETCH m.user
+        WHERE b.id = :id
+          AND b.isDeleted = false
+    """)
     Optional<BodyMetric> findByIdWithMember(@Param("id") Long id);
 }

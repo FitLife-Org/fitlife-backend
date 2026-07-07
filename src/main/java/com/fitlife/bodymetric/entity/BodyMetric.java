@@ -1,8 +1,11 @@
 package com.fitlife.bodymetric.entity;
 
 import com.fitlife.member.entity.Member;
+import com.fitlife.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -20,6 +23,14 @@ import java.time.LocalDateTime;
                 @Index(
                         name = "idx_body_metrics_member_recorded",
                         columnList = "member_id, recorded_at"
+                ),
+                @Index(
+                        name = "idx_body_metrics_member_deleted",
+                        columnList = "member_id, is_deleted"
+                ),
+                @Index(
+                        name = "idx_body_metrics_recorded_at",
+                        columnList = "recorded_at"
                 )
         }
 )
@@ -30,11 +41,19 @@ public class BodyMetric {
     private Long id;
 
     /**
-     * Member sở hữu chỉ số cơ thể.
+     * Một Member có nhiều BodyMetric.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
+
+    /**
+     * Người tạo bản ghi. Thường là Admin/Staff.
+     * Có thể null nếu hệ thống chưa lấy được current user.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by")
+    private User createdBy;
 
     @Column(name = "weight_kg", nullable = false, precision = 5, scale = 2)
     private BigDecimal weightKg;
@@ -57,19 +76,26 @@ public class BodyMetric {
     @Column(name = "recorded_at", nullable = false)
     private LocalDateTime recordedAt;
 
+    @Builder.Default
+    @Column(name = "is_deleted", nullable = false)
+    private Boolean isDeleted = false;
+
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
     @PrePersist
     protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
-
         if (recordedAt == null) {
-            recordedAt = now;
+            recordedAt = LocalDateTime.now();
         }
 
-        if (createdAt == null) {
-            createdAt = now;
+        if (isDeleted == null) {
+            isDeleted = false;
         }
 
         calculateBmiIfPossible();
@@ -82,24 +108,28 @@ public class BodyMetric {
 
     public void calculateBmiIfPossible() {
         if (weightKg == null || heightCm == null) {
+            this.bmi = null;
             return;
         }
 
         if (heightCm.compareTo(BigDecimal.ZERO) <= 0) {
+            this.bmi = null;
             return;
         }
 
-        BigDecimal heightMeter = heightCm.divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
+        BigDecimal heightMeter = heightCm.divide(
+                BigDecimal.valueOf(100),
+                4,
+                RoundingMode.HALF_UP
+        );
+
         BigDecimal heightSquare = heightMeter.multiply(heightMeter);
 
         if (heightSquare.compareTo(BigDecimal.ZERO) <= 0) {
+            this.bmi = null;
             return;
         }
 
         this.bmi = weightKg.divide(heightSquare, 2, RoundingMode.HALF_UP);
     }
-
-    @Transient
-    @Builder.Default
-    private boolean isDeleted = false;
 }
