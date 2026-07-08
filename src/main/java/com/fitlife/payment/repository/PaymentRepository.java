@@ -41,4 +41,6 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             @Param("invoiceId") Long invoiceId,
             Pageable pageable
     );
+
+    Optional<Payment> findByVnpTxnRef(String vnpTxnRef);
 }

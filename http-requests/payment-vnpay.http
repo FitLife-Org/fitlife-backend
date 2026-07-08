@@ -1,0 +1,10 @@
+
+
+### Create VNPay payment URL
+POST {{baseUrl}}/payments/vnpay/create-url
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "invoiceId": 7
+}

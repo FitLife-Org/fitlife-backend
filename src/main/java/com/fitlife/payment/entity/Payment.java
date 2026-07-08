@@ -24,7 +24,9 @@ import java.time.LocalDateTime;
                 @Index(name = "idx_payments_status", columnList = "status"),
                 @Index(name = "idx_payments_method", columnList = "payment_method"),
                 @Index(name = "idx_payments_member", columnList = "member_id"),
-                @Index(name = "idx_payments_paid_at", columnList = "paid_at")
+                @Index(name = "idx_payments_paid_at", columnList = "paid_at"),
+                @Index(name = "idx_payments_vnp_txn_ref", columnList = "vnp_txn_ref"),
+                @Index(name = "idx_payments_transaction_no", columnList = "transaction_no")
         }
 )
 public class Payment {
@@ -83,20 +85,32 @@ public class Payment {
     /*
      * Các field VNPay giữ lại để mở rộng sau.
      */
+    @Column(name = "vnp_txn_ref", length = 100)
+    private String vnpTxnRef;
+
     @Column(name = "vnp_transaction_no", length = 100)
     private String vnpTransactionNo;
-
-    @Column(name = "vnp_response_code", length = 20)
-    private String vnpResponseCode;
-
-    @Column(name = "vnp_order_info", length = 255)
-    private String vnpOrderInfo;
 
     @Column(name = "vnp_bank_code", length = 50)
     private String vnpBankCode;
 
+    @Column(name = "vnp_card_type", length = 50)
+    private String vnpCardType;
+
+    @Column(name = "vnp_response_code", length = 20)
+    private String vnpResponseCode;
+
+    @Column(name = "vnp_transaction_status", length = 20)
+    private String vnpTransactionStatus;
+
+    @Column(name = "vnp_order_info", length = 255)
+    private String vnpOrderInfo;
+
     @Column(name = "vnp_pay_date", length = 50)
     private String vnpPayDate;
+
+    @Column(name = "gateway_message", length = 255)
+    private String gatewayMessage;
 
     @Column(name = "paid_at")
     private LocalDateTime paidAt;
