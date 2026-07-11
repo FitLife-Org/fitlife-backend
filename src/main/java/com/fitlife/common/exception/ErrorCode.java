@@ -448,6 +448,45 @@ public enum ErrorCode {
             12006,
             "AI response was truncated. Please try again with a shorter request.",
             HttpStatus.BAD_GATEWAY
+    ),
+
+    // =========================
+    // Check-in errors: 13000 - 13999
+    // =========================
+    CHECKIN_NOT_FOUND(
+            13001,
+            "Check-in record not found",
+            HttpStatus.NOT_FOUND
+    ),
+
+    NO_ACTIVE_SUBSCRIPTION(
+            13003,
+            "Member has no active subscription",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    SUBSCRIPTION_EXPIRED(
+            13004,
+            "Subscription has expired",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    ALREADY_CHECKED_IN_TODAY(
+            13005,
+            "Member already checked in today",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    INVALID_QR_DATA(
+            13006,
+            "Invalid QR data",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    CHECKIN_ALREADY_CANCELLED(
+            13007,
+            "Check-in is already cancelled",
+            HttpStatus.BAD_REQUEST
     );
 
     private final int code;
