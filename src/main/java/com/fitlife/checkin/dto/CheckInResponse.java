@@ -1,8 +1,11 @@
 package com.fitlife.checkin.dto;
 
-import io.swagger.v3.oas.annotations.media.Schema;
+import com.fitlife.checkin.enums.CheckInMethod;
+import com.fitlife.checkin.enums.CheckInStatus;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
@@ -10,16 +13,19 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @Builder
-@Schema(name = "CheckInResponse", description = "Káº¿t quáº£ check-in cá»§a há»™i viĂªn")
+@NoArgsConstructor
+@AllArgsConstructor
 public class CheckInResponse {
-    @Schema(description = "ID há»™i viĂªn", example = "100")
+    private Long id;
     private Long memberId;
-    @Schema(description = "TĂªn há»™i viĂªn", example = "Nguyen Van A")
+    private String memberCode;
     private String memberName;
-    @Schema(description = "Thá»i gian check-in", example = "2026-04-27T08:30:00")
+    private Long subscriptionId;
+    private String packageName;
     private LocalDateTime checkInTime;
-    @Schema(description = "Tráº¡ng thĂ¡i truy cáº­p", example = "ACCESS_GRANTED")
-    private String status; // "ACCESS_GRANTED" hoáº·c "ACCESS_DENIED"
-    @Schema(description = "ThĂ´ng Ä‘iá»‡p chi tiáº¿t", example = "Check-in thĂ nh cĂ´ng")
-    private String message; // Reason details
+    private CheckInMethod checkInMethod;
+    private CheckInStatus status;
+    private Long checkedInBy;
+    private String checkedInByName;
+    private String note;
 }
