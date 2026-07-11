@@ -2,6 +2,9 @@ package com.fitlife.payment.service.impl;
 
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
+import com.fitlife.subscription.entity.Subscription;
+import com.fitlife.subscription.enums.SubscriptionStatus;
+import com.fitlife.subscription.repository.SubscriptionRepository;
 import com.fitlife.invoice.entity.Invoice;
 import com.fitlife.invoice.enums.InvoiceStatus;
 import com.fitlife.invoice.repository.InvoiceRepository;
@@ -21,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
@@ -34,6 +38,7 @@ public class VnpayServiceImpl implements VnpayService {
     private final VnpayProperties vnpayProperties;
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
+    private final SubscriptionRepository subscriptionRepository;
 
     private static final DateTimeFormatter VNP_DATE_FORMAT =
             DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
@@ -156,5 +161,169 @@ public class VnpayServiceImpl implements VnpayService {
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    @Override
+    @Transactional
+    public String handleReturn(Map<String, String> params) {
+        boolean validHash = verifySecureHash(params);
+
+        String txnRef = params.get("vnp_TxnRef");
+        String responseCode = params.get("vnp_ResponseCode");
+        String transactionStatus = params.get("vnp_TransactionStatus");
+
+        if (!validHash) {
+            return buildFrontendRedirect("FAILED", "INVALID_SIGNATURE", null);
+        }
+
+        Payment payment = paymentRepository.findByVnpTxnRef(txnRef)
+                .orElse(null);
+
+        if (payment == null) {
+            return buildFrontendRedirect("FAILED", "PAYMENT_NOT_FOUND", null);
+        }
+
+        if ("00".equals(responseCode) && "00".equals(transactionStatus)) {
+            markPaymentSuccess(payment, params);
+            return buildFrontendRedirect("SUCCESS", "PAYMENT_SUCCESS", payment.getId());
+        }
+
+        markPaymentFailed(payment, params);
+        return buildFrontendRedirect("FAILED", responseCode, payment.getId());
+    }
+
+    private boolean verifySecureHash(Map<String, String> params) {
+        String receivedHash = params.get("vnp_SecureHash");
+
+        if (receivedHash == null || receivedHash.isBlank()) {
+            return false;
+        }
+
+        Map<String, String> filteredParams = new LinkedHashMap<>(params);
+        filteredParams.remove("vnp_SecureHash");
+        filteredParams.remove("vnp_SecureHashType");
+
+        String hashData = VnpayUtils.buildHashData(filteredParams);
+
+        String calculatedHash = VnpayUtils.hmacSHA512(
+                vnpayProperties.getHashSecret(),
+                hashData
+        );
+
+        return calculatedHash.equalsIgnoreCase(receivedHash);
+    }
+
+    private void markPaymentSuccess(Payment payment, Map<String, String> params) {
+        if (payment.getPaymentStatus() == PaymentStatus.SUCCESS) {
+            return;
+        }
+
+        payment.setPaymentStatus(PaymentStatus.SUCCESS);
+        payment.setTransactionNo(params.get("vnp_TransactionNo"));
+        payment.setVnpTransactionNo(params.get("vnp_TransactionNo"));
+        payment.setVnpBankCode(params.get("vnp_BankCode"));
+        payment.setVnpCardType(params.get("vnp_CardType"));
+        payment.setVnpResponseCode(params.get("vnp_ResponseCode"));
+        payment.setVnpTransactionStatus(params.get("vnp_TransactionStatus"));
+        payment.setVnpPayDate(params.get("vnp_PayDate"));
+        payment.setGatewayMessage("VNPay payment success");
+        payment.setPaidAt(LocalDateTime.now());
+
+        Invoice invoice = payment.getInvoice();
+        invoice.setStatus(InvoiceStatus.PAID);
+        invoice.setPaidAt(LocalDateTime.now());
+
+        Subscription subscription = invoice.getSubscription();
+
+        if (subscription != null) {
+            activateSubscription(subscription);
+            subscriptionRepository.save(subscription);
+        }
+
+        paymentRepository.save(payment);
+        invoiceRepository.save(invoice);
+    }
+
+    private void markPaymentFailed(Payment payment, Map<String, String> params) {
+        if (payment.getPaymentStatus() == PaymentStatus.SUCCESS) {
+            return;
+        }
+
+        payment.setPaymentStatus(PaymentStatus.FAILED);
+        payment.setFailedReason("VNPay failed with code: " + params.get("vnp_ResponseCode"));
+        payment.setVnpResponseCode(params.get("vnp_ResponseCode"));
+        payment.setVnpTransactionStatus(params.get("vnp_TransactionStatus"));
+        payment.setGatewayMessage("VNPay payment failed");
+
+        paymentRepository.save(payment);
+    }
+
+    private void activateSubscription(Subscription subscription) {
+        if (subscription.getStatus() == SubscriptionStatus.ACTIVE) {
+            return;
+        }
+
+        LocalDate startDate = LocalDate.now();
+
+        subscription.setStatus(SubscriptionStatus.ACTIVE);
+        subscription.setStartDate(startDate);
+
+        if (subscription.getPackageDuration() != null) {
+            subscription.setEndDate(
+                    startDate.plusMonths(subscription.getPackageDuration().getMonths())
+            );
+        }
+    }
+
+    private String buildFrontendRedirect(String status, String code, Long paymentId) {
+        StringBuilder redirectUrl = new StringBuilder(vnpayProperties.getFrontendResultUrl());
+
+        redirectUrl.append("?status=").append(status);
+        redirectUrl.append("&code=").append(code);
+
+        if (paymentId != null) {
+            redirectUrl.append("&paymentId=").append(paymentId);
+        }
+
+        return redirectUrl.toString();
+    }
+
+    @Override
+    @Transactional
+    public Map<String, String> handleIpn(Map<String, String> params) {
+        boolean validHash = verifySecureHash(params);
+
+        if (!validHash) {
+            return Map.of(
+                    "RspCode", "97",
+                    "Message", "Invalid signature"
+            );
+        }
+
+        String txnRef = params.get("vnp_TxnRef");
+
+        Payment payment = paymentRepository.findByVnpTxnRef(txnRef)
+                .orElse(null);
+
+        if (payment == null) {
+            return Map.of(
+                    "RspCode", "01",
+                    "Message", "Order not found"
+            );
+        }
+
+        String responseCode = params.get("vnp_ResponseCode");
+        String transactionStatus = params.get("vnp_TransactionStatus");
+
+        if ("00".equals(responseCode) && "00".equals(transactionStatus)) {
+            markPaymentSuccess(payment, params);
+        } else {
+            markPaymentFailed(payment, params);
+        }
+
+        return Map.of(
+                "RspCode", "00",
+                "Message", "Confirm Success"
+        );
     }
 }
