@@ -1,68 +1,133 @@
-//package com.fitlife.checkin.controller;
-//
-//import com.fitlife.checkin.dto.CheckInResponse;
-//import com.fitlife.checkin.service.CheckInService;
-//import com.fitlife.common.dto.response.ApiResponse;
-//import com.fitlife.auth.entity.User;
-//import com.fitlife.auth.repository.UserRepository;
-//import io.swagger.v3.oas.annotations.Operation;
-//import io.swagger.v3.oas.annotations.Parameter;
-//import io.swagger.v3.oas.annotations.tags.Tag;
-//import lombok.RequiredArgsConstructor;
-//import org.springframework.http.ResponseEntity;
-//import org.springframework.security.access.prepost.PreAuthorize;
-//import org.springframework.security.core.Authentication;
-//import org.springframework.web.bind.annotation.*;
-//
-//@RestController
-//@RequestMapping("/checkin")
-//@RequiredArgsConstructor
-//@Tag(name = "Check-in Management", description = "Xá»­ lĂ½ check-in táº¡i quáº§y hoáº·c tá»± check-in cá»§a há»™i viĂªn")
-//public class CheckInController {
-//
-//    private final CheckInService checkInService;
-//    private final UserRepository userRepository;
-//
-//    /**
-//     * 1. Staff/Admin: Staff scan card/qr of member
-//     */
-//    @PostMapping("/{memberId}")
-//    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STAFF', 'ADMIN', 'STAFF')")
-//    @Operation(summary = "Check-in cho há»™i viĂªn bá»Ÿi nhĂ¢n viĂªn", description = "NhĂ¢n viĂªn/quáº£n lĂ½ quĂ©t hoáº·c nháº­p memberId Ä‘á»ƒ xĂ¡c nháº­n check-in táº¡i quáº§y.")
-//    public ResponseEntity<ApiResponse<CheckInResponse>> staffProcessCheckIn(
-//            @Parameter(description = "ID há»™i viĂªn cáº§n check-in", example = "101")
-//            @PathVariable Long memberId,
-//            Authentication authentication) {
-//
-//        // Get information about the Staff performing the operation
-//        User staffUser = userRepository.findByUsername(authentication.getName())
-//                .orElseThrow(() -> new RuntimeException("TĂ i khoáº£n nhĂ¢n viĂªn khĂ´ng há»£p lá»‡"));
-//
-//        // ANTI-FRAUD LOGIC: Staff/Admins are not allowed to check-in for themselves
-//        if (staffUser.getMember() != null && staffUser.getMember().getId().equals(memberId)) {
-//            throw new RuntimeException("Lá»–I GIAN Láº¬N: NhĂ¢n viĂªn hoáº·c Quáº£n lĂ½ khĂ´ng thá»ƒ tá»± check-in cho chĂ­nh mĂ¬nh táº¡i quáº§y!");
-//        }
-//
-//        CheckInResponse result = checkInService.processCheckIn(memberId, staffUser.getUsername());
-//        return ResponseEntity.ok(ApiResponse.success(result, "Check-in xá»­ lĂ½ thĂ nh cĂ´ng bá»Ÿi nhĂ¢n viĂªn"));
-//    }
-//
-//    /**
-//     * 2. Stream Self-Service: Members automatically open the App to scan the code at the door
-//     */
-//    @PostMapping("/me")
-//    @PreAuthorize("hasAnyAuthority('ROLE_MEMBER', 'MEMBER')")
-//    @Operation(summary = "Tá»± check-in cá»§a há»™i viĂªn", description = "Há»™i viĂªn tá»± thá»±c hiá»‡n check-in báº±ng tĂ i khoáº£n cá»§a mĂ¬nh.")
-//    public ResponseEntity<ApiResponse<CheckInResponse>> memberSelfCheckIn(Authentication authentication) {
-//
-//        User user = userRepository.findByUsername(authentication.getName())
-//                .orElseThrow(() -> new RuntimeException("TĂ i khoáº£n khĂ´ng há»£p lá»‡"));
-//
-//        if (user.getMember() == null) {
-//            throw new RuntimeException("TĂ i khoáº£n nĂ y chÆ°a cĂ³ há»“ sÆ¡ há»™i viĂªn!");
-//        }
-//
-//        CheckInResponse result = checkInService.processCheckIn(user.getMember().getId(), user.getUsername());
-//        return ResponseEntity.ok(ApiResponse.success(result, "Há»™i viĂªn tá»± check-in thĂ nh cĂ´ng"));
-//    }
-//}
+package com.fitlife.checkin.controller;
+
+import com.fitlife.checkin.dto.*;
+import com.fitlife.checkin.service.CheckInService;
+import com.fitlife.common.dto.ApiResponse;
+import com.fitlife.common.dto.PageResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+
+@RestController
+@RequestMapping("/check-ins")
+@RequiredArgsConstructor
+@Tag(name = "Check-in Management", description = "Endpoints for managing gym check-ins")
+public class CheckInController {
+
+    private final CheckInService checkInService;
+
+    @GetMapping("/lookup")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STAFF', 'ADMIN', 'STAFF')")
+    @Operation(summary = "Lookup member check-in status", description = "Find member by code, phone, email, or full name to check their check-in eligibility.")
+    public ResponseEntity<ApiResponse<CheckInLookupResponse>> lookupMember(
+            @RequestParam String keyword
+    ) {
+        CheckInLookupResponse response = checkInService.lookupMember(keyword);
+        return ResponseEntity.ok(ApiResponse.success("Lookup member successfully", response));
+    }
+
+    @PostMapping("/manual")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STAFF', 'ADMIN', 'STAFF')")
+    @Operation(summary = "Manual check-in", description = "Check-in member manually at front desk using member code.")
+    public ResponseEntity<ApiResponse<CheckInResponse>> checkInManual(
+            @Valid @RequestBody CheckInManualRequest request,
+            Authentication authentication
+    ) {
+        CheckInResponse response = checkInService.checkInManual(request, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success("Check-in successfully", response));
+    }
+
+    @PostMapping("/qr")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STAFF', 'ADMIN', 'STAFF')")
+    @Operation(summary = "QR check-in", description = "Check-in member using QR code scanned from user app.")
+    public ResponseEntity<ApiResponse<CheckInResponse>> checkInQr(
+            @Valid @RequestBody CheckInQrRequest request,
+            Authentication authentication
+    ) {
+        CheckInResponse response = checkInService.checkInQr(request, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success("QR check-in successfully", response));
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STAFF', 'ADMIN', 'STAFF')")
+    @Operation(summary = "Get check-in history list", description = "Get check-in history lists with pagination and filters.")
+    public ResponseEntity<ApiResponse<PageResponse<CheckInResponse>>> getCheckInList(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long memberId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String sort
+    ) {
+        PageResponse<CheckInResponse> response = checkInService.getCheckInList(
+                keyword, memberId, fromDate, toDate, status, page, size, sort
+        );
+        return ResponseEntity.ok(ApiResponse.success("Get check-in list successfully", response));
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STAFF', 'ADMIN', 'STAFF')")
+    @Operation(summary = "Get check-in detail", description = "Retrieve a single check-in record details.")
+    public ResponseEntity<ApiResponse<CheckInResponse>> getCheckInDetail(
+            @PathVariable Long id
+    ) {
+        CheckInResponse response = checkInService.getCheckInDetail(id);
+        return ResponseEntity.ok(ApiResponse.success("Get check-in detail successfully", response));
+    }
+
+    @PatchMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STAFF', 'ADMIN', 'STAFF')")
+    @Operation(summary = "Cancel check-in", description = "Mark a successful check-in record as cancelled.")
+    public ResponseEntity<ApiResponse<CheckInResponse>> cancelCheckIn(
+            @PathVariable Long id,
+            @Valid @RequestBody CheckInCancelRequest request
+    ) {
+        CheckInResponse response = checkInService.cancelCheckIn(id, request);
+        return ResponseEntity.ok(ApiResponse.success("Cancel check-in successfully", response));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ADMIN')")
+    @Operation(summary = "Soft delete check-in", description = "Admin only. Soft deletes a check-in record.")
+    public ResponseEntity<ApiResponse<Void>> deleteCheckIn(
+            @PathVariable Long id
+    ) {
+        checkInService.deleteCheckIn(id);
+        return ResponseEntity.ok(ApiResponse.success("Delete check-in successfully"));
+    }
+
+    @GetMapping("/my")
+    @PreAuthorize("hasAnyAuthority('ROLE_MEMBER', 'MEMBER')")
+    @Operation(summary = "Member personal check-in history", description = "Retrieve check-in history of currently logged-in member.")
+    public ResponseEntity<ApiResponse<PageResponse<CheckInResponse>>> getMyCheckInHistory(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Authentication authentication
+    ) {
+        PageResponse<CheckInResponse> response = checkInService.getMyCheckInHistory(
+                authentication.getName(), fromDate, toDate, page, size
+        );
+        return ResponseEntity.ok(ApiResponse.success("Get my check-in history successfully", response));
+    }
+
+    @GetMapping("/statistics/today")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STAFF', 'ADMIN', 'STAFF')")
+    @Operation(summary = "Today check-in statistics", description = "Get counts of check-ins made today.")
+    public ResponseEntity<ApiResponse<CheckInTodayStatisticsResponse>> getTodayStatistics() {
+        CheckInTodayStatisticsResponse response = checkInService.getTodayStatistics();
+        return ResponseEntity.ok(ApiResponse.success("Get today check-in statistics successfully", response));
+    }
+}
