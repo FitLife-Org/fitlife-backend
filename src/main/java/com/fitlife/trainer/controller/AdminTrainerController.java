@@ -8,10 +8,11 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/admin/trainers")
+@RequestMapping("/admin/trainers")
 public class AdminTrainerController {
 
     private final TrainerService trainerService;
@@ -22,6 +23,15 @@ public class AdminTrainerController {
         return ApiResponse.<TrainerResponse>builder()
                 .message("Trainer created successfully")
                 .data(trainerService.createTrainer(request))
+                .build();
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    public ApiResponse<List<TrainerResponse>> getAllTrainers() {
+        return ApiResponse.<List<TrainerResponse>>builder()
+                .message("Trainer list retrieved successfully")
+                .data(trainerService.getAllTrainers())
                 .build();
     }
 }

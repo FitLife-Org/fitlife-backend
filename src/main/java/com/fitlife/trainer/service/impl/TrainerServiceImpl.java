@@ -53,4 +53,10 @@ public class TrainerServiceImpl implements TrainerService {
         Trainer savedTrainer = (Trainer) trainerRepository.save(trainer);
         return trainerMapper.toResponse(savedTrainer);
     }
+    @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public java.util.List getAllTrainers() {
+        java.util.List trainers = trainerRepository.findAllByDeletedFalse();
+        return trainerMapper.toResponseList(trainers);
+    }
 }

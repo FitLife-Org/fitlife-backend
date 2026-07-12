@@ -11,4 +11,5 @@ public interface TrainerRepository extends JpaRepository<Trainer, Long> {
     boolean existsByUserIdAndDeletedFalse(Long userId);
 
     boolean existsByTrainerCodeAndDeletedFalse(String trainerCode);
+    java.util.List findAllByDeletedFalse();
 }

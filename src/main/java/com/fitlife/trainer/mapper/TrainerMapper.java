@@ -5,6 +5,7 @@ import com.fitlife.trainer.dto.response.TrainerResponse;
 import com.fitlife.trainer.entity.Trainer;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import java.util.List;
 
 @Mapper(componentModel = "spring")
 public interface TrainerMapper {
@@ -16,10 +17,13 @@ public interface TrainerMapper {
     @Mapping(target = "updatedAt", ignore = true)
     Trainer toEntity(TrainerCreateRequest request);
 
-    @Mapping(target = "userId", source = "trainer.user.id")
-    @Mapping(target = "username", source = "trainer.user.username")
-    @Mapping(target = "fullName", source = "trainer.user.fullName")
-    @Mapping(target = "email", source = "trainer.user.email")
-    @Mapping(target = "phone", source = "trainer.user.phone")
+    @Mapping(target = "userId", source = "user.id")
+    @Mapping(target = "username", source = "user.username")
+    @Mapping(target = "fullName", source = "user.fullName")
+    @Mapping(target = "email", source = "user.email")
+    @Mapping(target = "phone", source = "user.phone")
     TrainerResponse toResponse(Trainer trainer);
+
+
+    List<TrainerResponse> toResponseList(List<Trainer> trainers);
 }
