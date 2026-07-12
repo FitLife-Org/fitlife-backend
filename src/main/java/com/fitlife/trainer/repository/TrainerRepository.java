@@ -15,6 +15,8 @@ public interface TrainerRepository extends JpaRepository<Trainer, Long> {
 
     List<Trainer> findAllByDeletedFalse();
 
-
     Optional<Trainer> findByIdAndDeletedFalse(Long id);
+
+
+    Optional<Trainer> findByUserUsernameAndDeletedFalse(String username);
 }

@@ -1,4 +1,23 @@
 
+
+### BƯỚC 0: ADMIN ĐĂNG NHẬP ĐỂ LẤY TOKEN TOÀN CỤC
+
+POST http://localhost:8080/api/v1/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "identifier": "admin",
+  "password": "123456"
+}
+
+> {%
+
+    client.global.set("adminToken", response.body.data.accessToken);
+%}
+
+
+
 ### CASE 1: TẠO MỚI HỒ SƠ HUẤN LUYỆN VIÊN THÀNH CÔNG (P0 - TRƯỜNG HỢP CHUẨN)
 
 POST http://localhost:8080/api/v1/admin/trainers
@@ -6,29 +25,36 @@ Content-Type: application/json
 Authorization: Bearer {{adminToken}}
 
 {
-  "userId": 3,
-  "trainerCode": "TRN001",
+  "userId": 4,
+  "trainerCode": "TRN002",
   "specialization": "Strength Training, Fat Loss",
-  "experienceYears": 3,
+  "experienceYears": 5,
   "certifications": "ACE Personal Trainer",
   "bio": "Huấn luyện viên chuyên nghiệp.",
   "status": "ACTIVE"
 }
-### CASE 2: LẤY DANH SÁCH TRAINER  (ADMIN HOẶC STAFF)
+
+
+
+### CASE 2: LẤY DANH SÁCH TRAINER (ADMIN HOẶC STAFF)
 
 GET http://localhost:8080/api/v1/admin/trainers
 Accept: application/json
 Authorization: Bearer {{adminToken}}
 
+
+
 ### CASE 3: XEM CHI TIẾT TRAINER THEO ID (ADMIN HOẶC STAFF)
 
-GET http://localhost:8080/api/v1/admin/trainers/1
+GET http://localhost:8080/api/v1/admin/trainers/4
 Accept: application/json
 Authorization: Bearer {{adminToken}}
 
 
+
 ### CASE 4: CẬP NHẬT THÔNG TIN TRAINER THEO ID (ADMIN ONLY)
-PUT http://localhost:8080/api/v1/admin/trainers/1
+
+PUT http://localhost:8080/api/v1/admin/trainers/4
 Content-Type: application/json
 Authorization: Bearer {{adminToken}}
 
@@ -43,17 +69,42 @@ Authorization: Bearer {{adminToken}}
 
 
 ### CASE 5: CẬP NHẬT TRẠNG THÁI TRAINER (ADMIN ONLY)
-PATCH http://localhost:8080/api/v1/admin/trainers/1/status
+
+PATCH http://localhost:8080/api/v1/admin/trainers/4/status
 Content-Type: application/json
 Authorization: Bearer {{adminToken}}
 
 {
-  "status": "INACTIVE"
+  "status": "ACTIVE"
 }
+
 
 
 ### CASE 6: XÓA MỀM TRAINER THEO ID (ADMIN ONLY)
 
-DELETE http://localhost:8080/api/v1/admin/trainers/1
+DELETE http://localhost:8080/api/v1/admin/trainers/4
 Accept: application/json
 Authorization: Bearer {{adminToken}}
+
+
+
+### CASE 7: TRAINER TỰ XEM HỒ SƠ CÁ NHÂN CỦA MÌNH (TRAINER ONLY)
+
+POST http://localhost:8080/api/v1/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "identifier": "member01",
+  "password": "123456"
+}
+
+> {%
+    client.global.set("trainerToken", response.body.data.accessToken);
+%}
+
+
+###
+GET http://localhost:8080/api/v1/trainers/me
+Accept: application/json
+Authorization: Bearer {{trainerToken}}

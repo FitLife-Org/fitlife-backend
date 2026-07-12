@@ -100,5 +100,19 @@ public class TrainerServiceImpl implements TrainerService {
 
         trainerRepository.save(trainer);
     }
+    @Override
+    @Transactional(readOnly = true)
+    public TrainerResponse getMyProfile() {
+        String currentUsername = org.springframework.security.core.context.SecurityContextHolder.getContext()
+                .getAuthentication().getName();
+
+        Trainer trainer = trainerRepository.findByUserUsernameAndDeletedFalse(currentUsername)
+                .orElseThrow(() -> new AppException(ErrorCode.TRAINER_NOT_FOUND));
+
+
+        return trainerMapper.toResponse(trainer);
+    }
+
+
 
 }
