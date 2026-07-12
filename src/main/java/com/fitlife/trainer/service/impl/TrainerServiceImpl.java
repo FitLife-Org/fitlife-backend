@@ -91,4 +91,14 @@ public class TrainerServiceImpl implements TrainerService {
         Trainer updatedTrainer = trainerRepository.save(trainer);
         return trainerMapper.toResponse(updatedTrainer);
     }
+    @Override
+    public void deleteTrainer(Long id) {
+
+        Trainer trainer = trainerRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new com.fitlife.common.exception.AppException(com.fitlife.common.exception.ErrorCode.TRAINER_NOT_FOUND));
+        trainer.setDeleted(true);
+
+        trainerRepository.save(trainer);
+    }
+
 }

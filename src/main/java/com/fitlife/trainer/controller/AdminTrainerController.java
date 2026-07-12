@@ -64,4 +64,12 @@ public class AdminTrainerController {
                 .data(trainerService.updateTrainerStatus(id, request))
                 .build();
     }
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse deleteTrainer(@PathVariable Long id) {
+        trainerService.deleteTrainer(id);
+        return ApiResponse.builder()
+                .message("Trainer soft-deleted successfully")
+                .build();
+    }
 }
