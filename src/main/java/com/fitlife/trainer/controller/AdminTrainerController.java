@@ -34,4 +34,12 @@ public class AdminTrainerController {
                 .data(trainerService.getAllTrainers())
                 .build();
     }
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    public ApiResponse getTrainerById(@PathVariable Long id) {
+        return ApiResponse.builder()
+                .message("Trainer details retrieved successfully")
+                .data(trainerService.getTrainerById(id))
+                .build();
+    }
 }

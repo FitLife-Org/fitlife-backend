@@ -14,6 +14,7 @@ import com.fitlife.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -50,13 +51,22 @@ public class TrainerServiceImpl implements TrainerService {
             trainer.setStatus(TrainerStatus.ACTIVE);
         }
 
-        Trainer savedTrainer = (Trainer) trainerRepository.save(trainer);
+        Trainer savedTrainer = trainerRepository.save(trainer);
         return trainerMapper.toResponse(savedTrainer);
     }
+
     @Override
-    @org.springframework.transaction.annotation.Transactional(readOnly = true)
-    public java.util.List getAllTrainers() {
-        java.util.List trainers = trainerRepository.findAllByDeletedFalse();
+    @Transactional(readOnly = true)
+    public List<TrainerResponse> getAllTrainers() {
+        List<Trainer> trainers = trainerRepository.findAllByDeletedFalse();
         return trainerMapper.toResponseList(trainers);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TrainerResponse getTrainerById(Long id) {
+        Trainer trainer = trainerRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new AppException(ErrorCode.TRAINER_NOT_FOUND));
+        return trainerMapper.toResponse(trainer);
     }
 }

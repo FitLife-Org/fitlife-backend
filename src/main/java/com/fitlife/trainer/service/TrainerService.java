@@ -7,4 +7,6 @@ public interface TrainerService {
     TrainerResponse createTrainer(TrainerCreateRequest request);
 
     java.util.List getAllTrainers();
+    TrainerResponse getTrainerById(Long id);
+
 }
