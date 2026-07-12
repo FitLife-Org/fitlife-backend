@@ -1,0 +1,16 @@
+
+### CASE 2: TẠO MỚI HỒ SƠ HUẤN LUYỆN VIÊN THÀNH CÔNG (P0 - TRƯỜNG HỢP CHUẨN)
+
+POST {{baseUrl}}/admin/trainers
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "userId": 5,
+  "trainerCode": "TRN001",
+  "specialization": "Strength Training, Fat Loss",
+  "experienceYears": 3,
+  "certifications": "ACE Personal Trainer, Nutrition Basic",
+  "bio": "Huấn luyện viên chuyên hỗ trợ giảm mỡ, tăng cơ và xây dựng thói quen tập luyện.",
+  "status": "ACTIVE"
+}

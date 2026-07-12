@@ -388,33 +388,34 @@ public enum ErrorCode {
     ),
 
     BODY_METRIC_NOT_FOUND(
-        11001,
-                "Body metric not found",
-        HttpStatus.NOT_FOUND
-        ),
+            11001,
+            "Body metric not found",
+            HttpStatus.NOT_FOUND
+    ),
 
     WEIGHT_INVALID(
-        11002,
-                "Weight is invalid",
-        HttpStatus.BAD_REQUEST
-        ),
+            11002,
+            "Weight is invalid",
+            HttpStatus.BAD_REQUEST
+    ),
 
-    HEIGHT_INVALID(11003,
-                "Height is invalid",
-        HttpStatus.BAD_REQUEST
-        ),
+    HEIGHT_INVALID(
+            11003,
+            "Height is invalid",
+            HttpStatus.BAD_REQUEST
+    ),
 
     BODY_FAT_INVALID(
-        11004,
-                "Body fat percent is invalid",
-        HttpStatus.BAD_REQUEST
-        ),
+            11004,
+            "Body fat percent is invalid",
+            HttpStatus.BAD_REQUEST
+    ),
 
     MUSCLE_MASS_INVALID(
-        11005,
-                "Muscle mass is invalid",
-        HttpStatus.BAD_REQUEST
-        ),
+            11005,
+            "Muscle mass is invalid",
+            HttpStatus.BAD_REQUEST
+    ),
     AI_SUGGESTION_NOT_FOUND(
             12001,
             "AI suggestion not found",
@@ -487,7 +488,40 @@ public enum ErrorCode {
             13007,
             "Check-in is already cancelled",
             HttpStatus.BAD_REQUEST
-    );
+    ), // Thay dấu chấm phẩy cũ thành dấu phẩy ở đây để nối tiếp phần tử
+
+    // =========================
+    // Trainer errors: 14000 - 14999 (Đã đổi dải số để tránh trùng Package đầu 7)
+    // =========================
+    TRAINER_NOT_FOUND(
+            14001,
+            "Trainer not found",
+            HttpStatus.NOT_FOUND
+    ),
+
+    TRAINER_ALREADY_EXISTS(
+            14002,
+            "Trainer profile already exists for this user",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    TRAINER_CODE_EXISTED(
+            14003,
+            "Trainer code already exists",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    TRAINER_PROFILE_NOT_FOUND(
+            14004,
+            "Trainer profile not found for current user",
+            HttpStatus.NOT_FOUND
+    ),
+
+    USER_ROLE_INVALID(
+            14005,
+            "User role is invalid for this action",
+            HttpStatus.BAD_REQUEST
+    ); // Dấu chấm phẩy chốt hạ nằm ở cuối enum Trainer
 
     private final int code;
     private final String message;
