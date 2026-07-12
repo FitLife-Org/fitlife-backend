@@ -53,4 +53,15 @@ public class AdminTrainerController {
                 .data(trainerService.updateTrainer(id, request))
                 .build();
     }
+
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse updateTrainerStatus(
+            @PathVariable Long id,
+            @jakarta.validation.Valid @RequestBody com.fitlife.trainer.dto.request.TrainerStatusUpdateRequest request) {
+        return ApiResponse.builder()
+                .message("Trainer status updated successfully")
+                .data(trainerService.updateTrainerStatus(id, request))
+                .build();
+    }
 }

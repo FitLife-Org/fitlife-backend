@@ -39,3 +39,14 @@ Authorization: Bearer {{adminToken}}
   "bio": "Thông tin tiểu sử huấn luyện viên đã được Admin cập nhật mới thành công.",
   "status": "ACTIVE"
 }
+
+
+
+### CASE 5: CẬP NHẬT TRẠNG THÁI TRAINER (ADMIN ONLY)
+PATCH http://localhost:8080/api/v1/admin/trainers/1/status
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "status": "INACTIVE"
+}

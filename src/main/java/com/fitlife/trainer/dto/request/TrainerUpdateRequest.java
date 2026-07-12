@@ -3,6 +3,7 @@ package com.fitlife.trainer.dto.request;
 import com.fitlife.trainer.enums.TrainerStatus;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+
 import lombok.*;
 
 @Getter

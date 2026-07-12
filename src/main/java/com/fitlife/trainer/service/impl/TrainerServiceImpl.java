@@ -80,4 +80,15 @@ public class TrainerServiceImpl implements TrainerService {
         Trainer updatedTrainer = trainerRepository.save(trainer);
         return trainerMapper.toResponse(updatedTrainer);
     }
+
+    @Override
+    public com.fitlife.trainer.dto.response.TrainerResponse updateTrainerStatus(Long id, com.fitlife.trainer.dto.request.TrainerStatusUpdateRequest request) {
+        Trainer trainer = trainerRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new com.fitlife.common.exception.AppException(com.fitlife.common.exception.ErrorCode.TRAINER_NOT_FOUND));
+
+        trainer.setStatus(request.getStatus());
+
+        Trainer updatedTrainer = trainerRepository.save(trainer);
+        return trainerMapper.toResponse(updatedTrainer);
+    }
 }

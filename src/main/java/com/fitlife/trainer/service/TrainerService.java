@@ -10,4 +10,5 @@ public interface TrainerService {
     java.util.List getAllTrainers();
     TrainerResponse getTrainerById(Long id);
     TrainerResponse updateTrainer(Long id, TrainerUpdateRequest request);
+    com.fitlife.trainer.dto.response.TrainerResponse updateTrainerStatus(Long id, com.fitlife.trainer.dto.request.TrainerStatusUpdateRequest request);
 }
