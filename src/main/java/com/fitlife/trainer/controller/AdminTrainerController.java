@@ -1,0 +1,27 @@
+package com.fitlife.trainer.controller;
+
+import com.fitlife.common.dto.ApiResponse;
+import com.fitlife.trainer.dto.request.TrainerCreateRequest;
+import com.fitlife.trainer.dto.response.TrainerResponse;
+import com.fitlife.trainer.service.TrainerService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/api/v1/admin/trainers")
+public class AdminTrainerController {
+
+    private final TrainerService trainerService;
+
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<TrainerResponse> createTrainer(@Valid @RequestBody TrainerCreateRequest request) {
+        return ApiResponse.<TrainerResponse>builder()
+                .message("Trainer created successfully")
+                .data(trainerService.createTrainer(request))
+                .build();
+    }
+}
