@@ -1,11 +1,13 @@
 package com.fitlife.trainer.mapper;
 
 import com.fitlife.trainer.dto.request.TrainerCreateRequest;
+import com.fitlife.trainer.dto.request.TrainerUpdateRequest;
 import com.fitlife.trainer.dto.response.TrainerResponse;
 import com.fitlife.trainer.entity.Trainer;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import java.util.List;
+import org.mapstruct.MappingTarget;
 
 @Mapper(componentModel = "spring")
 public interface TrainerMapper {
@@ -24,6 +26,13 @@ public interface TrainerMapper {
     @Mapping(target = "phone", source = "user.phone")
     TrainerResponse toResponse(Trainer trainer);
 
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "user", ignore = true)
+    @Mapping(target = "trainerCode", ignore = true)
+    @Mapping(target = "deleted", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    void updateTrainerFromRequest(TrainerUpdateRequest request, @MappingTarget Trainer trainer);
 
     List<TrainerResponse> toResponseList(List<Trainer> trainers);
 }

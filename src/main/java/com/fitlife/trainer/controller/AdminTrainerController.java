@@ -42,4 +42,15 @@ public class AdminTrainerController {
                 .data(trainerService.getTrainerById(id))
                 .build();
     }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse updateTrainer(
+            @PathVariable Long id,
+            @jakarta.validation.Valid @RequestBody com.fitlife.trainer.dto.request.TrainerUpdateRequest request) {
+        return ApiResponse.builder()
+                .message("Trainer updated successfully")
+                .data(trainerService.updateTrainer(id, request))
+                .build();
+    }
 }

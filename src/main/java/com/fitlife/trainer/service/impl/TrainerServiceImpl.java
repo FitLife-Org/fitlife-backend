@@ -3,6 +3,7 @@ package com.fitlife.trainer.service.impl;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.trainer.dto.request.TrainerCreateRequest;
+import com.fitlife.trainer.dto.request.TrainerUpdateRequest;
 import com.fitlife.trainer.dto.response.TrainerResponse;
 import com.fitlife.trainer.entity.Trainer;
 import com.fitlife.trainer.enums.TrainerStatus;
@@ -68,5 +69,15 @@ public class TrainerServiceImpl implements TrainerService {
         Trainer trainer = trainerRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.TRAINER_NOT_FOUND));
         return trainerMapper.toResponse(trainer);
+    }
+    @Override
+    public TrainerResponse updateTrainer(Long id, TrainerUpdateRequest request) {
+        Trainer trainer = trainerRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new AppException(ErrorCode.TRAINER_NOT_FOUND));
+
+        trainerMapper.updateTrainerFromRequest(request, trainer);
+
+        Trainer updatedTrainer = trainerRepository.save(trainer);
+        return trainerMapper.toResponse(updatedTrainer);
     }
 }

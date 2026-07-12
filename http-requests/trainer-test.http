@@ -25,3 +25,17 @@ Authorization: Bearer {{adminToken}}
 GET http://localhost:8080/api/v1/admin/trainers/1
 Accept: application/json
 Authorization: Bearer {{adminToken}}
+
+
+### CASE 4: CẬP NHẬT THÔNG TIN TRAINER THEO ID (ADMIN ONLY)
+PUT http://localhost:8080/api/v1/admin/trainers/1
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "specialization": "Bodybuilding, Senior Nutrition Expert",
+  "experienceYears": 6,
+  "certifications": "ACE Personal Trainer, NASM Advanced Coach",
+  "bio": "Thông tin tiểu sử huấn luyện viên đã được Admin cập nhật mới thành công.",
+  "status": "ACTIVE"
+}
