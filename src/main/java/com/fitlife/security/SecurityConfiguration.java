@@ -58,7 +58,6 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/payments/vnpay/ipn").permitAll()
 
                         // Public package view
-                        .requestMatchers(HttpMethod.GET, "/packages/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/gym-packages/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/package-durations/**").permitAll()
 

@@ -1,6 +1,6 @@
 package com.fitlife.gympackage.controller;
 
-import com.fitlife.common.dto.ApiResponse;
+import com.fitlife.common.response.ApiResponse;
 import com.fitlife.gympackage.dto.GymPackageVisibilityRequest;
 import com.fitlife.gympackage.dto.PackageDurationCreateRequest;
 import com.fitlife.gympackage.dto.PackageDurationResponse;

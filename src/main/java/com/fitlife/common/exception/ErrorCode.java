@@ -90,9 +90,37 @@ public enum ErrorCode {
     ),
 
 
-    // =========================
-    // Role errors: 4000 - 4999
-    // =========================
+    DURATION_NOT_FOUND(
+            7003,
+            "Package duration not found",
+            HttpStatus.NOT_FOUND
+    ),
+
+    DURATION_CODE_ALREADY_EXISTS(
+            7004,
+            "Package duration code already exists",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    PACKAGE_INACTIVE(
+            7005,
+            "Gym package is inactive",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    DURATION_INACTIVE(
+            7006,
+            "Package duration is inactive",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    SUBSCRIPTION_NOT_FOUND(
+            7007,
+            "Subscription not found",
+            HttpStatus.NOT_FOUND
+    ),
+
+    // Role errors
     ROLE_NOT_FOUND(
             4001,
             "Role not found",
