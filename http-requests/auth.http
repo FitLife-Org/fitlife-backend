@@ -66,6 +66,10 @@ Accept: application/json
     client.global.set("accessToken", response.body.data.accessToken);
 %}
 
+### Logout Member - success
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer <access-token>
+Content-Type: application/json
 
 ### 4. Login with wrong password - should fail
 

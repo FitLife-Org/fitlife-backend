@@ -7,7 +7,7 @@ import com.fitlife.checkin.enums.CheckInStatus;
 import com.fitlife.checkin.mapper.CheckInMapper;
 import com.fitlife.checkin.repository.CheckInRepository;
 import com.fitlife.checkin.service.CheckInService;
-import com.fitlife.common.dto.PageResponse;
+import com.fitlife.common.response.PageResponse;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.member.entity.Member;

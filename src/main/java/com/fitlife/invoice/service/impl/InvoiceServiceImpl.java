@@ -1,6 +1,6 @@
 package com.fitlife.invoice.service.impl;
 
-import com.fitlife.common.dto.PageResponse;
+import com.fitlife.common.response.PageResponse;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.invoice.dto.internal.InvoiceAmountSnapshot;
@@ -31,7 +31,6 @@ import com.fitlife.payment.mapper.PaymentMapper;
 import com.fitlife.payment.repository.PaymentRepository;
 import com.fitlife.invoice.dto.request.InvoiceGenerateRequest;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Service

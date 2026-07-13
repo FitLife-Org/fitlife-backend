@@ -3,7 +3,7 @@ package com.fitlife.bodymetric.service;
 import com.fitlife.bodymetric.dto.request.BodyMetricCreateRequest;
 import com.fitlife.bodymetric.dto.request.BodyMetricUpdateRequest;
 import com.fitlife.bodymetric.dto.response.BodyMetricResponse;
-import com.fitlife.common.dto.PageResponse;
+import com.fitlife.common.response.PageResponse;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;

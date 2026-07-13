@@ -1,6 +1,6 @@
 package com.fitlife.gympackage.service;
 
-import com.fitlife.common.dto.PageResponse;
+import com.fitlife.common.response.PageResponse;
 import com.fitlife.gympackage.dto.GymPackageCreateRequest;
 import com.fitlife.gympackage.dto.GymPackageResponse;
 import com.fitlife.gympackage.dto.GymPackageUpdateRequest;

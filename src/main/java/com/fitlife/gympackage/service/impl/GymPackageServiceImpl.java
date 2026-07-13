@@ -2,7 +2,7 @@ package com.fitlife.gympackage.service.impl;
 
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
-import com.fitlife.common.dto.PageResponse;
+import com.fitlife.common.response.PageResponse;
 import com.fitlife.gympackage.dto.GymPackageCreateRequest;
 import com.fitlife.gympackage.dto.GymPackageResponse;
 import com.fitlife.gympackage.dto.GymPackageUpdateRequest;
@@ -18,8 +18,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor

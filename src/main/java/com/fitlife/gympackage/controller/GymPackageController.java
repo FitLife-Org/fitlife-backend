@@ -1,7 +1,7 @@
 package com.fitlife.gympackage.controller;
 
-import com.fitlife.common.dto.ApiResponse;
-import com.fitlife.common.dto.PageResponse;
+import com.fitlife.common.response.ApiResponse;
+import com.fitlife.common.response.PageResponse;
 import com.fitlife.gympackage.dto.GymPackageCreateRequest;
 import com.fitlife.gympackage.dto.GymPackageResponse;
 import com.fitlife.gympackage.dto.GymPackageUpdateRequest;

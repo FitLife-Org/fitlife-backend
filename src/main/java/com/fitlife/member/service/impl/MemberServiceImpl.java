@@ -11,7 +11,7 @@ import com.fitlife.member.enums.MemberStatus;
 import com.fitlife.member.mapper.MemberMapper;
 import com.fitlife.member.repository.MemberRepository;
 import com.fitlife.member.service.MemberService;
-import com.fitlife.common.dto.PageResponse;
+import com.fitlife.common.response.PageResponse;
 import com.fitlife.user.entity.Role;
 import com.fitlife.user.entity.User;
 import com.fitlife.user.enums.AuthProvider;

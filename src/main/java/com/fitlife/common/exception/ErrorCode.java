@@ -9,12 +9,6 @@ public enum ErrorCode {
     // =========================
     // Common errors: 1000 - 1999
     // =========================
-    UNCATEGORIZED_EXCEPTION(
-            9999,
-            "Uncategorized error",
-            HttpStatus.INTERNAL_SERVER_ERROR
-    ),
-
     INVALID_REQUEST(
             1000,
             "Invalid request",
@@ -90,37 +84,9 @@ public enum ErrorCode {
     ),
 
 
-    DURATION_NOT_FOUND(
-            7003,
-            "Package duration not found",
-            HttpStatus.NOT_FOUND
-    ),
-
-    DURATION_CODE_ALREADY_EXISTS(
-            7004,
-            "Package duration code already exists",
-            HttpStatus.BAD_REQUEST
-    ),
-
-    PACKAGE_INACTIVE(
-            7005,
-            "Gym package is inactive",
-            HttpStatus.BAD_REQUEST
-    ),
-
-    DURATION_INACTIVE(
-            7006,
-            "Package duration is inactive",
-            HttpStatus.BAD_REQUEST
-    ),
-
-    SUBSCRIPTION_NOT_FOUND(
-            7007,
-            "Subscription not found",
-            HttpStatus.NOT_FOUND
-    ),
-
-    // Role errors
+    // =========================
+    // Role errors: 4000 - 4999
+    // =========================
     ROLE_NOT_FOUND(
             4001,
             "Role not found",
@@ -233,7 +199,7 @@ public enum ErrorCode {
 
 
     // =========================
-    // Package errors: 7000 - 7999
+    // Gym package errors: 7000 - 7999
     // =========================
     PACKAGE_NOT_FOUND(
             7001,
@@ -267,19 +233,19 @@ public enum ErrorCode {
 
     DURATION_NOT_FOUND(
             7006,
-            "Duration not found",
+            "Package duration not found",
             HttpStatus.NOT_FOUND
     ),
 
     DURATION_INACTIVE(
             7007,
-            "Duration is inactive",
+            "Package duration is inactive",
             HttpStatus.BAD_REQUEST
     ),
 
     DURATION_CODE_ALREADY_EXISTS(
             7008,
-            "Duration code already exists",
+            "Package duration code already exists",
             HttpStatus.BAD_REQUEST
     ),
 
@@ -375,7 +341,7 @@ public enum ErrorCode {
 
     PAYMENT_ALREADY_SUCCESS(
             10002,
-            "Payment already success",
+            "Payment has already succeeded",
             HttpStatus.BAD_REQUEST
     ),
 
@@ -393,7 +359,7 @@ public enum ErrorCode {
 
     SUCCESS_PAYMENT_ALREADY_EXISTS(
             10005,
-            "Success payment already exists for this invoice",
+            "A successful payment already exists for this invoice",
             HttpStatus.BAD_REQUEST
     ),
 
@@ -405,16 +371,20 @@ public enum ErrorCode {
 
     CANNOT_CREATE_PAYMENT_FOR_PAID_INVOICE(
             10007,
-            "Cannot create payment for paid invoice",
+            "Cannot create payment for a paid invoice",
             HttpStatus.BAD_REQUEST
     ),
 
     CANNOT_CREATE_PAYMENT_FOR_CANCELLED_INVOICE(
             10008,
-            "Cannot create payment for cancelled invoice",
+            "Cannot create payment for a cancelled invoice",
             HttpStatus.BAD_REQUEST
     ),
 
+
+    // =========================
+    // Body metric errors: 11000 - 11999
+    // =========================
     BODY_METRIC_NOT_FOUND(
             11001,
             "Body metric not found",
@@ -435,7 +405,7 @@ public enum ErrorCode {
 
     BODY_FAT_INVALID(
             11004,
-            "Body fat percent is invalid",
+            "Body fat percentage is invalid",
             HttpStatus.BAD_REQUEST
     ),
 
@@ -444,6 +414,11 @@ public enum ErrorCode {
             "Muscle mass is invalid",
             HttpStatus.BAD_REQUEST
     ),
+
+
+    // =========================
+    // AI errors: 12000 - 12999
+    // =========================
     AI_SUGGESTION_NOT_FOUND(
             12001,
             "AI suggestion not found",
@@ -465,7 +440,7 @@ public enum ErrorCode {
     AI_LIMIT_EXCEEDED(
             12004,
             "AI daily limit exceeded",
-            HttpStatus.BAD_REQUEST
+            HttpStatus.TOO_MANY_REQUESTS
     ),
 
     AI_FEEDBACK_ALREADY_EXISTS(
@@ -473,11 +448,13 @@ public enum ErrorCode {
             "AI feedback already exists",
             HttpStatus.BAD_REQUEST
     ),
+
     AI_RESPONSE_TRUNCATED(
             12006,
             "AI response was truncated. Please try again with a shorter request.",
             HttpStatus.BAD_GATEWAY
     ),
+
 
     // =========================
     // Check-in errors: 13000 - 13999
@@ -502,7 +479,7 @@ public enum ErrorCode {
 
     ALREADY_CHECKED_IN_TODAY(
             13005,
-            "Member already checked in today",
+            "Member has already checked in today",
             HttpStatus.BAD_REQUEST
     ),
 
@@ -514,12 +491,13 @@ public enum ErrorCode {
 
     CHECKIN_ALREADY_CANCELLED(
             13007,
-            "Check-in is already cancelled",
+            "Check-in has already been cancelled",
             HttpStatus.BAD_REQUEST
-    ), // Thay dấu chấm phẩy cũ thành dấu phẩy ở đây để nối tiếp phần tử
+    ),
+
 
     // =========================
-    // Trainer errors: 14000 - 14999 (Đã đổi dải số để tránh trùng Package đầu 7)
+    // Trainer errors: 14000 - 14999
     // =========================
     TRAINER_NOT_FOUND(
             14001,
@@ -549,7 +527,17 @@ public enum ErrorCode {
             14005,
             "User role is invalid for this action",
             HttpStatus.BAD_REQUEST
-    ); // Dấu chấm phẩy chốt hạ nằm ở cuối enum Trainer
+    ),
+
+
+    // =========================
+    // Uncategorized error
+    // =========================
+    UNCATEGORIZED_EXCEPTION(
+            99999,
+            "Uncategorized error",
+            HttpStatus.INTERNAL_SERVER_ERROR
+    );
 
     private final int code;
     private final String message;

@@ -6,61 +6,64 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
-@Getter
-@Setter
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 @Entity
 @Table(name = "trainers")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Trainer {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(
+            name = "user_id",
+            nullable = false,
+            unique = true
+    )
     private User user;
 
-    @Column(name = "trainer_code", nullable = false, unique = true, length = 30)
+    @Column(
+            name = "trainer_code",
+            nullable = false,
+            unique = true,
+            length = 50
+    )
     private String trainerCode;
 
-    @Column(name = "specialization", length = 255)
+    @Column(length = 255)
     private String specialization;
 
     @Column(name = "experience_years")
     private Integer experienceYears;
 
-    @Column(name = "certifications", columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String certifications;
 
-    @Column(name = "bio", columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String bio;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 30)
+    @Column(nullable = false, length = 30)
     private TrainerStatus status;
 
-    @Column(name = "deleted", nullable = false)
+    @Column(nullable = false)
     private Boolean deleted = false;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(
+            name = "created_at",
+            nullable = false,
+            updatable = false
+    )
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Column(
+            name = "updated_at",
+            nullable = false
+    )
     private LocalDateTime updatedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-        if (this.deleted == null) this.deleted = false;
-        if (this.status == null) this.status = TrainerStatus.ACTIVE;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
 }

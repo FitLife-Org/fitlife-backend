@@ -1,6 +1,6 @@
 package com.fitlife.invoice.service;
 
-import com.fitlife.common.dto.PageResponse;
+import com.fitlife.common.response.PageResponse;
 import com.fitlife.invoice.dto.request.InvoiceCancelRequest;
 import com.fitlife.invoice.dto.request.InvoiceGenerateRequest;
 import com.fitlife.invoice.dto.response.InvoiceDetailResponse;

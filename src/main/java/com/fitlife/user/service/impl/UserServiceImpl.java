@@ -1,6 +1,6 @@
 package com.fitlife.user.service.impl;
 
-import com.fitlife.common.dto.PageResponse;
+import com.fitlife.common.response.PageResponse;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.security.CustomUserDetails;

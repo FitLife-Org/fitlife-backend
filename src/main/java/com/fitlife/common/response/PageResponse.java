@@ -1,4 +1,4 @@
-package com.fitlife.common.dto;
+package com.fitlife.common.response;
 
 import lombok.Builder;
 import lombok.Getter;

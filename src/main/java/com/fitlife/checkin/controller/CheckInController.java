@@ -2,10 +2,9 @@ package com.fitlife.checkin.controller;
 
 import com.fitlife.checkin.dto.*;
 import com.fitlife.checkin.service.CheckInService;
-import com.fitlife.common.dto.ApiResponse;
-import com.fitlife.common.dto.PageResponse;
+import com.fitlife.common.response.ApiResponse;
+import com.fitlife.common.response.PageResponse;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

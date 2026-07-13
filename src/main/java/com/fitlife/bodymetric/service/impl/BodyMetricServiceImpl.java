@@ -7,7 +7,7 @@ import com.fitlife.bodymetric.entity.BodyMetric;
 import com.fitlife.bodymetric.mapper.BodyMetricMapper;
 import com.fitlife.bodymetric.repository.BodyMetricRepository;
 import com.fitlife.bodymetric.service.BodyMetricService;
-import com.fitlife.common.dto.PageResponse;
+import com.fitlife.common.response.PageResponse;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.member.entity.Member;

@@ -1,7 +1,7 @@
 package com.fitlife.checkin.service;
 
 import com.fitlife.checkin.dto.*;
-import com.fitlife.common.dto.PageResponse;
+import com.fitlife.common.response.PageResponse;
 
 import java.time.LocalDate;
 

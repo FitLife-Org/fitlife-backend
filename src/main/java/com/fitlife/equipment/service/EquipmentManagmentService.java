@@ -1,6 +1,6 @@
 package com.fitlife.equipment.service;
 
-import com.fitlife.common.dto.PageResponse;
+import com.fitlife.common.response.PageResponse;
 import com.fitlife.equipment.dto.*;
 import org.springframework.data.domain.Pageable;
 

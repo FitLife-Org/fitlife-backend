@@ -2,8 +2,8 @@ package com.fitlife.bodymetric.controller;
 
 import com.fitlife.bodymetric.dto.response.BodyMetricResponse;
 import com.fitlife.bodymetric.service.BodyMetricService;
-import com.fitlife.common.dto.ApiResponse;
-import com.fitlife.common.dto.PageResponse;
+import com.fitlife.common.response.ApiResponse;
+import com.fitlife.common.response.PageResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;

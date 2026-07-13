@@ -1,7 +1,7 @@
 package com.fitlife.payment.controller;
 
-import com.fitlife.common.dto.ApiResponse;
-import com.fitlife.common.dto.PageResponse;
+import com.fitlife.common.response.ApiResponse;
+import com.fitlife.common.response.PageResponse;
 import com.fitlife.payment.dto.request.PaymentCancelRequest;
 import com.fitlife.payment.dto.request.PaymentConfirmRequest;
 import com.fitlife.payment.dto.request.PaymentFailRequest;

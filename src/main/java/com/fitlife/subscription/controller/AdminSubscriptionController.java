@@ -1,6 +1,6 @@
 package com.fitlife.subscription.controller;
 
-import com.fitlife.common.dto.ApiResponse;
+import com.fitlife.common.response.ApiResponse;
 import com.fitlife.subscription.dto.response.SubscriptionResponse;
 import com.fitlife.subscription.enums.SubscriptionStatus;
 import com.fitlife.subscription.service.SubscriptionService;

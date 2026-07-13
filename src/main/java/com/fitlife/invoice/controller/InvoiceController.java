@@ -1,7 +1,7 @@
 package com.fitlife.invoice.controller;
 
-import com.fitlife.common.dto.ApiResponse;
-import com.fitlife.common.dto.PageResponse;
+import com.fitlife.common.response.ApiResponse;
+import com.fitlife.common.response.PageResponse;
 import com.fitlife.invoice.dto.response.InvoiceDetailResponse;
 import com.fitlife.invoice.dto.response.InvoiceResponse;
 import com.fitlife.invoice.service.InvoiceService;

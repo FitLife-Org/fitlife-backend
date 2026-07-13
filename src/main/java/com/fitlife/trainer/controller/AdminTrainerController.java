@@ -1,6 +1,6 @@
 package com.fitlife.trainer.controller;
 
-import com.fitlife.common.dto.ApiResponse;
+import com.fitlife.common.response.ApiResponse;
 import com.fitlife.trainer.dto.request.TrainerCreateRequest;
 import com.fitlife.trainer.dto.response.TrainerResponse;
 import com.fitlife.trainer.service.TrainerService;

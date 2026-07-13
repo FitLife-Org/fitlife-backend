@@ -1,6 +1,6 @@
 package com.fitlife.payment.service;
 
-import com.fitlife.common.dto.PageResponse;
+import com.fitlife.common.response.PageResponse;
 import com.fitlife.payment.dto.request.PaymentCancelRequest;
 import com.fitlife.payment.dto.request.PaymentConfirmRequest;
 import com.fitlife.payment.dto.request.PaymentCreateRequest;
