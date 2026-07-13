@@ -1,7 +1,10 @@
 package com.fitlife.gympackage.service;
 
-import com.fitlife.common.response.PageResponse;
-import com.fitlife.gympackage.dto.*;
+import com.fitlife.common.dto.PageResponse;
+import com.fitlife.gympackage.dto.GymPackageCreateRequest;
+import com.fitlife.gympackage.dto.GymPackageResponse;
+import com.fitlife.gympackage.dto.GymPackageUpdateRequest;
+import com.fitlife.gympackage.dto.GymPackageVisibilityRequest;
 import org.springframework.data.domain.Pageable;
 
 public interface GymPackageService {

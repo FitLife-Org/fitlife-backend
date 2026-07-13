@@ -1,0 +1,4 @@
+### Admin get gym packages
+GET {{baseUrl}}/admin/gym-packages
+Authorization: Bearer {{adminToken}}
+Accept: application/json

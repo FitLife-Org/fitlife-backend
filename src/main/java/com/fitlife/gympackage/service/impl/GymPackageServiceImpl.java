@@ -2,8 +2,11 @@ package com.fitlife.gympackage.service.impl;
 
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
-import com.fitlife.common.response.PageResponse;
-import com.fitlife.gympackage.dto.*;
+import com.fitlife.common.dto.PageResponse;
+import com.fitlife.gympackage.dto.GymPackageCreateRequest;
+import com.fitlife.gympackage.dto.GymPackageResponse;
+import com.fitlife.gympackage.dto.GymPackageUpdateRequest;
+import com.fitlife.gympackage.dto.GymPackageVisibilityRequest;
 import com.fitlife.gympackage.entity.GymPackage;
 import com.fitlife.gympackage.mapper.GymPackageMapper;
 import com.fitlife.gympackage.repository.GymPackageRepository;
@@ -48,17 +51,7 @@ public class GymPackageServiceImpl implements GymPackageService {
 
         Page<GymPackage> pageResult = gymPackageRepository.searchPackages(searchKeyword, searchPackageType, searchStatus, pageable);
 
-        List<GymPackageResponse> dtoList = pageResult.getContent().stream()
-                .map(gymPackageMapper::toResponse)
-                .toList();
-
-        return PageResponse.<GymPackageResponse>builder()
-                .currentPage(pageResult.getNumber() + 1)
-                .totalPages(pageResult.getTotalPages() == 0 ? 1 : pageResult.getTotalPages())
-                .pageSize(pageResult.getSize())
-                .totalElements(pageResult.getTotalElements())
-                .data(dtoList)
-                .build();
+        return PageResponse.from(pageResult, gymPackageMapper::toResponse);
     }
 
     @Override

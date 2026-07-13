@@ -53,12 +53,23 @@ public class SecurityConfiguration {
                         // Auth endpoints
                         .requestMatchers("/auth/**").permitAll()
 
+                        // VNPay callback endpoints - public, because VNPay calls without JWT
+                        .requestMatchers(HttpMethod.GET, "/payments/vnpay/return").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/payments/vnpay/ipn").permitAll()
+
                         // Public package view
                         .requestMatchers(HttpMethod.GET, "/gym-packages/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/package-durations/**").permitAll()
 
                         // Preflight CORS
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // Admin payment APIs
+                        .requestMatchers("/admin/payments/**").hasAnyRole("ADMIN", "STAFF")
+
+                        // Member payment APIs
+                        .requestMatchers(HttpMethod.POST, "/payments/vnpay/create-url").hasRole("MEMBER")
+                        .requestMatchers("/payments/**").hasRole("MEMBER")
 
                         // Admin APIs
                         .requestMatchers("/admin/**").hasRole("ADMIN")

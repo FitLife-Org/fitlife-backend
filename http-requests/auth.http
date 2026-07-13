@@ -15,11 +15,11 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "username": "Member01",
-  "email": "member01@gmail.com",
+  "username": "Member03",
+  "email": "member03@gmail.com",
   "password": "123456",
-  "fullName": "Member 01",
-  "phone": "0101010101"
+  "fullName": "Member 03",
+  "phone": "0101010103"
 }
 
 ### 2. Login Member by email and save token - success
@@ -29,12 +29,26 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "identifier": "member01@gmail.com",
-  "password": "123456"
+  "identifier": "hoivien_fitlife_15",
+  "password": "password123"
 }
 
 > {%
     client.global.set("accessToken", response.body.data.accessToken);
+%}
+
+### 2. Admin login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "identifier": "admin",
+  "password": "123456"
+}
+
+> {%
+    client.global.set("adminToken", response.body.data.accessToken);
 %}
 
 ### 3. Login Member by username and save token - success
@@ -44,7 +58,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "identifier": "Member01",
+  "identifier": "member01",
   "password": "123456"
 }
 

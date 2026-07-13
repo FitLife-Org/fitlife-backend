@@ -1,92 +1,63 @@
-### =========================
-### BODY METRIC API TEST
-### Base URL: {{baseUrl}}
-### Required token: Bearer {{accessToken}}
-### =========================
-
-
-### 1. Create my body metric
-POST {{baseUrl}}/body-metrics
+### Admin create body metric
+POST {{baseUrl}}/admin/body-metrics
 Content-Type: application/json
-Accept: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "memberId": 1,
+  "weightKg": 70.0,
+  "heightCm": 170.0,
+  "bodyFatPercent": 22.0,
+  "muscleMassKg": 30.0,
+  "note": "Lần đo đầu",
+  "recordedAt": "2026-07-01T08:00:00"
+}
+
+### Admin get body metrics
+GET {{baseUrl}}/admin/body-metrics?page=0&size=10&memberId=1
+Authorization: Bearer {{accessToken}}
+
+### Admin get body metric detail
+GET {{baseUrl}}/admin/body-metrics/1
+Authorization: Bearer {{accessToken}}
+
+### Admin get body metrics by member
+GET {{baseUrl}}/admin/body-metrics/member/1?page=0&size=10
+Authorization: Bearer {{accessToken}}
+
+### Admin get latest body metric by member
+GET {{baseUrl}}/admin/body-metrics/member/1/latest
+Authorization: Bearer {{accessToken}}
+
+### Admin update body metric
+PUT {{baseUrl}}/admin/body-metrics/1
+Content-Type: application/json
 Authorization: Bearer {{accessToken}}
 
 {
-  "heightCm": 175.0,
-  "weightKg": 70.5,
-  "bodyFatPercent": 18.5,
-  "muscleMassKg": 32.0,
-  "waistCm": 78.0,
-  "chestCm": 95.0,
-  "hipCm": 90.0,
-  "note": "Initial body metric record"
+  "weightKg": 68.5,
+  "heightCm": 170.0,
+  "bodyFatPercent": 21.0,
+  "muscleMassKg": 30.5,
+  "note": "Cập nhật chỉ số"
 }
 
-
-### 2. Get my latest body metric
-GET {{baseUrl}}/body-metrics/latest
-Accept: application/json
+### Admin delete body metric
+DELETE {{baseUrl}}/admin/body-metrics/1
 Authorization: Bearer {{accessToken}}
 
-
-### 3. Get my body metric history
-GET {{baseUrl}}/body-metrics/me
-Accept: application/json
-Authorization: Bearer {{accessToken}}
-
-
-### 4. Get my body metric history with paging
+### Member get my body metrics
 GET {{baseUrl}}/body-metrics/me?page=0&size=10
-Accept: application/json
-Authorization: Bearer {{accessToken}}
+Authorization: Bearer {{memberToken}}
 
+### Member get my body metric detail
+GET {{baseUrl}}/body-metrics/me/1
+Authorization: Bearer {{memberToken}}
 
-### 5. Get body metric by id
-GET {{baseUrl}}/body-metrics/1
-Accept: application/json
-Authorization: Bearer {{accessToken}}
+### Member get latest my body metric
+GET {{baseUrl}}/body-metrics/me/latest
+Authorization: Bearer {{memberToken}}
 
-
-### 6. Update body metric
-PUT {{baseUrl}}/body-metrics/1
-Content-Type: application/json
-Accept: application/json
-Authorization: Bearer {{accessToken}}
-
-{
-  "heightCm": 175.0,
-  "weightKg": 69.8,
-  "bodyFatPercent": 17.9,
-  "muscleMassKg": 32.4,
-  "waistCm": 77.0,
-  "chestCm": 95.5,
-  "hipCm": 89.5,
-  "note": "Updated after two weeks"
-}
-
-
-### 7. Delete body metric
-DELETE {{baseUrl}}/body-metrics/1
-Accept: application/json
-Authorization: Bearer {{accessToken}}
-
-
-### 8. Test validation failed - missing height and weight
-POST {{baseUrl}}/body-metrics
-Content-Type: application/json
-Accept: application/json
-Authorization: Bearer {{accessToken}}
-
-{
-  "heightCm": null,
-  "weightKg": null,
-  "bodyFatPercent": -1,
-  "muscleMassKg": -5,
-  "waistCm": 0,
-  "note": "Invalid body metric"
-}
-
-
-### 9. Test unauthorized - no token
-GET {{baseUrl}}/body-metrics/latest
-Accept: application/json
+### Member get my body metric history
+GET {{baseUrl}}/body-metrics/me/history?from=2026-07-01T00:00:00&to=2026-07-31T23:59:59
+Authorization: Bearer {{memberToken}}

@@ -1,6 +1,6 @@
 package com.fitlife.mail.controller;
 
-import com.fitlife.common.response.ApiResponse;
+import com.fitlife.common.dto.ApiResponse;
 import com.fitlife.mail.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

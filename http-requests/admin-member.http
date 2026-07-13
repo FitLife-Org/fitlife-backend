@@ -1,27 +1,149 @@
-### =========================
 
-### FITLIFE ADMIN MEMBER TEST
-
-### Base URL: {{baseUrl}}
-
-### Required token: Bearer {{adminToken}}
-
-### =========================
-
-### 1. Admin get member list with paging and filter - success
-
-GET {{baseUrl}}/admin/members?page=0&size=10&keyword=member&status=ACTIVE
+### Admin get member list
+GET {{baseUrl}}/admin/members?page=1&size=10&keyword=member&status=ACTIVE
 Accept: application/json
 Authorization: Bearer {{adminToken}}
 
-### 2. Admin get member detail by id - success
+### Admin create member
+POST {{baseUrl}}/admin/members
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{adminToken}}
 
+{
+  "username": "hoivien_fitlife_15",
+  "email": "fitlife15@gmail.com",
+  "password": "password123",
+  "fullName": "Nguyễn Văn Hội Viên 15",
+  "phone": "0912345615",
+  "gender": "MALE",
+  "dateOfBirth": "1998-05-20",
+  "address": "Hà Nội",
+  "emergencyContactName": "Nguyễn Văn A",
+  "emergencyContactPhone": "0900000000",
+  "fitnessGoal": "LOSE_WEIGHT",
+  "healthNote": "Không có bệnh nền"
+}
+
+### Admin get member detail
 GET {{baseUrl}}/admin/members/1
 Accept: application/json
-Authorization: Bearer {{adminToken}}
+Authorization: Bearer {{accessToken}}
 
-### 3. Member token tries to access admin member list - should fail
-
-GET {{baseUrl}}/admin/members?page=0&size=10
+### Admin get member by code
+GET {{baseUrl}}/admin/members/code/MEM001
 Accept: application/json
 Authorization: Bearer {{accessToken}}
+
+### Admin update member
+PUT {{baseUrl}}/admin/members/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "fullName": "Nguyễn Văn Hội Viên Sau Sửa",
+  "email": "fitlife99_updated@gmail.com",
+  "phone": "0999888777",
+  "gender": "FEMALE",
+  "dateOfBirth": "1998-05-20",
+  "address": "TP.HCM",
+  "emergencyContactName": "Nguyễn Văn B",
+  "emergencyContactPhone": "0911111111",
+  "fitnessGoal": "GAIN_MUSCLE",
+  "healthNote": "Muốn tăng cơ",
+  "status": "ACTIVE"
+}
+
+### Admin update status
+PATCH {{baseUrl}}/admin/members/1/status
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "status": "ACTIVE"
+}
+
+### Admin soft delete member
+DELETE {{baseUrl}}/admin/members/1
+Authorization: Bearer {{accessToken}}
+
+### Admin restore member
+PATCH {{baseUrl}}/admin/members/1/restore
+Authorization: Bearer {{accessToken}}
+
+
+
+
+
+### Admin create body metric for member
+POST {{baseUrl}}/admin/body-metrics
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "memberId": 1,
+  "weightKg": 50.5,
+  "heightCm": 175
+}
+
+
+#### Admin get body metrics list - All
+GET {{baseUrl}}/admin/body-metrics?page=0&size=10
+Accept: application/json
+Authorization: Bearer {{adminToken}}
+
+
+
+### Admin get body metrics by member code
+GET {{baseUrl}}/admin/body-metrics?keyword=MEM001
+Accept: application/json
+Authorization: Bearer {{adminToken}}
+
+
+### Admin get body metric detail by ID
+GET {{baseUrl}}/admin/body-metrics/1
+Accept: application/json
+Authorization: Bearer {{adminToken}}
+
+
+### Admin get body metrics history of a specific member
+GET {{baseUrl}}/admin/body-metrics/member/1?page=0&size=5
+Accept: application/json
+Authorization: Bearer {{adminToken}}
+
+
+### Admin get the latest body metric of a specific member
+GET {{baseUrl}}/admin/body-metrics/member/1/latest
+Accept: application/json
+Authorization: Bearer {{adminToken}}
+
+### Admin update body metric by ID
+PUT {{baseUrl}}/admin/body-metrics/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "weightKg": 65.5,
+  "heightCm": 170,
+  "fatPercentage": 18.5,
+  "muscleMassKg": 50.2,
+  "recordedAt": "2026-07-06T23:00:00"
+}
+
+###2. Gọi API Xóa mềm Body Metric
+DELETE {{baseUrl}}/admin/body-metrics/1
+Authorization: Bearer {{adminToken}}
+
+
+
+
+
+
+
+
+
+

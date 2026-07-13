@@ -95,6 +95,10 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private void createMemberProfileForRegisteredUser(User user) {
+        if (user == null || user.getId() == null) {
+            return;
+        }
+
         if (memberRepository.existsByUserId(user.getId())) {
             return;
         }
@@ -102,17 +106,15 @@ public class AuthServiceImpl implements AuthService {
         Member member = Member.builder()
                 .user(user)
                 .memberCode(generateMemberCode(user.getId()))
-                .fullName(user.getFullName())
-                .phone(user.getPhone())
-                .email(user.getEmail())
                 .gender(null)
                 .dateOfBirth(null)
-                .avatarUrl(user.getAvatarUrl())
-                .heightCm(null)
-                .weightKg(null)
-                .bmi(null)
+                .address(null)
+                .emergencyContactName(null)
+                .emergencyContactPhone(null)
+                .joinDate(java.time.LocalDate.now())
                 .fitnessGoal(null)
-                .status(MemberStatus.ACTIVE)
+                .healthNote(null)
+                .status(com.fitlife.member.enums.MemberStatus.ACTIVE)
                 .isDeleted(false)
                 .build();
 

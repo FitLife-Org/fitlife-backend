@@ -1,10 +1,10 @@
 package com.fitlife.user.controller;
 
-import com.fitlife.common.response.ApiResponse;
+import com.fitlife.common.dto.ApiResponse;
+import com.fitlife.common.dto.PageResponse;
 import com.fitlife.user.dto.request.*;
 import com.fitlife.user.dto.response.AdminUserDetailResponse;
 import com.fitlife.user.dto.response.AdminUserResponse;
-import com.fitlife.user.dto.response.PageResponse;
 import com.fitlife.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

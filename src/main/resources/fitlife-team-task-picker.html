@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <title>FitLife Team Task Picker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            background: #f4f6f8;
+            color: #172b4d;
+        }
+
+        header {
+            background: #0f766e;
+            color: white;
+            padding: 18px 24px;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        header p {
+            margin: 6px 0 0;
+            opacity: 0.9;
+        }
+
+        .container {
+            padding: 18px;
+        }
+
+        .toolbar {
+            background: white;
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        input,
+        select,
+        textarea,
+        button {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #d0d7de;
+            font-size: 14px;
+        }
+
+        input,
+        select {
+            min-width: 160px;
+        }
+
+        textarea {
+            min-width: 320px;
+            min-height: 42px;
+        }
+
+        button {
+            border: none;
+            background: #0f766e;
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #115e59;
+        }
+
+        .btn-gray {
+            background: #475569;
+        }
+
+        .btn-gray:hover {
+            background: #334155;
+        }
+
+        .btn-red {
+            background: #dc2626;
+        }
+
+        .btn-red:hover {
+            background: #b91c1c;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(260px, 1fr));
+            gap: 14px;
+            align-items: start;
+        }
+
+        .column {
+            background: #e5e7eb;
+            border-radius: 14px;
+            padding: 12px;
+            min-height: 640px;
+        }
+
+        .column h2 {
+            margin: 0 0 12px;
+            font-size: 17px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .count {
+            font-size: 12px;
+            background: #cbd5e1;
+            color: #0f172a;
+            padding: 4px 8px;
+            border-radius: 999px;
+        }
+
+        .task-card {
+            background: white;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 12px;
+            cursor: grab;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border-left: 6px solid #94a3b8;
+            transition: transform 0.12s ease, box-shadow 0.12s ease;
+        }
+
+        .task-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+
+        .task-card:active {
+            cursor: grabbing;
+        }
+
+        .priority-P0 {
+            border-left-color: #dc2626;
+        }
+
+        .priority-P1 {
+            border-left-color: #f59e0b;
+        }
+
+        .priority-P2 {
+            border-left-color: #2563eb;
+        }
+
+        .task-code {
+            color: #64748b;
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+
+        .task-title {
+            font-weight: 800;
+            margin-bottom: 7px;
+            line-height: 1.35;
+        }
+
+        .task-desc {
+            font-size: 13px;
+            color: #334155;
+            line-height: 1.4;
+            margin-bottom: 10px;
+        }
+
+        .meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .badge {
+            font-size: 12px;
+            padding: 4px 7px;
+            border-radius: 999px;
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+
+        .badge-p0 {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .badge-p1 {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-p2 {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .actions button {
+            padding: 6px 8px;
+            font-size: 12px;
+        }
+
+        .empty {
+            border: 1px dashed #94a3b8;
+            color: #64748b;
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .drop-over {
+            outline: 3px dashed #0f766e;
+        }
+
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.55);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 999;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 16px;
+            max-width: 880px;
+            width: 100%;
+            max-height: 90vh;
+            overflow: auto;
+            padding: 22px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+        }
+
+        .modal h2 {
+            margin-top: 0;
+            margin-bottom: 8px;
+        }
+
+        .modal-section {
+            margin-top: 16px;
+        }
+
+        .modal-section h3 {
+            margin-bottom: 8px;
+            font-size: 16px;
+            color: #0f766e;
+        }
+
+        .modal-section ul {
+            margin-top: 6px;
+            padding-left: 22px;
+        }
+
+        .modal-section li {
+            margin-bottom: 6px;
+            line-height: 1.45;
+        }
+
+        .modal-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .close-btn {
+            background: #dc2626;
+            min-width: 70px;
+        }
+
+        @media (max-width: 1400px) {
+            .board {
+                grid-template-columns: repeat(3, minmax(260px, 1fr));
+            }
+        }
+
+        @media (max-width: 900px) {
+            .board {
+                grid-template-columns: repeat(2, minmax(260px, 1fr));
+            }
+        }
+
+        @media (max-width: 620px) {
+            .board {
+                grid-template-columns: 1fr;
+            }
+
+            input,
+            select,
+            textarea {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<header>
+    <h1>FitLife Team Task Picker</h1>
+    <p>Kanban theo người: kéo thả nhóm nhiệm vụ để team lựa chọn và nhận việc.</p>
+</header>
+
+<div class="container">
+    <div class="toolbar">
+        <select id="filterPriority" onchange="renderBoard()">
+            <option value="ALL">Tất cả Priority</option>
+            <option value="P0">P0 - Bắt buộc</option>
+            <option value="P1">P1 - Cần có</option>
+            <option value="P2">P2 - Có thì tốt</option>
+        </select>
+
+        <select id="filterType" onchange="renderBoard()">
+            <option value="ALL">Tất cả nhóm</option>
+            <option value="Backend">Backend</option>
+            <option value="Frontend">Frontend</option>
+            <option value="AI">AI</option>
+            <option value="Payment">Payment</option>
+            <option value="Document">Tài liệu</option>
+            <option value="Demo">Demo</option>
+            <option value="Test">Test</option>
+        </select>
+
+        <button onclick="resetBoard()" class="btn-red">Reset dữ liệu mẫu</button>
+        <button onclick="exportJson()" class="btn-gray">Export JSON</button>
+    </div>
+
+    <div class="toolbar">
+        <input id="code" placeholder="Mã thẻ, ví dụ AI-GROUP-01" />
+        <input id="title" placeholder="Tên nhóm nhiệm vụ" />
+
+        <select id="priority">
+            <option value="P0">P0</option>
+            <option value="P1">P1</option>
+            <option value="P2">P2</option>
+        </select>
+
+        <select id="type">
+            <option value="Backend">Backend</option>
+            <option value="Frontend">Frontend</option>
+            <option value="AI">AI</option>
+            <option value="Payment">Payment</option>
+            <option value="Document">Tài liệu</option>
+            <option value="Demo">Demo</option>
+            <option value="Test">Test</option>
+        </select>
+
+        <textarea id="shortDescription" placeholder="Mô tả ngắn hiển thị trên thẻ"></textarea>
+
+        <button onclick="saveCard()">Thêm / Cập nhật thẻ</button>
+        <button onclick="clearForm()" class="btn-gray">Clear</button>
+    </div>
+
+    <div class="board">
+        <div class="column" data-owner="Chưa chọn" ondragover="allowDrop(event)" ondrop="dropCard(event)">
+            <h2>Chưa chọn <span id="count-Chưa chọn" class="count">0</span></h2>
+            <div id="col-Chưa chọn"></div>
+        </div>
+
+        <div class="column" data-owner="Huy" ondragover="allowDrop(event)" ondrop="dropCard(event)">
+            <h2>Huy <span id="count-Huy" class="count">0</span></h2>
+            <div id="col-Huy"></div>
+        </div>
+
+        <div class="column" data-owner="Đức" ondragover="allowDrop(event)" ondrop="dropCard(event)">
+            <h2>Đức <span id="count-Đức" class="count">0</span></h2>
+            <div id="col-Đức"></div>
+        </div>
+
+        <div class="column" data-owner="Khoa" ondragover="allowDrop(event)" ondrop="dropCard(event)">
+            <h2>Khoa <span id="count-Khoa" class="count">0</span></h2>
+            <div id="col-Khoa"></div>
+        </div>
+
+        <div class="column" data-owner="Trâm" ondragover="allowDrop(event)" ondrop="dropCard(event)">
+            <h2>Trâm <span id="count-Trâm" class="count">0</span></h2>
+            <div id="col-Trâm"></div>
+        </div>
+    </div>
+</div>
+
+<div id="modalBackdrop" class="modal-backdrop">
+    <div class="modal">
+        <div class="modal-top">
+            <div>
+                <h2 id="modalTitle"></h2>
+                <div class="meta" id="modalMeta"></div>
+            </div>
+            <button class="close-btn" onclick="closeModal()">Đóng</button>
+        </div>
+
+        <div class="modal-section">
+            <h3>Mô tả</h3>
+            <p id="modalDescription"></p>
+        </div>
+
+        <div class="modal-section">
+            <h3>Danh sách công việc</h3>
+            <ul id="modalTasks"></ul>
+        </div>
+
+        <div class="modal-section">
+            <h3>Output cần bàn giao</h3>
+            <ul id="modalOutputs"></ul>
+        </div>
+
+        <div class="modal-section">
+            <h3>Tiêu chí hoàn thành</h3>
+            <ul id="modalCriteria"></ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    const STORAGE_KEY = "fitlife_team_task_picker_v2";
+    let editingId = null;
+
+    const owners = ["Chưa chọn", "Huy", "Đức", "Khoa", "Trâm"];
+
+    const seedCards = [
+        {
+            id: crypto.randomUUID(),
+            code: "PAY-GROUP-01",
+            title: "Thanh toán online VNPay",
+            priority: "P0",
+            type: "Payment",
+            owner: "Huy",
+            shortDescription: "Tích hợp VNPay để member thanh toán online khi đăng ký, gia hạn hoặc nâng cấp gói tập.",
+            description: "Nhóm nhiệm vụ này hoàn thiện luồng thanh toán online của FitLife. Đây là chức năng bắt buộc để demo nghiệp vụ đăng ký gói tập hiện đại, thay vì chỉ có thanh toán tiền mặt.",
+            tasks: [
+                "Rà soát lại Payment, Invoice, Subscription hiện tại.",
+                "Cấu hình VNPay trong application.yml.",
+                "Tạo API sinh URL thanh toán VNPay.",
+                "Xử lý return callback từ VNPay.",
+                "Verify secure hash để tránh giả mạo kết quả thanh toán.",
+                "Cập nhật Payment status: PENDING, SUCCESS, FAILED, CANCELLED.",
+                "Khi Payment SUCCESS thì Subscription chuyển ACTIVE.",
+                "Cập nhật start_date và end_date cho subscription.",
+                "Test flow thanh toán thành công và thất bại trên sandbox."
+            ],
+            outputs: [
+                "API tạo VNPay payment URL.",
+                "API xử lý VNPay return.",
+                "Payment được cập nhật trạng thái đúng.",
+                "Subscription được kích hoạt sau khi thanh toán thành công.",
+                "Có dữ liệu demo payment thành công/thất bại."
+            ],
+            criteria: [
+                "Member đăng ký gói và được chuyển sang VNPay.",
+                "Sau khi thanh toán thành công, hệ thống ghi nhận Payment SUCCESS.",
+                "Subscription chuyển sang ACTIVE.",
+                "Không active subscription nếu thanh toán thất bại.",
+                "Swagger/Postman test được toàn bộ flow."
+            ]
+        },
+        {
+            id: crypto.randomUUID(),
+            code: "AI-GROUP-01",
+            title: "AI Suggestion + Qdrant",
+            priority: "P0",
+            type: "AI",
+            owner: "Huy",
+            shortDescription: "Nâng cấp AI từ Body Metric, kết hợp Qdrant để tạo gợi ý tập luyện và dinh dưỡng cá nhân hóa.",
+            description: "Đây là điểm nổi bật nhất của FitLife. AI không chỉ trả lời chung chung mà dựa trên chỉ số cơ thể, mục tiêu tập luyện và context lấy từ Qdrant.",
+            tasks: [
+                "Rà soát AI Suggestion hiện tại.",
+                "Chuẩn hóa input AI từ Body Metric.",
+                "Chuẩn hóa output AI gồm: tổng quan, lịch tập, dinh dưỡng, cảnh báo.",
+                "Thêm cấu hình Qdrant.",
+                "Tạo collection fitness knowledge.",
+                "Tạo knowledge mẫu về giảm mỡ, tăng cơ, lịch tập, dinh dưỡng.",
+                "Tạo service tìm kiếm context từ Qdrant.",
+                "Kết hợp Body Metric + Qdrant context + Gemini.",
+                "Lưu kết quả AI Suggestion vào database.",
+                "Tạo API member xem lịch sử AI Suggestion."
+            ],
+            outputs: [
+                "Qdrant config hoạt động.",
+                "Fitness knowledge được lưu hoặc seed vào Qdrant.",
+                "API tạo AI Suggestion có dùng context.",
+                "AI Suggestion được lưu DB.",
+                "Member xem lại được lịch sử gợi ý."
+            ],
+            criteria: [
+                "Member nhập Body Metric và nhận gợi ý phù hợp.",
+                "AI output có lịch tập và dinh dưỡng rõ ràng.",
+                "Có thể giải thích trong demo: Gemini là bộ sinh nội dung, Qdrant là kho tri thức.",
+                "Không lỗi khi Qdrant không có dữ liệu, có fallback cơ bản."
+            ]
+        },
+        {
+            id: crypto.randomUUID(),
+            code: "QR-CHECKIN-GROUP-01",
+            title: "QR hội viên và Check-in phòng tập",
+            priority: "P0",
+            type: "Backend",
+            owner: "Đức",
+            shortDescription: "Member có mã QR, Staff/Admin tìm kiếm hội viên theo QR và check-in nếu gói còn hiệu lực.",
+            description: "Đây là nghiệp vụ phòng gym rất thực tế. Staff có thể tìm hội viên nhanh bằng QR, kiểm tra gói tập và ghi nhận lượt check-in.",
+            tasks: [
+                "Thêm qr_code hoặc member_code cho Member.",
+                "Tạo mã QR/member code tự động khi tạo member.",
+                "API member xem mã QR cá nhân.",
+                "API Staff/Admin tìm member theo QR/member code.",
+                "Tạo hoặc hoàn thiện entity CheckIn.",
+                "API check-in bằng memberId.",
+                "API check-in bằng QR code.",
+                "Kiểm tra member có subscription ACTIVE.",
+                "Kiểm tra subscription còn hạn.",
+                "Không cho check-in trùng trong cùng một ngày.",
+                "API xem danh sách check-in hôm nay.",
+                "API member xem lịch sử check-in."
+            ],
+            outputs: [
+                "Member có mã QR/member code duy nhất.",
+                "API tìm member bằng QR.",
+                "API check-in bằng QR.",
+                "API lịch sử check-in.",
+                "API danh sách check-in hôm nay."
+            ],
+            criteria: [
+                "Staff/Admin nhập QR và tìm đúng member.",
+                "Member không có gói ACTIVE không được check-in.",
+                "Member có gói hết hạn không được check-in.",
+                "Một member không check-in trùng trong cùng ngày.",
+                "Dữ liệu check-in hiển thị được trên Swagger hoặc FE."
+            ]
+        },
+        {
+            id: crypto.randomUUID(),
+            code: "SUB-GROUP-01",
+            title: "Gia hạn, nâng cấp, đổi gói tập",
+            priority: "P1",
+            type: "Backend",
+            owner: "Đức",
+            shortDescription: "Hoàn thiện vòng đời subscription: gia hạn gói, nâng cấp gói, đổi gói và xem lịch sử gói.",
+            description: "Nhóm nhiệm vụ này giúp nghiệp vụ gói tập đầy đủ hơn. Member không chỉ mua gói mới mà còn có thể gia hạn, nâng cấp hoặc đổi gói.",
+            tasks: [
+                "API lấy gói hiện tại của member.",
+                "API lấy lịch sử subscription của member.",
+                "API gia hạn gói đang dùng.",
+                "API nâng cấp từ gói thấp lên gói cao hơn.",
+                "API đổi sang gói khác.",
+                "Khi gia hạn, tạo payment mới và cộng thêm thời hạn sau thanh toán.",
+                "Khi nâng cấp, subscription cũ chuyển UPGRADED hoặc CANCELLED.",
+                "Subscription mới được tạo với trạng thái PENDING_PAYMENT.",
+                "Sau thanh toán thành công, subscription mới ACTIVE."
+            ],
+            outputs: [
+                "API current subscription.",
+                "API subscription history.",
+                "API renew.",
+                "API upgrade.",
+                "API change package.",
+                "Flow subscription hoạt động cùng Payment."
+            ],
+            criteria: [
+                "Member xem được gói hiện tại.",
+                "Member xem được lịch sử gói.",
+                "Gia hạn gói cập nhật ngày hết hạn đúng.",
+                "Nâng cấp/đổi gói không làm mất lịch sử subscription.",
+                "Tất cả flow đều tạo payment tương ứng."
+            ]
+        },
+        {
+            id: crypto.randomUUID(),
+            code: "TRAINER-GROUP-01",
+            title: "Quản lý Trainer",
+            priority: "P1",
+            type: "Backend",
+            owner: "Đức",
+            shortDescription: "Hoàn thiện module Trainer: CRUD, role ROLE_TRAINER, danh sách trainer và gán member nếu kịp.",
+            description: "Trainer là actor quan trọng của hệ thống. Module này giúp Admin quản lý huấn luyện viên và chuẩn hóa tên gọi Trainer thay vì PT trong code mới.",
+            tasks: [
+                "Rà soát Trainer entity/module hiện tại.",
+                "Chốt role sử dụng là ROLE_TRAINER.",
+                "API Admin tạo trainer profile.",
+                "API Admin cập nhật trainer.",
+                "API Admin xóa mềm hoặc đổi trạng thái trainer.",
+                "API xem danh sách trainer.",
+                "API xem chi tiết trainer.",
+                "API gán member cho trainer nếu kịp.",
+                "Cập nhật seed data nếu còn ROLE_PT."
+            ],
+            outputs: [
+                "Trainer CRUD APIs.",
+                "Danh sách Trainer.",
+                "Chi tiết Trainer.",
+                "Role ROLE_TRAINER thống nhất.",
+                "API gán member cho trainer nếu hoàn thành."
+            ],
+            criteria: [
+                "Không còn lẫn lộn PT và Trainer trong code mới.",
+                "Admin quản lý được Trainer.",
+                "Member hoặc Admin xem được danh sách Trainer.",
+                "Swagger test được các API chính."
+            ]
+        },
+        {
+            id: crypto.randomUUID(),
+            code: "EQUIPMENT-GROUP-01",
+            title: "Quản lý thiết bị phòng gym",
+            priority: "P0",
+            type: "Backend",
+            owner: "Trâm",
+            shortDescription: "Hoàn thiện CRUD thiết bị, trạng thái thiết bị và danh sách thiết bị cần bảo trì.",
+            description: "Module thiết bị giúp FitLife có nghiệp vụ quản lý phòng gym thực tế hơn. Đây là phần dev phù hợp cho Trâm, không ép làm kiểm thử riêng.",
+            tasks: [
+                "Rà soát Equipment entity hiện tại.",
+                "Hoàn thiện API thêm thiết bị.",
+                "Hoàn thiện API cập nhật thiết bị.",
+                "Hoàn thiện API xem danh sách thiết bị.",
+                "Hoàn thiện API xem chi tiết thiết bị.",
+                "Hoàn thiện API xóa mềm thiết bị.",
+                "Thêm/cập nhật trạng thái: ACTIVE, MAINTENANCE, BROKEN, INACTIVE.",
+                "API cập nhật trạng thái thiết bị.",
+                "API lọc thiết bị theo trạng thái.",
+                "API xem danh sách thiết bị cần bảo trì.",
+                "Validate dữ liệu đầu vào."
+            ],
+            outputs: [
+                "Equipment CRUD APIs.",
+                "API cập nhật trạng thái thiết bị.",
+                "API lọc theo trạng thái.",
+                "API danh sách thiết bị cần bảo trì.",
+                "API note cho module Equipment."
+            ],
+            criteria: [
+                "Admin/Staff thêm, sửa, xem, xóa thiết bị được.",
+                "Thiết bị có trạng thái rõ ràng.",
+                "Lọc được thiết bị đang bảo trì hoặc hỏng.",
+                "Không lỗi validate cơ bản."
+            ]
+        },
+        {
+            id: crypto.randomUUID(),
+            code: "WORKOUT-GROUP-01",
+            title: "Workout Plan cơ bản",
+            priority: "P1",
+            type: "Backend",
+            owner: "Trâm",
+            shortDescription: "Tạo module lịch tập cơ bản để member xem kế hoạch tập luyện, có thể liên kết với AI sau.",
+            description: "Workout Plan giúp dự án có chiều sâu về tập luyện. MVP chỉ cần CRUD cơ bản và member xem được plan, chưa cần quá nâng cao.",
+            tasks: [
+                "Thiết kế entity WorkoutPlan nếu chưa có.",
+                "Thiết kế entity WorkoutExercise nếu cần.",
+                "API tạo workout plan mẫu.",
+                "API cập nhật workout plan.",
+                "API xem danh sách workout plan.",
+                "API xem chi tiết workout plan.",
+                "API member xem workout plan của mình.",
+                "API trainer/admin gán workout plan cho member nếu kịp.",
+                "Chuẩn bị dữ liệu mẫu cho demo."
+            ],
+            outputs: [
+                "WorkoutPlan entity/API.",
+                "WorkoutExercise structure nếu cần.",
+                "API member xem workout plan.",
+                "API gán workout plan nếu kịp.",
+                "Dữ liệu demo lịch tập."
+            ],
+            criteria: [
+                "Member xem được lịch tập.",
+                "Admin/Trainer tạo được workout plan cơ bản.",
+                "Dữ liệu đủ để demo liên kết với AI hoặc Timeline.",
+                "Không làm quá phức tạp vượt MVP."
+            ]
+        },
+        {
+            id: crypto.randomUUID(),
+            code: "NUTRITION-GROUP-01",
+            title: "Nutrition Plan cơ bản",
+            priority: "P1",
+            type: "Backend",
+            owner: "Trâm",
+            shortDescription: "Tạo module kế hoạch dinh dưỡng cơ bản để member xem gợi ý ăn uống hoặc plan được gán.",
+            description: "Nutrition Plan bổ sung phần dinh dưỡng cho FitLife, phù hợp với định hướng AI tạo lịch tập và gợi ý ăn uống cá nhân hóa.",
+            tasks: [
+                "Thiết kế entity NutritionPlan nếu chưa có.",
+                "API tạo nutrition plan mẫu.",
+                "API cập nhật nutrition plan.",
+                "API xem danh sách nutrition plan.",
+                "API xem chi tiết nutrition plan.",
+                "API member xem nutrition plan của mình.",
+                "API trainer/admin gán nutrition plan cho member nếu kịp.",
+                "Chuẩn bị dữ liệu mẫu cho demo."
+            ],
+            outputs: [
+                "NutritionPlan entity/API.",
+                "API member xem nutrition plan.",
+                "API gán nutrition plan nếu kịp.",
+                "Dữ liệu demo dinh dưỡng."
+            ],
+            criteria: [
+                "Member xem được kế hoạch dinh dưỡng.",
+                "Admin/Trainer tạo được nutrition plan cơ bản.",
+                "Có thể dùng dữ liệu này để bổ trợ AI Suggestion.",
+                "Không đi quá sâu sang tính calo nâng cao nếu không kịp."
+            ]
+        },
+        {
+            id: crypto.randomUUID(),
+            code: "FE-MAIN-GROUP-01",
+            title: "Frontend luồng chính demo",
+            priority: "P0",
+            type: "Frontend",
+            owner: "Khoa",
+            shortDescription: "Xây dựng các màn hình chính để demo: gói tập, VNPay, QR, check-in, Body Metric và AI.",
+            description: "Đây là nhóm nhiệm vụ frontend quan trọng nhất. Mục tiêu là demo được flow từ member đăng ký gói, thanh toán, check-in và xem AI suggestion.",
+            tasks: [
+                "Trang danh sách gói tập.",
+                "Trang chi tiết gói tập.",
+                "Nút đăng ký gói.",
+                "Trang xác nhận thanh toán.",
+                "Tích hợp API tạo VNPay payment URL.",
+                "Redirect sang VNPay.",
+                "Trang payment result.",
+                "Member current subscription page.",
+                "Member QR page.",
+                "Staff/Admin QR lookup screen.",
+                "Check-in screen.",
+                "Body Metric form.",
+                "AI Suggestion result page."
+            ],
+            outputs: [
+                "UI package/subscription.",
+                "UI payment flow.",
+                "UI payment result.",
+                "UI QR/check-in.",
+                "UI Body Metric + AI Suggestion.",
+                "FE demo flow chạy được với backend hoặc mock data."
+            ],
+            criteria: [
+                "Demo được ít nhất 3 flow chính.",
+                "FE gọi được API backend khi API đã sẵn sàng.",
+                "Nếu API chưa xong, có mock tạm để không đứng UI.",
+                "Giao diện đủ rõ ràng để bảo vệ."
+            ]
+        },
+        {
+            id: crypto.randomUUID(),
+            code: "FE-EXTRA-GROUP-01",
+            title: "Frontend bổ sung: Timeline, Trainer, Equipment, Workout, Nutrition",
+            priority: "P1",
+            type: "Frontend",
+            owner: "Khoa",
+            shortDescription: "Xây dựng các màn hình bổ sung để dự án đầy đủ hơn sau khi flow P0 chạy ổn.",
+            description: "Nhóm này làm sau khi frontend P0 ổn. Mục tiêu là tăng độ hoàn chỉnh cho hệ thống và hỗ trợ demo mở rộng.",
+            tasks: [
+                "Member Timeline page.",
+                "Hiển thị lịch sử body metric.",
+                "Hiển thị lịch sử AI suggestion.",
+                "Hiển thị lịch sử check-in.",
+                "Trainer list page.",
+                "Trainer detail page.",
+                "Equipment management UI.",
+                "Workout Plan UI.",
+                "Nutrition Plan UI.",
+                "Renew/upgrade/change package UI."
+            ],
+            outputs: [
+                "Member timeline UI.",
+                "Trainer UI.",
+                "Equipment UI.",
+                "Workout UI.",
+                "Nutrition UI.",
+                "Subscription lifecycle UI."
+            ],
+            criteria: [
+                "Các màn P1 không làm ảnh hưởng flow P0.",
+                "Có thể dùng mock data nếu backend chưa xong.",
+                "Ưu tiên màn nào phục vụ demo trước."
+            ]
+        },
+        {
+            id: crypto.randomUUID(),
+            code: "TIMELINE-GROUP-01",
+            title: "Member Timeline và theo dõi chỉ số",
+            priority: "P1",
+            type: "Backend",
+            owner: "Huy",
+            shortDescription: "Tổng hợp Body Metric, AI Suggestion, Check-in và Subscription thành timeline cho member.",
+            description: "Timeline giúp member theo dõi quá trình tập luyện và thay đổi chỉ số cơ thể theo thời gian. Đây là chức năng rất hợp với định hướng FitLife cá nhân hóa bằng AI.",
+            tasks: [
+                "Thiết kế response Member Timeline.",
+                "Query lịch sử Body Metric.",
+                "Query lịch sử AI Suggestion.",
+                "Query lịch sử Check-in.",
+                "Query subscription hiện tại và lịch sử.",
+                "Tổng hợp thành danh sách timeline theo ngày.",
+                "API GET /api/v1/members/me/timeline.",
+                "Tính currentWeight, BMI hiện tại nếu có dữ liệu.",
+                "Chuẩn bị dữ liệu mẫu timeline cho demo."
+            ],
+            outputs: [
+                "Member timeline API.",
+                "Timeline response tổng hợp.",
+                "Dữ liệu demo timeline.",
+                "API note cho timeline."
+            ],
+            criteria: [
+                "Member xem được quá trình thay đổi chỉ số.",
+                "Timeline có body metric, check-in, AI suggestion.",
+                "Không nhất thiết tạo bảng timeline riêng ở MVP.",
+                "Response dễ nối frontend."
+            ]
+        },
+        {
+            id: crypto.randomUUID(),
+            code: "DOC-GROUP-01",
+            title: "Cập nhật tài liệu báo cáo theo code thực tế",
+            priority: "P1",
+            type: "Document",
+            owner: "Chưa chọn",
+            shortDescription: "Cập nhật phạm vi, use case, activity diagram, ERD, API List, User Manual và báo cáo theo module đã code.",
+            description: "Tài liệu phải bám code thực tế. Không viết lan man hoặc mô tả chức năng chưa làm nếu không đưa vào P2/phát triển sau.",
+            tasks: [
+                "Cập nhật phạm vi chức năng dự án.",
+                "Cập nhật danh sách actor: Admin, Staff, Trainer, Member, System.",
+                "Cập nhật Use Case Diagram.",
+                "Cập nhật Use Case Specification.",
+                "Cập nhật Activity Diagram cho VNPay.",
+                "Cập nhật Activity Diagram cho QR Check-in.",
+                "Cập nhật Activity Diagram cho Body Metric → AI → Qdrant.",
+                "Cập nhật ERD/database diagram nếu thêm bảng/cột.",
+                "Cập nhật API List theo Swagger.",
+                "Cập nhật User Manual.",
+                "Cập nhật chương báo cáo liên quan thiết kế và triển khai."
+            ],
+            outputs: [
+                "Báo cáo được cập nhật.",
+                "API List mới.",
+                "Use Case/Activity/ERD mới.",
+                "User Manual mới.",
+                "Danh sách chức năng khớp code."
+            ],
+            criteria: [
+                "Tài liệu không mâu thuẫn với code.",
+                "Có đủ VNPay, QR, Check-in, AI, Timeline, Equipment.",
+                "API List có method, URL, request, response, role.",
+                "Sơ đồ khớp nghiệp vụ demo."
+            ]
+        },
+        {
+            id: crypto.randomUUID(),
+            code: "TEST-GROUP-01",
+            title: "Test thủ công và test evidence",
+            priority: "P1",
+            type: "Test",
+            owner: "Chưa chọn",
+            shortDescription: "Mỗi người tự test module mình làm, ghi lại test case chính và bằng chứng demo.",
+            description: "Vì Trâm không muốn làm QA riêng, quy định mới là ai làm module nào thì tự test module đó. Nhóm này dùng để tổng hợp phần test cuối cùng.",
+            tasks: [
+                "Huy test VNPay success/fail.",
+                "Huy test AI Suggestion + Qdrant.",
+                "Đức test QR lookup.",
+                "Đức test Check-in với subscription ACTIVE/EXPIRED.",
+                "Đức test không cho check-in trùng ngày.",
+                "Trâm test Equipment CRUD.",
+                "Trâm test Workout/Nutrition nếu làm.",
+                "Khoa test frontend main demo flow.",
+                "Tổng hợp test case chính.",
+                "Chụp ảnh bằng chứng Swagger/FE nếu cần."
+            ],
+            outputs: [
+                "Test case chính cho các flow demo.",
+                "Test result ngắn gọn.",
+                "Evidence ảnh hoặc ghi chú.",
+                "Danh sách bug/blocker còn lại."
+            ],
+            criteria: [
+                "Flow P0 được test trước.",
+                "Lỗi lớn được ghi vào blocker.",
+                "Mỗi module có ít nhất test happy path và error path cơ bản.",
+                "Có đủ dữ liệu để cập nhật test report."
+            ]
+        },
+        {
+            id: crypto.randomUUID(),
+            code: "DEMO-GROUP-01",
+            title: "Demo script, dữ liệu demo và slide bảo vệ",
+            priority: "P0",
+            type: "Demo",
+            owner: "Huy",
+            shortDescription: "Chốt kịch bản demo cuối, tài khoản demo, dữ liệu fallback và cập nhật slide bảo vệ.",
+            description: "Đây là nhóm nhiệm vụ giúp bảo vệ trơn tru. Không chỉ code chạy, mà phải có kịch bản demo rõ ràng, dữ liệu chuẩn và phương án dự phòng.",
+            tasks: [
+                "Chốt 3 flow demo chính: VNPay, QR Check-in, AI/Qdrant.",
+                "Chuẩn bị tài khoản Admin.",
+                "Chuẩn bị tài khoản Staff.",
+                "Chuẩn bị tài khoản Trainer.",
+                "Chuẩn bị tài khoản Member.",
+                "Chuẩn bị gói tập mẫu.",
+                "Chuẩn bị subscription mẫu.",
+                "Chuẩn bị dữ liệu body metric.",
+                "Chuẩn bị dữ liệu AI suggestion fallback.",
+                "Viết demo script từng bước.",
+                "Cập nhật slide theo chức năng đã hoàn thiện.",
+                "Chuẩn bị câu trả lời khi thầy hỏi về Qdrant, VNPay, bảo mật, role."
+            ],
+            outputs: [
+                "Demo script hoàn chỉnh.",
+                "Demo accounts.",
+                "Demo data.",
+                "Slide cập nhật.",
+                "Checklist trước bảo vệ."
+            ],
+            criteria: [
+                "Demo không phụ thuộc hoàn toàn vào dữ liệu ngẫu nhiên.",
+                "Có phương án nếu VNPay sandbox lỗi.",
+                "Có phương án nếu AI/Qdrant lỗi.",
+                "Slide và demo khớp nhau."
+            ]
+        },
+        {
+            id: crypto.randomUUID(),
+            code: "REPORT-GROUP-01",
+            title: "Admin Dashboard và Report",
+            priority: "P2",
+            type: "Backend",
+            owner: "Chưa chọn",
+            shortDescription: "Báo cáo doanh thu, lượt check-in, thiết bị và dashboard tổng quan nếu còn thời gian.",
+            description: "Đây là phần có thì tốt. Không nên làm trước khi VNPay, QR Check-in và AI chạy ổn.",
+            tasks: [
+                "API tổng số member.",
+                "API tổng số subscription active.",
+                "API doanh thu theo ngày/tháng.",
+                "API số lượt check-in theo ngày.",
+                "API thiết bị đang bảo trì.",
+                "FE dashboard summary nếu kịp.",
+                "Export Excel/PDF nếu còn thời gian."
+            ],
+            outputs: [
+                "Dashboard API.",
+                "Revenue report API.",
+                "Check-in report API.",
+                "Equipment report API.",
+                "FE dashboard nếu kịp."
+            ],
+            criteria: [
+                "Không làm ảnh hưởng P0/P1.",
+                "Có thể đưa vào phát triển sau nếu không kịp.",
+                "Chỉ demo nếu dữ liệu đủ đẹp."
+            ]
+        }
+    ];
+
+    function getCards() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+
+        if (!raw) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(seedCards));
+            return seedCards;
+        }
+
+        try {
+            return JSON.parse(raw);
+        } catch (e) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(seedCards));
+            return seedCards;
+        }
+    }
+
+    function setCards(cards) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
+    }
+
+    function priorityBadge(priority) {
+        if (priority === "P0") return "badge badge-p0";
+        if (priority === "P1") return "badge badge-p1";
+        return "badge badge-p2";
+    }
+
+    function shouldShow(card) {
+        const priority = document.getElementById("filterPriority").value;
+        const type = document.getElementById("filterType").value;
+
+        if (priority !== "ALL" && card.priority !== priority) return false;
+        if (type !== "ALL" && card.type !== type) return false;
+
+        return true;
+    }
+
+    function renderBoard() {
+        const cards = getCards().filter(shouldShow);
+
+        owners.forEach(owner => {
+            const col = document.getElementById(`col-${owner}`);
+            const count = document.getElementById(`count-${owner}`);
+            const ownerCards = cards.filter(card => card.owner === owner);
+
+            count.textContent = ownerCards.length;
+
+            if (ownerCards.length === 0) {
+                col.innerHTML = `<div class="empty">Chưa có thẻ</div>`;
+                return;
+            }
+
+            col.innerHTML = ownerCards.map(card => `
+        <div
+          class="task-card priority-${card.priority}"
+          draggable="true"
+          ondragstart="dragStart(event, '${card.id}')"
+          onclick="openModal('${card.id}')"
+        >
+          <div class="task-code">${card.code}</div>
+          <div class="task-title">${card.title}</div>
+          <div class="task-desc">${card.shortDescription || ""}</div>
+
+          <div class="meta">
+            <span class="${priorityBadge(card.priority)}">${card.priority}</span>
+            <span class="badge">${card.type}</span>
+            <span class="badge">${card.owner}</span>
+          </div>
+
+          <div class="actions" onclick="event.stopPropagation()">
+            <button onclick="editCard('${card.id}')">Sửa</button>
+            <button class="btn-red" onclick="deleteCard('${card.id}')">Xóa</button>
+          </div>
+        </div>
+      `).join("");
+        });
+    }
+
+    function allowDrop(event) {
+        event.preventDefault();
+        event.currentTarget.classList.add("drop-over");
+    }
+
+    function dragStart(event, id) {
+        event.dataTransfer.setData("text/plain", id);
+    }
+
+    function dropCard(event) {
+        event.preventDefault();
+
+        const id = event.dataTransfer.getData("text/plain");
+        const owner = event.currentTarget.dataset.owner;
+
+        const cards = getCards();
+        const card = cards.find(item => item.id === id);
+
+        if (card) {
+            card.owner = owner;
+            setCards(cards);
+        }
+
+        document.querySelectorAll(".column").forEach(col => col.classList.remove("drop-over"));
+        renderBoard();
+    }
+
+    function openModal(id) {
+        const card = getCards().find(item => item.id === id);
+        if (!card) return;
+
+        document.getElementById("modalTitle").textContent = `${card.code} - ${card.title}`;
+
+        document.getElementById("modalMeta").innerHTML = `
+      <span class="${priorityBadge(card.priority)}">${card.priority}</span>
+      <span class="badge">${card.type}</span>
+      <span class="badge">Người nhận: ${card.owner}</span>
+    `;
+
+        document.getElementById("modalDescription").textContent = card.description || card.shortDescription || "";
+
+        document.getElementById("modalTasks").innerHTML = (card.tasks || [])
+            .map(item => `<li>${item}</li>`)
+            .join("");
+
+        document.getElementById("modalOutputs").innerHTML = (card.outputs || [])
+            .map(item => `<li>${item}</li>`)
+            .join("");
+
+        document.getElementById("modalCriteria").innerHTML = (card.criteria || [])
+            .map(item => `<li>${item}</li>`)
+            .join("");
+
+        document.getElementById("modalBackdrop").style.display = "flex";
+    }
+
+    function closeModal() {
+        document.getElementById("modalBackdrop").style.display = "none";
+    }
+
+    function clearForm() {
+        editingId = null;
+        document.getElementById("code").value = "";
+        document.getElementById("title").value = "";
+        document.getElementById("priority").value = "P0";
+        document.getElementById("type").value = "Backend";
+        document.getElementById("shortDescription").value = "";
+    }
+
+    function saveCard() {
+        const code = document.getElementById("code").value.trim();
+        const title = document.getElementById("title").value.trim();
+        const priority = document.getElementById("priority").value;
+        const type = document.getElementById("type").value;
+        const shortDescription = document.getElementById("shortDescription").value.trim();
+
+        if (!code || !title) {
+            alert("Vui lòng nhập mã thẻ và tên nhóm nhiệm vụ.");
+            return;
+        }
+
+        const cards = getCards();
+
+        if (editingId) {
+            const index = cards.findIndex(card => card.id === editingId);
+
+            if (index !== -1) {
+                cards[index] = {
+                    ...cards[index],
+                    code,
+                    title,
+                    priority,
+                    type,
+                    shortDescription,
+                    description: cards[index].description || shortDescription
+                };
+            }
+        } else {
+            cards.push({
+                id: crypto.randomUUID(),
+                code,
+                title,
+                priority,
+                type,
+                owner: "Chưa chọn",
+                shortDescription,
+                description: shortDescription,
+                tasks: ["Bổ sung danh sách công việc chi tiết."],
+                outputs: ["Bổ sung output cần bàn giao."],
+                criteria: ["Bổ sung tiêu chí hoàn thành."]
+            });
+        }
+
+        setCards(cards);
+        clearForm();
+        renderBoard();
+    }
+
+    function editCard(id) {
+        const card = getCards().find(item => item.id === id);
+        if (!card) return;
+
+        editingId = id;
+        document.getElementById("code").value = card.code;
+        document.getElementById("title").value = card.title;
+        document.getElementById("priority").value = card.priority;
+        document.getElementById("type").value = card.type;
+        document.getElementById("shortDescription").value = card.shortDescription || "";
+
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function deleteCard(id) {
+        const ok = confirm("Bạn có chắc muốn xóa thẻ nhiệm vụ này?");
+        if (!ok) return;
+
+        const cards = getCards().filter(card => card.id !== id);
+        setCards(cards);
+        renderBoard();
+    }
+
+    function resetBoard() {
+        const ok = confirm("Reset sẽ xóa dữ liệu hiện tại và khôi phục danh sách thẻ mẫu. Tiếp tục?");
+        if (!ok) return;
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(seedCards));
+        renderBoard();
+    }
+
+    function exportJson() {
+        const data = JSON.stringify(getCards(), null, 2);
+        const blob = new Blob([data], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "fitlife-team-task-picker.json";
+        a.click();
+
+        URL.revokeObjectURL(url);
+    }
+
+    document.getElementById("modalBackdrop").addEventListener("click", function(event) {
+        if (event.target.id === "modalBackdrop") {
+            closeModal();
+        }
+    });
+
+    document.addEventListener("dragleave", function(event) {
+        if (event.target.classList && event.target.classList.contains("column")) {
+            event.target.classList.remove("drop-over");
+        }
+    });
+
+    renderBoard();
+</script>
+</body>
+</html>

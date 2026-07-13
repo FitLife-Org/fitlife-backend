@@ -1,12 +1,12 @@
 package com.fitlife.user.service.impl;
 
+import com.fitlife.common.dto.PageResponse;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.security.CustomUserDetails;
 import com.fitlife.user.dto.request.AdminUpdateUserRequest;
 import com.fitlife.user.dto.request.AdminUserSearchRequest;
 import com.fitlife.user.dto.response.AdminUserResponse;
-import com.fitlife.user.dto.response.PageResponse;
 import com.fitlife.user.dto.response.AdminUserDetailResponse;
 import com.fitlife.user.entity.User;
 import com.fitlife.user.enums.UserStatus;
@@ -26,21 +26,19 @@ import org.springframework.stereotype.Service;
 import com.fitlife.user.dto.request.AdminCreateInternalUserRequest;
 import com.fitlife.user.entity.Role;
 import com.fitlife.user.enums.AuthProvider;
-import com.fitlife.user.repository.RoleRepository;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import com.fitlife.user.dto.request.AdminUpdateUserStatusRequest;
 
 import java.util.Set;
 
 import java.util.List;
+
 import com.fitlife.user.dto.request.AdminUpdateUserRolesRequest;
-import com.fitlife.user.entity.Role;
-import com.fitlife.user.repository.RoleRepository;
 
 import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
+
+import com.fitlife.user.dto.request.ChangePasswordRequest;
+import com.fitlife.user.dto.response.UserProfileResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -56,9 +54,9 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
 
     @Override
-    public AdminUserResponse getCurrentUser() {
+    public UserProfileResponse getCurrentUser() {
         User currentUser = getCurrentAuthenticatedUser();
-        return userMapper.toAdminUserResponse(currentUser);
+        return userMapper.toUserProfileResponse(currentUser);
     }
 
     @Override
@@ -81,19 +79,7 @@ public class UserServiceImpl implements UserService {
                 pageable
         );
 
-        List<AdminUserResponse> content = userPage.getContent()
-                .stream()
-                .map(userMapper::toAdminUserResponse)
-                .toList();
-
-        return PageResponse.<AdminUserResponse>builder()
-                .content(content)
-                .page(userPage.getNumber())
-                .size(userPage.getSize())
-                .totalElements(userPage.getTotalElements())
-                .totalPages(userPage.getTotalPages())
-                .last(userPage.isLast())
-                .build();
+        return PageResponse.from(userPage, userMapper::toAdminUserResponse);
     }
 
     @Override
@@ -199,6 +185,27 @@ public class UserServiceImpl implements UserService {
         User savedUser = userRepository.save(user);
 
         return userMapper.toAdminUserDetailResponse(savedUser);
+    }
+
+    @Override
+    public void changePassword(ChangePasswordRequest request) {
+        User currentUser = getCurrentAuthenticatedUser();
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), currentUser.getPasswordHash())) {
+            throw new AppException(ErrorCode.CURRENT_PASSWORD_INCORRECT);
+        }
+
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new AppException(ErrorCode.PASSWORD_CONFIRM_NOT_MATCH);
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), currentUser.getPasswordHash())) {
+            throw new AppException(ErrorCode.NEW_PASSWORD_SAME_AS_OLD);
+        }
+
+        currentUser.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+
+        userRepository.save(currentUser);
     }
 
     private User getCurrentAuthenticatedUser() {
