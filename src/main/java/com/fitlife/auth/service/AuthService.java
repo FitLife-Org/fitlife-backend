@@ -11,6 +11,18 @@ public interface AuthService {
 
     AuthResponse googleLogin(GoogleLoginRequest request);
 
+    AuthResponse refreshToken(RefreshTokenRequest request);
+
+    void logout(LogoutRequest request);
+
+    void logoutAll();
+
+    void verifyEmail(String token);
+
+    void resendVerificationEmail(
+            ResendVerificationEmailRequest request
+    );
+
     void forgotPassword(ForgotPasswordRequest request);
 
     void resetPassword(ResetPasswordRequest request);

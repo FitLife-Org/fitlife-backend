@@ -19,32 +19,74 @@ public class CustomUserDetailsService implements UserDetailsService {
     private final UserRepository userRepository;
 
     @Override
-    public UserDetails loadUserByUsername(String identifier) throws UsernameNotFoundException {
-        User user = userRepository.findByUsernameOrEmail(identifier, identifier)
-                .orElseThrow(() -> new UsernameNotFoundException(
-                        "User not found with email or username: " + identifier
-                ));
+    public UserDetails loadUserByUsername(String identifier)
+            throws UsernameNotFoundException {
 
-        validateUserCanLogin(user);
+        if (identifier == null || identifier.isBlank()) {
+            throw new UsernameNotFoundException(
+                    ErrorCode.INVALID_CREDENTIALS.name()
+            );
+        }
+
+        String normalizedIdentifier = identifier
+                .trim()
+                .toLowerCase();
+
+        User user = userRepository
+                .findByUsernameOrEmail(
+                        normalizedIdentifier,
+                        normalizedIdentifier
+                )
+                .orElseThrow(() ->
+                        new UsernameNotFoundException(
+                                ErrorCode.INVALID_CREDENTIALS.name()
+                        )
+                );
+
+        validateUserCanAuthenticate(user);
 
         return new CustomUserDetails(user);
     }
 
-    private void validateUserCanLogin(User user) {
+    private void validateUserCanAuthenticate(User user) {
         if (Boolean.TRUE.equals(user.getIsDeleted())) {
-            throw new DisabledException(ErrorCode.ACCOUNT_DELETED.name());
+            throw new DisabledException(
+                    ErrorCode.ACCOUNT_DELETED.name()
+            );
         }
 
         if (user.getStatus() == UserStatus.LOCKED) {
-            throw new LockedException(ErrorCode.ACCOUNT_LOCKED.name());
+            throw new LockedException(
+                    ErrorCode.ACCOUNT_LOCKED.name()
+            );
+        }
+
+        /*
+         * Tài khoản LOCAL mới đăng ký:
+         * PENDING + emailVerified = false.
+         */
+        if (!Boolean.TRUE.equals(user.getEmailVerified())) {
+            throw new DisabledException(
+                    ErrorCode.EMAIL_NOT_VERIFIED.name()
+            );
         }
 
         if (user.getStatus() == UserStatus.INACTIVE) {
-            throw new DisabledException(ErrorCode.ACCOUNT_INACTIVE.name());
+            throw new DisabledException(
+                    ErrorCode.ACCOUNT_INACTIVE.name()
+            );
+        }
+
+        if (user.getStatus() == UserStatus.PENDING) {
+            throw new DisabledException(
+                    ErrorCode.EMAIL_NOT_VERIFIED.name()
+            );
         }
 
         if (user.getStatus() != UserStatus.ACTIVE) {
-            throw new DisabledException(ErrorCode.ACCOUNT_INACTIVE.name());
+            throw new DisabledException(
+                    ErrorCode.ACCOUNT_INACTIVE.name()
+            );
         }
     }
 }
