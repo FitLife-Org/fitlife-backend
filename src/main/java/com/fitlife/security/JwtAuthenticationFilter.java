@@ -1,5 +1,6 @@
 package com.fitlife.security;
 
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,35 +34,80 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
-        final String authHeader = request.getHeader(AUTHORIZATION_HEADER);
+        String authHeader =
+                request.getHeader(AUTHORIZATION_HEADER);
 
-        if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
+        if (authHeader == null
+                || !authHeader.startsWith(BEARER_PREFIX)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        final String jwt = authHeader.substring(BEARER_PREFIX.length());
-        final String userEmail = jwtService.extractUsername(jwt);
+        String jwt = authHeader
+                .substring(BEARER_PREFIX.length())
+                .trim();
 
-        if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
+        if (jwt.isBlank()) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-            if (jwtService.isTokenValid(jwt, userDetails)) {
-                UsernamePasswordAuthenticationToken authenticationToken =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails,
-                                null,
-                                userDetails.getAuthorities()
-                        );
+        try {
+            authenticateRequestIfValid(jwt, request);
+        } catch (JwtException
+                 | IllegalArgumentException
+                 | org.springframework.security.core.AuthenticationException exception) {
 
-                authenticationToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
-
-                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
-            }
+            /*
+             * Không để authentication cũ tồn tại nếu token lỗi.
+             *
+             * Không trả response trực tiếp ở đây để Security xử lý:
+             * - public endpoint vẫn có thể tiếp tục;
+             * - protected endpoint sẽ trả 401 qua AuthenticationEntryPoint.
+             */
+            SecurityContextHolder.clearContext();
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private void authenticateRequestIfValid(
+            String jwt,
+            HttpServletRequest request
+    ) {
+        if (SecurityContextHolder
+                .getContext()
+                .getAuthentication() != null) {
+            return;
+        }
+
+        String username = jwtService.extractUsername(jwt);
+
+        if (username == null || username.isBlank()) {
+            return;
+        }
+
+        UserDetails userDetails =
+                userDetailsService.loadUserByUsername(username);
+
+        if (!jwtService.isTokenValid(jwt, userDetails)) {
+            return;
+        }
+
+        UsernamePasswordAuthenticationToken authenticationToken =
+                new UsernamePasswordAuthenticationToken(
+                        userDetails,
+                        null,
+                        userDetails.getAuthorities()
+                );
+
+        authenticationToken.setDetails(
+                new WebAuthenticationDetailsSource()
+                        .buildDetails(request)
+        );
+
+        SecurityContextHolder
+                .getContext()
+                .setAuthentication(authenticationToken);
     }
 }

@@ -28,14 +28,29 @@ public class SecurityConfiguration {
     private final AuthenticationProvider authenticationProvider;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http
+    ) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                .cors(cors ->
+                        cors.configurationSource(
+                                corsConfigurationSource()
+                        )
+                )
+
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(
+                                SessionCreationPolicy.STATELESS
+                        )
+                )
+
                 .authorizeHttpRequests(auth -> auth
 
+                        // =====================================
                         // Swagger / OpenAPI
+                        // =====================================
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
@@ -44,75 +59,167 @@ public class SecurityConfiguration {
                                 "/webjars/**"
                         ).permitAll()
 
-                        // Error endpoint
-                        .requestMatchers("/error").permitAll()
+                        // =====================================
+                        // Common public endpoints
+                        // =====================================
+                        .requestMatchers(
+                                "/error",
+                                "/test/**"
+                        ).permitAll()
 
-                        // Test endpoints
-                        .requestMatchers("/test/**").permitAll()
+                        // =====================================
+                        // Public Auth APIs
+                        // =====================================
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/auth/register",
+                                "/auth/login",
+                                "/auth/google-login",
+                                "/auth/refresh-token",
+                                "/auth/logout",
+                                "/auth/resend-verification-email",
+                                "/auth/forgot-password",
+                                "/auth/reset-password"
+                        ).permitAll()
 
-                        // Auth endpoints
-                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/auth/verify-email"
+                        ).permitAll()
 
-                        // VNPay callback endpoints - public, because VNPay calls without JWT
-                        .requestMatchers(HttpMethod.GET, "/payments/vnpay/return").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/payments/vnpay/ipn").permitAll()
+                        /*
+                         * Logout all phải có access token.
+                         */
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/auth/logout-all"
+                        ).authenticated()
 
-                        // Public package view
-                        .requestMatchers(HttpMethod.GET, "/gym-packages/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/package-durations/**").permitAll()
+                        // =====================================
+                        // VNPay callback
+                        // =====================================
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/payments/vnpay/return",
+                                "/payments/vnpay/ipn"
+                        ).permitAll()
 
-                        // Preflight CORS
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // =====================================
+                        // Public Gym Package APIs
+                        // =====================================
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/gym-packages/**",
+                                "/package-durations/**"
+                        ).permitAll()
 
-                        // Admin payment APIs
-                        .requestMatchers("/admin/payments/**").hasAnyRole("ADMIN", "STAFF")
+                        // =====================================
+                        // CORS preflight
+                        // =====================================
+                        .requestMatchers(
+                                HttpMethod.OPTIONS,
+                                "/**"
+                        ).permitAll()
 
-                        // Member payment APIs
-                        .requestMatchers(HttpMethod.POST, "/payments/vnpay/create-url").hasRole("MEMBER")
-                        .requestMatchers("/payments/**").hasRole("MEMBER")
+                        // =====================================
+                        // Admin / Staff payment
+                        // =====================================
+                        .requestMatchers(
+                                "/admin/payments/**"
+                        ).hasAnyRole(
+                                "ADMIN",
+                                "STAFF"
+                        )
 
+                        // =====================================
+                        // Member payment
+                        // =====================================
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/payments/vnpay/create-url"
+                        ).hasRole("MEMBER")
+
+                        .requestMatchers(
+                                "/payments/**"
+                        ).hasRole("MEMBER")
+
+                        // =====================================
                         // Admin APIs
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        // =====================================
+                        .requestMatchers(
+                                "/admin/**"
+                        ).hasRole("ADMIN")
 
-                        // Other APIs require authentication
-                        .anyRequest().authenticated()
+                        // =====================================
+                        // Other APIs
+                        // =====================================
+                        .anyRequest()
+                        .authenticated()
                 )
-                .authenticationProvider(authenticationProvider)
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
+                .authenticationProvider(
+                        authenticationProvider
+                )
+
+                .addFilterBefore(
+                        jwtAuthFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                );
 
         return http.build();
     }
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
+    public CorsConfigurationSource
+    corsConfigurationSource() {
+        CorsConfiguration configuration =
+                new CorsConfiguration();
 
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:3000",
-                "http://localhost:5173",
-                "http://localhost:5174",
-                "http://localhost:5175"
-        ));
+        configuration.setAllowedOrigins(
+                List.of(
+                        "http://localhost:3000",
+                        "http://localhost:5173",
+                        "http://localhost:5174",
+                        "http://localhost:5175"
+                )
+        );
 
-        configuration.setAllowedMethods(List.of(
-                "GET",
-                "POST",
-                "PUT",
-                "PATCH",
-                "DELETE",
-                "OPTIONS"
-        ));
+        configuration.setAllowedMethods(
+                List.of(
+                        "GET",
+                        "POST",
+                        "PUT",
+                        "PATCH",
+                        "DELETE",
+                        "OPTIONS"
+                )
+        );
 
-        configuration.setAllowedHeaders(List.of(
-                "Authorization",
-                "Content-Type",
-                "Accept"
-        ));
+        configuration.setAllowedHeaders(
+                List.of(
+                        "Authorization",
+                        "Content-Type",
+                        "Accept"
+                )
+        );
+
+        configuration.setExposedHeaders(
+                List.of(
+                        "Authorization"
+                )
+        );
 
         configuration.setAllowCredentials(true);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
+        configuration.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
+        source.registerCorsConfiguration(
+                "/**",
+                configuration
+        );
 
         return source;
     }

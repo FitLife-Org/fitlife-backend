@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
-import java.security.Key;
+import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -25,23 +25,59 @@ public class JwtService {
     private long jwtExpirationMs;
 
     public String extractUsername(String token) {
-        return extractClaim(token, Claims::getSubject);
+        return extractClaim(
+                token,
+                Claims::getSubject
+        );
     }
 
-    public String generateToken(UserDetails userDetails) {
-        return generateToken(new HashMap<>(), userDetails);
+    public Date extractExpiration(String token) {
+        return extractClaim(
+                token,
+                Claims::getExpiration
+        );
+    }
+
+    public String generateToken(
+            UserDetails userDetails
+    ) {
+        return generateToken(
+                new HashMap<>(),
+                userDetails
+        );
     }
 
     public String generateToken(
             Map<String, Object> extraClaims,
             UserDetails userDetails
     ) {
+        if (userDetails == null
+                || userDetails.getUsername() == null
+                || userDetails.getUsername().isBlank()) {
+            throw new IllegalArgumentException(
+                    "User details and username are required"
+            );
+        }
+
+        long currentTimeMillis =
+                System.currentTimeMillis();
+
         return Jwts.builder()
                 .setClaims(extraClaims)
                 .setSubject(userDetails.getUsername())
-                .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .setIssuedAt(
+                        new Date(currentTimeMillis)
+                )
+                .setExpiration(
+                        new Date(
+                                currentTimeMillis
+                                        + jwtExpirationMs
+                        )
+                )
+                .signWith(
+                        getSigningKey(),
+                        SignatureAlgorithm.HS256
+                )
                 .compact();
     }
 
@@ -49,29 +85,53 @@ public class JwtService {
             String token,
             UserDetails userDetails
     ) {
-        final String username = extractUsername(token);
+        if (token == null
+                || token.isBlank()
+                || userDetails == null
+                || userDetails.getUsername() == null) {
+            return false;
+        }
 
-        return username.equals(userDetails.getUsername())
-                && !isTokenExpired(token);
+        String tokenUsername =
+                extractUsername(token);
+
+        return tokenUsername != null
+                && tokenUsername.equals(
+                userDetails.getUsername()
+        )
+                && !isTokenExpired(token)
+                && userDetails.isEnabled()
+                && userDetails.isAccountNonLocked()
+                && userDetails.isAccountNonExpired()
+                && userDetails.isCredentialsNonExpired();
     }
 
-    private boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
-    }
-
-    private Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
+    public long getExpirationMs() {
+        return jwtExpirationMs;
     }
 
     public <T> T extractClaim(
             String token,
             Function<Claims, T> claimsResolver
     ) {
-        final Claims claims = extractAllClaims(token);
+        Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
     }
 
+    private boolean isTokenExpired(String token) {
+        Date expiration = extractExpiration(token);
+
+        return expiration == null
+                || expiration.before(new Date());
+    }
+
     private Claims extractAllClaims(String token) {
+        if (token == null || token.isBlank()) {
+            throw new IllegalArgumentException(
+                    "JWT token must not be blank"
+            );
+        }
+
         return Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
                 .build()
@@ -79,8 +139,10 @@ public class JwtService {
                 .getBody();
     }
 
-    private Key getSigningKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
+    private SecretKey getSigningKey() {
+        byte[] keyBytes =
+                Decoders.BASE64.decode(jwtSecret);
+
         return Keys.hmacShaKeyFor(keyBytes);
     }
 }

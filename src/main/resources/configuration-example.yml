@@ -1,25 +1,62 @@
 server:
   port: 8080
+  servlet:
+    context-path: /api/v1
 
 spring:
+  application:
+    name: fitlife-api
+
+  profiles:
+    active: local
+
   datasource:
     url: jdbc:mysql://localhost:3306/fitlife_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
     username: your_db_username
     password: your_db_password
+    driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
+    hibernate:
+      ddl-auto: validate
     show-sql: true
+    open-in-view: false
     properties:
       hibernate:
         format_sql: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
 
   mail:
     host: sandbox.smtp.mailtrap.io
     port: 2525
     username: your_mail_username
     password: your_mail_password
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
 
 fitlife:
+  auth:
+    refresh-token-expiration-days: 7
+    email-verification-expiration-hours: 24
+    frontend-verification-url: http://localhost:5173/verify-email
+
   mail:
     from: no-reply@fitlife.local
 
@@ -43,9 +80,19 @@ google:
 
 vnpay:
   enabled: false
+  pay-url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+  return-url: http://localhost:8080/api/v1/payments/vnpay/return
+  ipn-url: http://localhost:8080/api/v1/payments/vnpay/ipn
+  tmn-code: your_vnpay_tmn_code
+  hash-secret: your_vnpay_hash_secret
+  version: 2.1.0
+  command: pay
+  order-type: other
+  locale: vn
+  frontend-result-url: http://localhost:5173/member/payment/result
 
 application:
   security:
     jwt:
       secret: your_base64_jwt_secret
-      expiration-ms: 86400000
+      expiration-ms: 1800000

@@ -181,6 +181,48 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST
     ),
 
+    INVALID_REFRESH_TOKEN(
+            5015,
+            "Invalid refresh token",
+            HttpStatus.UNAUTHORIZED
+    ),
+
+    REFRESH_TOKEN_EXPIRED(
+            5016,
+            "Refresh token has expired",
+            HttpStatus.UNAUTHORIZED
+    ),
+
+    REFRESH_TOKEN_REVOKED(
+            5017,
+            "Refresh token has been revoked",
+            HttpStatus.UNAUTHORIZED
+    ),
+
+    EMAIL_NOT_VERIFIED(
+            5018,
+            "Email has not been verified",
+            HttpStatus.FORBIDDEN
+    ),
+
+    INVALID_EMAIL_VERIFICATION_TOKEN(
+            5019,
+            "Invalid email verification token",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    EMAIL_VERIFICATION_TOKEN_EXPIRED(
+            5020,
+            "Email verification token has expired",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    EMAIL_VERIFICATION_TOKEN_USED(
+            5021,
+            "Email verification token has already been used",
+            HttpStatus.BAD_REQUEST
+    ),
+
 
     // =========================
     // Equipment errors: 6000 - 6999
