@@ -19,11 +19,11 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "username": "member03",
-  "email": "member03@gmail.com",
+  "username": "member04",
+  "email": "member04@gmail.com",
   "password": "123456",
-  "fullName": "Member 03",
-  "phone": "0101010103"
+  "fullName": "Member 04",
+  "phone": "0101010104"
 }
 
 
@@ -93,7 +93,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "identifier": "member03",
+  "identifier": "member04",
   "password": "123456"
 }
 
