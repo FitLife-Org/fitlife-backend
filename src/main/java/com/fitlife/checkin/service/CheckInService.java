@@ -39,4 +39,13 @@ public interface CheckInService {
     );
 
     CheckInTodayStatisticsResponse getTodayStatistics();
+
+    // New endpoints for checkout, gym QR, and inside tracking
+    CheckInResponse selfCheckInOut(SelfCheckInRequest request, String memberUsername);
+
+    GymQrResponse getActiveGymQr();
+
+    GymQrResponse rotateGymQr();
+
+    PageResponse<CheckInResponse> getMembersInsideGym(int page, int size);
 }

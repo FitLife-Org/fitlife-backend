@@ -40,6 +40,13 @@ public class CheckIn {
     @Column(name = "check_in_method", nullable = false, length = 20)
     private CheckInMethod checkInMethod;
 
+    @Column(name = "check_out_time")
+    private LocalDateTime checkOutTime;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "check_out_method", length = 20)
+    private CheckInMethod checkOutMethod;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     @Builder.Default

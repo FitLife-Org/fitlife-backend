@@ -2,14 +2,16 @@ package com.fitlife.checkin.service.impl;
 
 import com.fitlife.checkin.dto.*;
 import com.fitlife.checkin.entity.CheckIn;
+import com.fitlife.checkin.entity.GymQrCode;
 import com.fitlife.checkin.enums.CheckInMethod;
 import com.fitlife.checkin.enums.CheckInStatus;
 import com.fitlife.checkin.mapper.CheckInMapper;
 import com.fitlife.checkin.repository.CheckInRepository;
+import com.fitlife.checkin.repository.GymQrCodeRepository;
 import com.fitlife.checkin.service.CheckInService;
-import com.fitlife.common.response.PageResponse;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
+import com.fitlife.common.response.PageResponse;
 import com.fitlife.member.entity.Member;
 import com.fitlife.member.repository.MemberRepository;
 import com.fitlife.subscription.entity.Subscription;
@@ -30,6 +32,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +41,7 @@ import java.util.Optional;
 public class CheckInServiceImpl implements CheckInService {
 
     private final CheckInRepository checkInRepository;
+    private final GymQrCodeRepository gymQrCodeRepository;
     private final MemberRepository memberRepository;
     private final UserRepository userRepository;
     private final CheckInMapper checkInMapper;
@@ -119,8 +123,16 @@ public class CheckInServiceImpl implements CheckInService {
             );
 
             if (alreadyCheckedIn) {
-                canCheckIn = false;
-                checkInMessage = "Member already checked in today";
+                // If they are currently inside (haven't checked out yet), we allow showing status
+                Optional<CheckIn> activeCheckIn = checkInRepository.findFirstByMemberIdAndCheckOutTimeIsNullAndStatusAndDeletedFalseOrderByCheckInTimeDesc(
+                        member.getId(), CheckInStatus.SUCCESS
+                );
+                if (activeCheckIn.isPresent()) {
+                    checkInMessage = "Member is currently inside the gym (needs checkout)";
+                } else {
+                    canCheckIn = false;
+                    checkInMessage = "Member already checked in today";
+                }
             }
         }
 
@@ -201,7 +213,7 @@ public class CheckInServiceImpl implements CheckInService {
                 .member(member)
                 .subscription(activeSub)
                 .checkInTime(LocalDateTime.now())
-                .checkInMethod(CheckInMethod.QR)
+                .checkInMethod(CheckInMethod.QR_MEMBER)
                 .status(CheckInStatus.SUCCESS)
                 .checkedInBy(staffUser)
                 .note(request.getNote())
@@ -251,6 +263,7 @@ public class CheckInServiceImpl implements CheckInService {
                 startDateTime,
                 endDateTime,
                 statusEnum,
+                false,
                 pageable
         );
 
@@ -328,8 +341,13 @@ public class CheckInServiceImpl implements CheckInService {
                 startOfDay, endOfDay, CheckInMethod.MANUAL, CheckInStatus.SUCCESS
         );
 
+        // Count all QR check-ins (Legacy QR, QR_MEMBER, QR_GYM)
         long qrCheckIns = checkInRepository.countByCheckInTimeBetweenAndCheckInMethodAndStatusAndDeletedFalse(
                 startOfDay, endOfDay, CheckInMethod.QR, CheckInStatus.SUCCESS
+        ) + checkInRepository.countByCheckInTimeBetweenAndCheckInMethodAndStatusAndDeletedFalse(
+                startOfDay, endOfDay, CheckInMethod.QR_MEMBER, CheckInStatus.SUCCESS
+        ) + checkInRepository.countByCheckInTimeBetweenAndCheckInMethodAndStatusAndDeletedFalse(
+                startOfDay, endOfDay, CheckInMethod.QR_GYM, CheckInStatus.SUCCESS
         );
 
         long cancelledCheckIns = checkInRepository.countByCheckInTimeBetweenAndStatusAndDeletedFalse(
@@ -342,13 +360,113 @@ public class CheckInServiceImpl implements CheckInService {
                 .date(today)
                 .totalCheckIns(totalCheckIns)
                 .manualCheckIns(manualCheckIns)
-                .qrCheckIns(qrCountToAdjust(qrCheckIns)) // Returns raw count
+                .qrCheckIns(qrCheckIns)
                 .cancelledCheckIns(cancelledCheckIns)
                 .build();
     }
 
-    private long qrCountToAdjust(long val) {
-        return val;
+    @Override
+    @Transactional
+    public CheckInResponse selfCheckInOut(SelfCheckInRequest request, String memberUsername) {
+        // Validate active gym QR code
+        GymQrCode currentActiveQr = gymQrCodeRepository.findFirstByIsActiveTrueOrderByCreatedAtDesc()
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_QR_DATA, "Gym QR code system is not initialized"));
+
+        if (!currentActiveQr.getQrCodeData().equals(request.getGymQrData().trim())) {
+            throw new AppException(ErrorCode.INVALID_QR_DATA, "Invalid or expired gym QR code");
+        }
+
+        User user = userRepository.findByUsernameOrEmail(memberUsername, memberUsername)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        Member member = memberRepository.findByUserIdAndIsDeletedFalse(user.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_FOUND, "Member profile not found for user"));
+
+        // Check if member is currently inside the gym (has checked-in today but not checked-out yet)
+        Optional<CheckIn> activeCheckInOpt = checkInRepository.findFirstByMemberIdAndCheckOutTimeIsNullAndStatusAndDeletedFalseOrderByCheckInTimeDesc(
+                member.getId(), CheckInStatus.SUCCESS
+        );
+
+        if (activeCheckInOpt.isPresent()) {
+            // PERFORM CHECK-OUT
+            CheckIn checkIn = activeCheckInOpt.get();
+            checkIn.setCheckOutTime(LocalDateTime.now());
+            checkIn.setCheckOutMethod(CheckInMethod.QR_GYM);
+            CheckIn saved = checkInRepository.save(checkIn);
+            return checkInMapper.toResponse(saved);
+        } else {
+            // PERFORM CHECK-IN
+            validateMemberEligibility(member);
+            Subscription activeSub = validateAndGetActiveSubscription(member.getId());
+            validateDailyCheckInUniqueness(member.getId());
+
+            CheckIn checkIn = CheckIn.builder()
+                    .member(member)
+                    .subscription(activeSub)
+                    .checkInTime(LocalDateTime.now())
+                    .checkInMethod(CheckInMethod.QR_GYM)
+                    .status(CheckInStatus.SUCCESS)
+                    .deleted(false)
+                    .build();
+
+            CheckIn saved = checkInRepository.save(checkIn);
+            return checkInMapper.toResponse(saved);
+        }
+    }
+
+    @Override
+    public GymQrResponse getActiveGymQr() {
+        GymQrCode currentActiveQr = gymQrCodeRepository.findFirstByIsActiveTrueOrderByCreatedAtDesc()
+                .orElseGet(() -> {
+                    // Seed a default one if not present
+                    GymQrCode seed = GymQrCode.builder()
+                            .qrCodeData("FITLIFE_GYM_DEFAULT")
+                            .isActive(true)
+                            .build();
+                    return gymQrCodeRepository.save(seed);
+                });
+
+        return GymQrResponse.builder()
+                .qrCodeData(currentActiveQr.getQrCodeData())
+                .createdAt(currentActiveQr.getCreatedAt() != null ? currentActiveQr.getCreatedAt() : LocalDateTime.now())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public GymQrResponse rotateGymQr() {
+        // Deactivate all active QR codes
+        List<GymQrCode> activeQrs = gymQrCodeRepository.findAll().stream()
+                .filter(GymQrCode::getIsActive)
+                .toList();
+
+        for (GymQrCode qr : activeQrs) {
+            qr.setIsActive(false);
+        }
+        gymQrCodeRepository.saveAll(activeQrs);
+
+        // Generate a new dynamic gym QR code using a UUID
+        String newQrData = "FITLIFE_GYM_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
+        GymQrCode newQr = GymQrCode.builder()
+                .qrCodeData(newQrData)
+                .isActive(true)
+                .build();
+
+        GymQrCode saved = gymQrCodeRepository.save(newQr);
+
+        return GymQrResponse.builder()
+                .qrCodeData(saved.getQrCodeData())
+                .createdAt(saved.getCreatedAt() != null ? saved.getCreatedAt() : LocalDateTime.now())
+                .build();
+    }
+
+    @Override
+    public PageResponse<CheckInResponse> getMembersInsideGym(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "checkInTime"));
+        Page<CheckIn> pageResult = checkInRepository.findByCheckOutTimeIsNullAndStatusAndDeletedFalse(
+                CheckInStatus.SUCCESS, pageable
+        );
+        return PageResponse.from(pageResult, checkInMapper::toResponse);
     }
 
     private void validateMemberEligibility(Member member) {

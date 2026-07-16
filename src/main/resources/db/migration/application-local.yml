@@ -1,0 +1,51 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/fitlife_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: root
+    password: root123
+
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  mail:
+    host: sandbox.smtp.mailtrap.io
+    port: 2525
+    username: demo
+    password: demo
+
+fitlife:
+  mail:
+    from: no-reply@fitlife.local
+
+  ai:
+    gemini:
+      enabled: ${GEMINI_ENABLED:false}
+      api-key: ${GEMINI_API_KEY}
+      model: gemini-3.5-flash
+      base-url: https://generativelanguage.googleapis.com/v1beta
+      temperature: 0.2
+      max-output-tokens: 8192
+
+cloudinary:
+  cloud-name: demo
+  api-key: demo
+  api-secret: demo
+
+google:
+  enabled: true
+  client-id: 824206896157-js34bahfdl06u7r84c2l2pt6t670h7tf.apps.googleusercontent.com
+
+vnpay:
+  enabled: false
+
+application:
+  security:
+    jwt:
+      secret: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZg==
+      expiration-ms: 86400000

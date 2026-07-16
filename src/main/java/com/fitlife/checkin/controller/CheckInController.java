@@ -19,7 +19,7 @@ import java.time.LocalDate;
 @RestController
 @RequestMapping("/check-ins")
 @RequiredArgsConstructor
-@Tag(name = "Check-in Management", description = "Endpoints for managing gym check-ins")
+@Tag(name = "Check-in Management", description = "Endpoints for managing gym check-ins and check-outs")
 public class CheckInController {
 
     private final CheckInService checkInService;
@@ -128,5 +128,48 @@ public class CheckInController {
     public ResponseEntity<ApiResponse<CheckInTodayStatisticsResponse>> getTodayStatistics() {
         CheckInTodayStatisticsResponse response = checkInService.getTodayStatistics();
         return ResponseEntity.ok(ApiResponse.success("Get today check-in statistics successfully", response));
+    }
+
+    // ==========================================
+    // NEW ENDPOINTS (CHECK-OUT & GYM QR FLOW)
+    // ==========================================
+
+    @PostMapping("/self")
+    @PreAuthorize("hasAnyAuthority('ROLE_MEMBER', 'MEMBER')")
+    @Operation(summary = "Self check-in or check-out", description = "Member scans gym's dynamic QR code to check-in (if outside) or check-out (if inside).")
+    public ResponseEntity<ApiResponse<CheckInResponse>> selfCheckInOut(
+            @Valid @RequestBody SelfCheckInRequest request,
+            Authentication authentication
+    ) {
+        CheckInResponse response = checkInService.selfCheckInOut(request, authentication.getName());
+        String actionMsg = response.getCheckOutTime() != null ? "Self check-out successfully" : "Self check-in successfully";
+        return ResponseEntity.ok(ApiResponse.success(actionMsg, response));
+    }
+
+    @GetMapping("/inside")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STAFF', 'ADMIN', 'STAFF')")
+    @Operation(summary = "Get members currently inside gym", description = "Retrieve list of members who have checked in but not yet checked out.")
+    public ResponseEntity<ApiResponse<PageResponse<CheckInResponse>>> getMembersInsideGym(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        PageResponse<CheckInResponse> response = checkInService.getMembersInsideGym(page, size);
+        return ResponseEntity.ok(ApiResponse.success("Get members inside gym successfully", response));
+    }
+
+    @GetMapping("/gym-qr")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STAFF', 'ADMIN', 'STAFF', 'ROLE_MEMBER', 'MEMBER')")
+    @Operation(summary = "Get active gym QR code", description = "Retrieve the current active QR code of the gym.")
+    public ResponseEntity<ApiResponse<GymQrResponse>> getActiveGymQr() {
+        GymQrResponse response = checkInService.getActiveGymQr();
+        return ResponseEntity.ok(ApiResponse.success("Get active gym QR successfully", response));
+    }
+
+    @PostMapping("/gym-qr/rotate")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ADMIN')")
+    @Operation(summary = "Rotate gym QR code", description = "Admin only. Invalidate current QR code and generate a new dynamic gym QR code.")
+    public ResponseEntity<ApiResponse<GymQrResponse>> rotateGymQr() {
+        GymQrResponse response = checkInService.rotateGymQr();
+        return ResponseEntity.ok(ApiResponse.success("Rotate gym QR code successfully", response));
     }
 }
