@@ -33,18 +33,22 @@ public class CheckIn {
     @JoinColumn(name = "subscription_id")
     private Subscription subscription;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "check_in_qr_id")
+    private CheckInQr checkInQr;
+
     @Column(name = "check_in_time", nullable = false)
     private LocalDateTime checkInTime;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "check_in_method", nullable = false, length = 20)
+    @Column(name = "check_in_method", nullable = false, length = 30)
     private CheckInMethod checkInMethod;
 
     @Column(name = "check_out_time")
     private LocalDateTime checkOutTime;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "check_out_method", length = 20)
+    @Column(name = "check_out_method", length = 30)
     private CheckInMethod checkOutMethod;
 
     @Enumerated(EnumType.STRING)

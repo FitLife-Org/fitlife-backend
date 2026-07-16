@@ -2,12 +2,12 @@ package com.fitlife.checkin.service.impl;
 
 import com.fitlife.checkin.dto.*;
 import com.fitlife.checkin.entity.CheckIn;
-import com.fitlife.checkin.entity.GymQrCode;
+import com.fitlife.checkin.entity.CheckInQr;
 import com.fitlife.checkin.enums.CheckInMethod;
 import com.fitlife.checkin.enums.CheckInStatus;
 import com.fitlife.checkin.mapper.CheckInMapper;
+import com.fitlife.checkin.repository.CheckInQrRepository;
 import com.fitlife.checkin.repository.CheckInRepository;
-import com.fitlife.checkin.repository.GymQrCodeRepository;
 import com.fitlife.checkin.service.CheckInService;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
@@ -27,6 +27,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -41,10 +42,115 @@ import java.util.UUID;
 public class CheckInServiceImpl implements CheckInService {
 
     private final CheckInRepository checkInRepository;
-    private final GymQrCodeRepository gymQrCodeRepository;
+    private final CheckInQrRepository checkInQrRepository;
     private final MemberRepository memberRepository;
     private final UserRepository userRepository;
     private final CheckInMapper checkInMapper;
+
+    // =========================================================================
+    // MEMBER SELF-SERVICE METHODS
+    // =========================================================================
+
+    @Override
+    @Transactional
+    public CheckInResponse memberCheckIn(MemberCheckInRequest request, String memberUsername) {
+        CheckInQr qr = checkInQrRepository.findByTokenAndIsActiveTrue(request.getQrToken().trim())
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_QR_DATA, "Mã QR phòng tập không tồn tại hoặc đã bị khóa"));
+
+        User user = userRepository.findByUsernameOrEmail(memberUsername, memberUsername)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        Member member = memberRepository.findByUserIdAndIsDeletedFalse(user.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_FOUND, "Member profile not found for user"));
+
+        validateMemberEligibility(member);
+        Subscription activeSub = validateAndGetActiveSubscription(member.getId());
+        validateDailyCheckInUniqueness(member.getId());
+
+        // Check if there is an active session
+        Optional<CheckIn> activeCheckInOpt = checkInRepository.findFirstByMemberIdAndCheckOutTimeIsNullAndStatusAndDeletedFalseOrderByCheckInTimeDesc(
+                member.getId(), CheckInStatus.SUCCESS
+        );
+        if (activeCheckInOpt.isPresent()) {
+            throw new AppException(ErrorCode.ALREADY_CHECKED_IN_TODAY, "Bạn đang có phiên luyện tập chưa hoàn thành");
+        }
+
+        CheckIn checkIn = CheckIn.builder()
+                .member(member)
+                .subscription(activeSub)
+                .checkInQr(qr)
+                .checkInTime(LocalDateTime.now())
+                .checkInMethod(CheckInMethod.MEMBER_SCAN_GYM_QR)
+                .status(CheckInStatus.SUCCESS)
+                .deleted(false)
+                .build();
+
+        CheckIn saved = checkInRepository.save(checkIn);
+        return checkInMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public CheckInResponse memberCheckOut(MemberCheckOutRequest request, String memberUsername) {
+        checkInQrRepository.findByTokenAndIsActiveTrue(request.getQrToken().trim())
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_QR_DATA, "Mã QR phòng tập không tồn tại hoặc đã bị khóa"));
+
+        User user = userRepository.findByUsernameOrEmail(memberUsername, memberUsername)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        Member member = memberRepository.findByUserIdAndIsDeletedFalse(user.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_FOUND, "Member profile not found for user"));
+
+        CheckIn checkIn = checkInRepository.findFirstByMemberIdAndCheckOutTimeIsNullAndStatusAndDeletedFalseOrderByCheckInTimeDesc(
+                member.getId(), CheckInStatus.SUCCESS
+        ).orElseThrow(() -> new AppException(ErrorCode.CHECKIN_NOT_FOUND, "Không tìm thấy lượt check-in chưa hoàn thành để check-out"));
+
+        // Accidental double scan protection (Block check-out within 5 minutes of check-in)
+        long elapsedMinutes = Duration.between(checkIn.getCheckInTime(), LocalDateTime.now()).toMinutes();
+        if (elapsedMinutes < 5) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Khoảng cách giữa check-in và check-out phải tối thiểu 5 phút để tránh quét nhầm");
+        }
+
+        checkIn.setCheckOutTime(LocalDateTime.now());
+        checkIn.setCheckOutMethod(CheckInMethod.MEMBER_SCAN_GYM_QR);
+
+        CheckIn saved = checkInRepository.save(checkIn);
+        return checkInMapper.toResponse(saved);
+    }
+
+    @Override
+    public CheckInResponse getMemberCurrentStatus(String memberUsername) {
+        User user = userRepository.findByUsernameOrEmail(memberUsername, memberUsername)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        Member member = memberRepository.findByUserIdAndIsDeletedFalse(user.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_FOUND, "Member profile not found for user"));
+
+        Optional<CheckIn> activeCheckIn = checkInRepository.findFirstByMemberIdAndCheckOutTimeIsNullAndStatusAndDeletedFalseOrderByCheckInTimeDesc(
+                member.getId(), CheckInStatus.SUCCESS
+        );
+
+        if (activeCheckIn.isPresent()) {
+            return checkInMapper.toResponse(activeCheckIn.get());
+        }
+
+        return CheckInResponse.builder().isInside(false).build();
+    }
+
+    @Override
+    public PageResponse<CheckInResponse> getMemberHistory(
+            String memberUsername,
+            LocalDate fromDate,
+            LocalDate toDate,
+            int page,
+            int size
+    ) {
+        return getMyCheckInHistory(memberUsername, fromDate, toDate, page, size);
+    }
+
+    // =========================================================================
+    // STAFF/ADMIN SUPPORT DESK METHODS
+    // =========================================================================
 
     @Override
     public CheckInLookupResponse lookupMember(String keyword) {
@@ -52,10 +158,8 @@ public class CheckInServiceImpl implements CheckInService {
             throw new AppException(ErrorCode.INVALID_REQUEST, "Keyword cannot be empty");
         }
 
-        // Try exact member code search first
         Optional<Member> memberOpt = memberRepository.findByMemberCodeAndIsDeletedFalse(keyword.trim());
         if (memberOpt.isEmpty()) {
-            // Search dynamically using the keyword
             Page<Member> memberPage = memberRepository.searchMembers(keyword.trim(), null, PageRequest.of(0, 1));
             if (memberPage.hasContent()) {
                 memberOpt = Optional.of(memberPage.getContent().get(0));
@@ -72,7 +176,6 @@ public class CheckInServiceImpl implements CheckInService {
         boolean canCheckIn = true;
         String checkInMessage = "Member can check in";
 
-        // Check user status
         if (user == null || user.getIsDeleted()) {
             canCheckIn = false;
             checkInMessage = "Member account does not exist";
@@ -86,7 +189,6 @@ public class CheckInServiceImpl implements CheckInService {
 
         CurrentSubscriptionResponse currentSubResponse = null;
         if (canCheckIn) {
-            // Validate subscription
             List<Subscription> activeSubs = checkInRepository.findActiveSubscriptionsByMemberId(member.getId());
             if (activeSubs.isEmpty()) {
                 canCheckIn = false;
@@ -113,7 +215,6 @@ public class CheckInServiceImpl implements CheckInService {
             }
         }
 
-        // Check daily duplicate check-in
         if (canCheckIn) {
             LocalDate today = LocalDate.now();
             LocalDateTime startOfDay = today.atStartOfDay();
@@ -123,7 +224,6 @@ public class CheckInServiceImpl implements CheckInService {
             );
 
             if (alreadyCheckedIn) {
-                // If they are currently inside (haven't checked out yet), we allow showing status
                 Optional<CheckIn> activeCheckIn = checkInRepository.findFirstByMemberIdAndCheckOutTimeIsNullAndStatusAndDeletedFalseOrderByCheckInTimeDesc(
                         member.getId(), CheckInStatus.SUCCESS
                 );
@@ -151,27 +251,35 @@ public class CheckInServiceImpl implements CheckInService {
 
     @Override
     @Transactional
-    public CheckInResponse checkInManual(CheckInManualRequest request, String actorUsername) {
-        User staffUser = userRepository.findByUsernameOrEmail(actorUsername, actorUsername)
+    public CheckInResponse staffCheckInMemberQr(StaffMemberQrCheckInRequest request, String staffUsername) {
+        String qrData = request.getQrData().trim();
+        String memberCode;
+
+        if (qrData.contains(":")) {
+            String[] parts = qrData.split(":");
+            memberCode = parts[parts.length - 1];
+        } else {
+            memberCode = qrData;
+        }
+
+        User staffUser = userRepository.findByUsernameOrEmail(staffUsername, staffUsername)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND, "Staff user not found"));
 
-        Member member = memberRepository.findByMemberCodeAndIsDeletedFalse(request.getMemberCode())
+        Member member = memberRepository.findByMemberCodeAndIsDeletedFalse(memberCode)
                 .orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_FOUND));
 
         validateMemberEligibility(member);
-
         Subscription activeSub = validateAndGetActiveSubscription(member.getId());
-
         validateDailyCheckInUniqueness(member.getId());
 
         CheckIn checkIn = CheckIn.builder()
                 .member(member)
                 .subscription(activeSub)
                 .checkInTime(LocalDateTime.now())
-                .checkInMethod(CheckInMethod.MANUAL)
+                .checkInMethod(CheckInMethod.STAFF_SCAN_MEMBER_QR)
                 .status(CheckInStatus.SUCCESS)
                 .checkedInBy(staffUser)
-                .note(request.getNote())
+                .note(request.getReason())
                 .deleted(false)
                 .build();
 
@@ -181,42 +289,33 @@ public class CheckInServiceImpl implements CheckInService {
 
     @Override
     @Transactional
-    public CheckInResponse checkInQr(CheckInQrRequest request, String actorUsername) {
-        if (request.getQrData() == null || request.getQrData().trim().isEmpty()) {
-            throw new AppException(ErrorCode.INVALID_QR_DATA, "QR data cannot be empty");
-        }
-
-        String qrData = request.getQrData().trim();
-        String memberCode;
-
-        // Parse member code from QR data
-        if (qrData.contains(":")) {
-            String[] parts = qrData.split(":");
-            memberCode = parts[parts.length - 1];
-        } else {
-            memberCode = qrData;
-        }
-
-        User staffUser = userRepository.findByUsernameOrEmail(actorUsername, actorUsername)
+    public CheckInResponse staffCheckInManual(StaffManualCheckInRequest request, String staffUsername) {
+        User staffUser = userRepository.findByUsernameOrEmail(staffUsername, staffUsername)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND, "Staff user not found"));
 
-        Member member = memberRepository.findByMemberCodeAndIsDeletedFalse(memberCode)
-                .orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_FOUND));
+        Member member;
+        if (request.getMemberId() != null) {
+            member = memberRepository.findById(request.getMemberId())
+                    .orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_FOUND));
+        } else if (request.getMemberCode() != null && !request.getMemberCode().trim().isEmpty()) {
+            member = memberRepository.findByMemberCodeAndIsDeletedFalse(request.getMemberCode().trim())
+                    .orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_FOUND));
+        } else {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Either memberId or memberCode is required");
+        }
 
         validateMemberEligibility(member);
-
         Subscription activeSub = validateAndGetActiveSubscription(member.getId());
-
         validateDailyCheckInUniqueness(member.getId());
 
         CheckIn checkIn = CheckIn.builder()
                 .member(member)
                 .subscription(activeSub)
                 .checkInTime(LocalDateTime.now())
-                .checkInMethod(CheckInMethod.QR_MEMBER)
+                .checkInMethod(CheckInMethod.STAFF_MANUAL)
                 .status(CheckInStatus.SUCCESS)
                 .checkedInBy(staffUser)
-                .note(request.getNote())
+                .note(request.getReason())
                 .deleted(false)
                 .build();
 
@@ -225,7 +324,39 @@ public class CheckInServiceImpl implements CheckInService {
     }
 
     @Override
-    public PageResponse<CheckInResponse> getCheckInList(
+    @Transactional
+    public CheckInResponse staffCheckOutMember(Long id, String staffUsername) {
+        CheckIn checkIn = checkInRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new AppException(ErrorCode.CHECKIN_NOT_FOUND));
+
+        if (checkIn.getCheckOutTime() != null) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Lượt check-in này đã được check-out trước đó");
+        }
+
+        checkIn.setCheckOutTime(LocalDateTime.now());
+        checkIn.setCheckOutMethod(CheckInMethod.STAFF_MANUAL);
+
+        if (checkIn.getNote() != null) {
+            checkIn.setNote(checkIn.getNote() + " | Check-out hộ bởi: " + staffUsername);
+        } else {
+            checkIn.setNote("Check-out hộ bởi: " + staffUsername);
+        }
+
+        CheckIn saved = checkInRepository.save(checkIn);
+        return checkInMapper.toResponse(saved);
+    }
+
+    @Override
+    public PageResponse<CheckInResponse> getMembersCurrentlyInside(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "checkInTime"));
+        Page<CheckIn> pageResult = checkInRepository.findByCheckOutTimeIsNullAndStatusAndDeletedFalse(
+                CheckInStatus.SUCCESS, pageable
+        );
+        return PageResponse.from(pageResult, checkInMapper::toResponse);
+    }
+
+    @Override
+    public PageResponse<CheckInResponse> getAllCheckInHistory(
             String keyword,
             Long memberId,
             LocalDate fromDate,
@@ -271,7 +402,7 @@ public class CheckInServiceImpl implements CheckInService {
     }
 
     @Override
-    public CheckInResponse getCheckInDetail(Long id) {
+    public CheckInResponse getDetail(Long id) {
         CheckIn checkIn = checkInRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.CHECKIN_NOT_FOUND));
         return checkInMapper.toResponse(checkIn);
@@ -309,7 +440,102 @@ public class CheckInServiceImpl implements CheckInService {
     }
 
     @Override
-    public PageResponse<CheckInResponse> getMyCheckInHistory(
+    public CheckInTodayStatisticsResponse getTodayStatistics() {
+        LocalDate today = LocalDate.now();
+        LocalDateTime startOfDay = today.atStartOfDay();
+        LocalDateTime endOfDay = today.atTime(LocalTime.MAX);
+
+        long manualCheckIns = checkInRepository.countByCheckInTimeBetweenAndCheckInMethodAndStatusAndDeletedFalse(
+                startOfDay, endOfDay, CheckInMethod.STAFF_MANUAL, CheckInStatus.SUCCESS
+        );
+
+        long qrCheckIns = checkInRepository.countByCheckInTimeBetweenAndCheckInMethodAndStatusAndDeletedFalse(
+                startOfDay, endOfDay, CheckInMethod.MEMBER_SCAN_GYM_QR, CheckInStatus.SUCCESS
+        ) + checkInRepository.countByCheckInTimeBetweenAndCheckInMethodAndStatusAndDeletedFalse(
+                startOfDay, endOfDay, CheckInMethod.STAFF_SCAN_MEMBER_QR, CheckInStatus.SUCCESS
+        );
+
+        long cancelledCheckIns = checkInRepository.countByCheckInTimeBetweenAndStatusAndDeletedFalse(
+                startOfDay, endOfDay, CheckInStatus.CANCELLED
+        );
+
+        long totalCheckIns = manualCheckIns + qrCheckIns;
+
+        return CheckInTodayStatisticsResponse.builder()
+                .date(today)
+                .totalCheckIns(totalCheckIns)
+                .manualCheckIns(manualCheckIns)
+                .qrCheckIns(qrCheckIns)
+                .cancelledCheckIns(cancelledCheckIns)
+                .build();
+    }
+
+    // =========================================================================
+    // ADMIN QR MANAGEMENT METHODS
+    // =========================================================================
+
+    @Override
+    @Transactional
+    public AdminCheckInQrResponse createGymQr(AdminCheckInQrRequest request, String adminUsername) {
+        User adminUser = userRepository.findByUsernameOrEmail(adminUsername, adminUsername)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        String token = UUID.randomUUID().toString();
+        CheckInQr qr = CheckInQr.builder()
+                .name(request.getName().trim())
+                .location(request.getLocation() != null ? request.getLocation().trim() : null)
+                .token(token)
+                .isActive(request.getActive() != null ? request.getActive() : true)
+                .createdBy(adminUser)
+                .build();
+
+        CheckInQr saved = checkInQrRepository.save(qr);
+        return checkInMapper.toQrResponse(saved);
+    }
+
+    @Override
+    public List<AdminCheckInQrResponse> getAllGymQrs() {
+        List<CheckInQr> list = checkInQrRepository.findAll();
+        return checkInMapper.toQrResponseList(list);
+    }
+
+    @Override
+    public AdminCheckInQrResponse getGymQrDetail(Long id) {
+        CheckInQr qr = checkInQrRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_QR_DATA, "Mã QR phòng tập không tồn tại"));
+        return checkInMapper.toQrResponse(qr);
+    }
+
+    @Override
+    @Transactional
+    public AdminCheckInQrResponse regenerateGymQrToken(Long id) {
+        CheckInQr qr = checkInQrRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_QR_DATA, "Mã QR phòng tập không tồn tại"));
+
+        qr.setToken(UUID.randomUUID().toString());
+        qr.setRegeneratedAt(LocalDateTime.now());
+
+        CheckInQr saved = checkInQrRepository.save(qr);
+        return checkInMapper.toQrResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public AdminCheckInQrResponse toggleGymQrStatus(Long id, Boolean active) {
+        CheckInQr qr = checkInQrRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_QR_DATA, "Mã QR phòng tập không tồn tại"));
+
+        qr.setIsActive(active);
+
+        CheckInQr saved = checkInQrRepository.save(qr);
+        return checkInMapper.toQrResponse(saved);
+    }
+
+    // =========================================================================
+    // PRIVATE COMMON HELPER METHODS
+    // =========================================================================
+
+    private PageResponse<CheckInResponse> getMyCheckInHistory(
             String username,
             LocalDate fromDate,
             LocalDate toDate,
@@ -329,144 +555,6 @@ public class CheckInServiceImpl implements CheckInService {
         Page<CheckIn> checkInPage = checkInRepository.findMyCheckIns(member.getId(), startDateTime, endDateTime, pageable);
 
         return PageResponse.from(checkInPage, checkInMapper::toResponse);
-    }
-
-    @Override
-    public CheckInTodayStatisticsResponse getTodayStatistics() {
-        LocalDate today = LocalDate.now();
-        LocalDateTime startOfDay = today.atStartOfDay();
-        LocalDateTime endOfDay = today.atTime(LocalTime.MAX);
-
-        long manualCheckIns = checkInRepository.countByCheckInTimeBetweenAndCheckInMethodAndStatusAndDeletedFalse(
-                startOfDay, endOfDay, CheckInMethod.MANUAL, CheckInStatus.SUCCESS
-        );
-
-        // Count all QR check-ins (Legacy QR, QR_MEMBER, QR_GYM)
-        long qrCheckIns = checkInRepository.countByCheckInTimeBetweenAndCheckInMethodAndStatusAndDeletedFalse(
-                startOfDay, endOfDay, CheckInMethod.QR, CheckInStatus.SUCCESS
-        ) + checkInRepository.countByCheckInTimeBetweenAndCheckInMethodAndStatusAndDeletedFalse(
-                startOfDay, endOfDay, CheckInMethod.QR_MEMBER, CheckInStatus.SUCCESS
-        ) + checkInRepository.countByCheckInTimeBetweenAndCheckInMethodAndStatusAndDeletedFalse(
-                startOfDay, endOfDay, CheckInMethod.QR_GYM, CheckInStatus.SUCCESS
-        );
-
-        long cancelledCheckIns = checkInRepository.countByCheckInTimeBetweenAndStatusAndDeletedFalse(
-                startOfDay, endOfDay, CheckInStatus.CANCELLED
-        );
-
-        long totalCheckIns = manualCheckIns + qrCheckIns;
-
-        return CheckInTodayStatisticsResponse.builder()
-                .date(today)
-                .totalCheckIns(totalCheckIns)
-                .manualCheckIns(manualCheckIns)
-                .qrCheckIns(qrCheckIns)
-                .cancelledCheckIns(cancelledCheckIns)
-                .build();
-    }
-
-    @Override
-    @Transactional
-    public CheckInResponse selfCheckInOut(SelfCheckInRequest request, String memberUsername) {
-        // Validate active gym QR code
-        GymQrCode currentActiveQr = gymQrCodeRepository.findFirstByIsActiveTrueOrderByCreatedAtDesc()
-                .orElseThrow(() -> new AppException(ErrorCode.INVALID_QR_DATA, "Gym QR code system is not initialized"));
-
-        if (!currentActiveQr.getQrCodeData().equals(request.getGymQrData().trim())) {
-            throw new AppException(ErrorCode.INVALID_QR_DATA, "Invalid or expired gym QR code");
-        }
-
-        User user = userRepository.findByUsernameOrEmail(memberUsername, memberUsername)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-
-        Member member = memberRepository.findByUserIdAndIsDeletedFalse(user.getId())
-                .orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_FOUND, "Member profile not found for user"));
-
-        // Check if member is currently inside the gym (has checked-in today but not checked-out yet)
-        Optional<CheckIn> activeCheckInOpt = checkInRepository.findFirstByMemberIdAndCheckOutTimeIsNullAndStatusAndDeletedFalseOrderByCheckInTimeDesc(
-                member.getId(), CheckInStatus.SUCCESS
-        );
-
-        if (activeCheckInOpt.isPresent()) {
-            // PERFORM CHECK-OUT
-            CheckIn checkIn = activeCheckInOpt.get();
-            checkIn.setCheckOutTime(LocalDateTime.now());
-            checkIn.setCheckOutMethod(CheckInMethod.QR_GYM);
-            CheckIn saved = checkInRepository.save(checkIn);
-            return checkInMapper.toResponse(saved);
-        } else {
-            // PERFORM CHECK-IN
-            validateMemberEligibility(member);
-            Subscription activeSub = validateAndGetActiveSubscription(member.getId());
-            validateDailyCheckInUniqueness(member.getId());
-
-            CheckIn checkIn = CheckIn.builder()
-                    .member(member)
-                    .subscription(activeSub)
-                    .checkInTime(LocalDateTime.now())
-                    .checkInMethod(CheckInMethod.QR_GYM)
-                    .status(CheckInStatus.SUCCESS)
-                    .deleted(false)
-                    .build();
-
-            CheckIn saved = checkInRepository.save(checkIn);
-            return checkInMapper.toResponse(saved);
-        }
-    }
-
-    @Override
-    public GymQrResponse getActiveGymQr() {
-        GymQrCode currentActiveQr = gymQrCodeRepository.findFirstByIsActiveTrueOrderByCreatedAtDesc()
-                .orElseGet(() -> {
-                    // Seed a default one if not present
-                    GymQrCode seed = GymQrCode.builder()
-                            .qrCodeData("FITLIFE_GYM_DEFAULT")
-                            .isActive(true)
-                            .build();
-                    return gymQrCodeRepository.save(seed);
-                });
-
-        return GymQrResponse.builder()
-                .qrCodeData(currentActiveQr.getQrCodeData())
-                .createdAt(currentActiveQr.getCreatedAt() != null ? currentActiveQr.getCreatedAt() : LocalDateTime.now())
-                .build();
-    }
-
-    @Override
-    @Transactional
-    public GymQrResponse rotateGymQr() {
-        // Deactivate all active QR codes
-        List<GymQrCode> activeQrs = gymQrCodeRepository.findAll().stream()
-                .filter(GymQrCode::getIsActive)
-                .toList();
-
-        for (GymQrCode qr : activeQrs) {
-            qr.setIsActive(false);
-        }
-        gymQrCodeRepository.saveAll(activeQrs);
-
-        // Generate a new dynamic gym QR code using a UUID
-        String newQrData = "FITLIFE_GYM_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
-        GymQrCode newQr = GymQrCode.builder()
-                .qrCodeData(newQrData)
-                .isActive(true)
-                .build();
-
-        GymQrCode saved = gymQrCodeRepository.save(newQr);
-
-        return GymQrResponse.builder()
-                .qrCodeData(saved.getQrCodeData())
-                .createdAt(saved.getCreatedAt() != null ? saved.getCreatedAt() : LocalDateTime.now())
-                .build();
-    }
-
-    @Override
-    public PageResponse<CheckInResponse> getMembersInsideGym(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "checkInTime"));
-        Page<CheckIn> pageResult = checkInRepository.findByCheckOutTimeIsNullAndStatusAndDeletedFalse(
-                CheckInStatus.SUCCESS, pageable
-        );
-        return PageResponse.from(pageResult, checkInMapper::toResponse);
     }
 
     private void validateMemberEligibility(Member member) {

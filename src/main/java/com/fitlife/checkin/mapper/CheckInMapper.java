@@ -1,7 +1,9 @@
 package com.fitlife.checkin.mapper;
 
+import com.fitlife.checkin.dto.AdminCheckInQrResponse;
 import com.fitlife.checkin.dto.CheckInResponse;
 import com.fitlife.checkin.entity.CheckIn;
+import com.fitlife.checkin.entity.CheckInQr;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -21,4 +23,9 @@ public interface CheckInMapper {
     CheckInResponse toResponse(CheckIn checkIn);
 
     List<CheckInResponse> toResponseList(List<CheckIn> checkIns);
+
+    @Mapping(target = "active", source = "isActive")
+    AdminCheckInQrResponse toQrResponse(CheckInQr checkInQr);
+
+    List<AdminCheckInQrResponse> toQrResponseList(List<CheckInQr> checkInQrs);
 }
