@@ -20,4 +20,8 @@ public interface TrainerRepository extends JpaRepository<Trainer, Long> {
 
 
     List<Trainer> findAllByStatusAndDeletedFalse(TrainerStatus status);
+
+    java.util.Optional findByIdAndStatusAndDeletedFalse(Long id, TrainerStatus status);
+
+
 }

@@ -94,4 +94,21 @@ public class TrainerServiceImpl implements TrainerService {
 
         return responses;
     }
+
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public TrainerResponse getTrainerById(Long id) {
+        java.util.Optional trainerOptional = trainerRepository
+                .findByIdAndStatusAndDeletedFalse(id, com.fitlife.trainer.enums.TrainerStatus.ACTIVE);
+
+        if (!trainerOptional.isPresent()) {
+            throw new com.fitlife.common.exception.AppException(
+                    com.fitlife.common.exception.ErrorCode.TRAINER_NOT_FOUND);
+        }
+
+
+        Trainer trainer = (Trainer) trainerOptional.get();
+        return trainerMapper.toResponse(trainer);
+    }
 }

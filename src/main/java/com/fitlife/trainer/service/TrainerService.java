@@ -12,4 +12,6 @@ public interface TrainerService {
     TrainerResponse updateMyProfile(TrainerUpdateRequest request);
 
     List getActiveTrainers();
+
+    TrainerResponse getTrainerById(Long id);
 }
