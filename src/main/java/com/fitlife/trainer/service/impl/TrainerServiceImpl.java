@@ -55,7 +55,6 @@ public class TrainerServiceImpl implements TrainerService {
         return trainerMapper.toResponse(savedTrainer);
     }
 
-
     @Override
     @org.springframework.transaction.annotation.Transactional
     public TrainerResponse updateMyProfile(TrainerUpdateRequest request) {
@@ -76,6 +75,23 @@ public class TrainerServiceImpl implements TrainerService {
         trainer.setBio(request.getBio());
 
         Trainer updatedTrainer = trainerRepository.save(trainer);
-        return trainerMapper.toTrainerResponse(updatedTrainer);
+
+        return trainerMapper.toResponse(updatedTrainer);
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public java.util.List<TrainerResponse> getActiveTrainers() {
+        java.util.List activeTrainers = trainerRepository
+                .findAllByStatusAndDeletedFalse(com.fitlife.trainer.enums.TrainerStatus.ACTIVE);
+
+        java.util.List<TrainerResponse> responses = new java.util.ArrayList<>();
+        for (Object obj : activeTrainers) {
+            Trainer trainer = (Trainer) obj;
+            // ĐÃ ĐỒNG BỘ: Sử dụng toResponse cho vòng lặp
+            responses.add(trainerMapper.toResponse(trainer));
+        }
+
+        return responses;
     }
 }

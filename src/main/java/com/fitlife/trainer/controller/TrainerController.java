@@ -6,10 +6,9 @@ import com.fitlife.trainer.dto.request.TrainerUpdateRequest;
 import com.fitlife.trainer.service.TrainerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -20,11 +19,20 @@ public class TrainerController {
 
     @PutMapping("/me")
     @PreAuthorize("hasRole('TRAINER')")
-    public ApiResponse updateMyProfile(
+    public ApiResponse<TrainerResponse> updateMyProfile(
             @jakarta.validation.Valid @RequestBody TrainerUpdateRequest request) {
-        return ApiResponse.builder()
+        return ApiResponse.<TrainerResponse>builder()
                 .message("Your trainer profile updated successfully")
                 .data(trainerService.updateMyProfile(request))
+                .build();
+    }
+
+
+    @GetMapping
+    public ApiResponse<List<TrainerResponse>> getActiveTrainers() {
+        return ApiResponse.<List<TrainerResponse>>builder()
+                .message("Get active trainers list successfully")
+                .data(trainerService.getActiveTrainers())
                 .build();
     }
 }
