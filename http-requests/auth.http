@@ -187,7 +187,6 @@ Accept: application/json
 
 
 ### 3.3 Admin login - success
-### Seed account must have email_verified = true and ACTIVE status
 POST {{baseUrl}}/auth/login
 Content-Type: application/json
 Accept: application/json
@@ -198,6 +197,11 @@ Accept: application/json
 }
 
 > {%
+    client.test("Admin login successful", function () {
+        client.assert(response.status === 200, "Expected HTTP 200");
+        client.assert(response.body.data.accessToken, "Admin access token is missing");
+    });
+
     client.global.set(
         "adminToken",
         response.body.data.accessToken
@@ -208,7 +212,6 @@ Accept: application/json
         response.body.data.refreshToken
     );
 %}
-
 
 ### 3.4 Login with wrong password - should fail
 POST {{baseUrl}}/auth/login
