@@ -22,4 +22,7 @@ public interface TrainerMapper {
     @Mapping(target = "email", source = "trainer.user.email")
     @Mapping(target = "phone", source = "trainer.user.phone")
     TrainerResponse toResponse(Trainer trainer);
+    TrainerResponse toTrainerResponse(Trainer trainer);
+
+
 }

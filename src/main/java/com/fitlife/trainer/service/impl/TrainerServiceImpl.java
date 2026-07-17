@@ -3,6 +3,7 @@ package com.fitlife.trainer.service.impl;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.trainer.dto.request.TrainerCreateRequest;
+import com.fitlife.trainer.dto.request.TrainerUpdateRequest;
 import com.fitlife.trainer.dto.response.TrainerResponse;
 import com.fitlife.trainer.entity.Trainer;
 import com.fitlife.trainer.enums.TrainerStatus;
@@ -52,5 +53,62 @@ public class TrainerServiceImpl implements TrainerService {
 
         Trainer savedTrainer = (Trainer) trainerRepository.save(trainer);
         return trainerMapper.toResponse(savedTrainer);
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public TrainerResponse updateMyProfile(TrainerUpdateRequest request) {
+        String username = org.springframework.security.core.context.SecurityContextHolder
+                .getContext().getAuthentication().getName();
+
+        java.util.Optional trainerOptional = trainerRepository.findByUserUsernameAndDeletedFalse(username);
+
+        if (!trainerOptional.isPresent()) {
+            throw new com.fitlife.common.exception.AppException(
+                    com.fitlife.common.exception.ErrorCode.TRAINER_NOT_FOUND);
+        }
+        Trainer trainer = (Trainer) trainerOptional.get();
+
+        trainer.setSpecialization(request.getSpecialization());
+        trainer.setExperienceYears(request.getExperienceYears());
+        trainer.setCertifications(request.getCertifications());
+        trainer.setBio(request.getBio());
+
+        Trainer updatedTrainer = trainerRepository.save(trainer);
+
+        return trainerMapper.toResponse(updatedTrainer);
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public java.util.List<TrainerResponse> getActiveTrainers() {
+        java.util.List activeTrainers = trainerRepository
+                .findAllByStatusAndDeletedFalse(com.fitlife.trainer.enums.TrainerStatus.ACTIVE);
+
+        java.util.List<TrainerResponse> responses = new java.util.ArrayList<>();
+        for (Object obj : activeTrainers) {
+            Trainer trainer = (Trainer) obj;
+            // ĐÃ ĐỒNG BỘ: Sử dụng toResponse cho vòng lặp
+            responses.add(trainerMapper.toResponse(trainer));
+        }
+
+        return responses;
+    }
+
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public TrainerResponse getTrainerById(Long id) {
+        java.util.Optional trainerOptional = trainerRepository
+                .findByIdAndStatusAndDeletedFalse(id, com.fitlife.trainer.enums.TrainerStatus.ACTIVE);
+
+        if (!trainerOptional.isPresent()) {
+            throw new com.fitlife.common.exception.AppException(
+                    com.fitlife.common.exception.ErrorCode.TRAINER_NOT_FOUND);
+        }
+
+
+        Trainer trainer = (Trainer) trainerOptional.get();
+        return trainerMapper.toResponse(trainer);
     }
 }
