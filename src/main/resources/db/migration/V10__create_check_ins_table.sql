@@ -54,3 +54,22 @@ WHERE m.member_code = 'MEM001';
 UPDATE members
 SET fitness_goal = 'LOSE_WEIGHT'
 WHERE fitness_goal = 'LOSE_FAT';
+
+-- ------------------ADD Table gym_qr_codes ------------------------
+-- Alter check_ins table to support check-out flow
+ALTER TABLE check_ins
+    ADD COLUMN check_out_time DATETIME NULL AFTER check_in_method,
+    ADD COLUMN check_out_method VARCHAR(20) NULL AFTER check_out_time;
+
+-- Create gym_qr_codes table for Admin dynamic QR code generation
+CREATE TABLE gym_qr_codes (
+                              id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                              qr_code_data VARCHAR(255) NOT NULL,
+                              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                              is_active BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+-- Seed a default active gym QR code for testing
+INSERT INTO gym_qr_codes (qr_code_data, is_active)
+VALUES ('FITLIFE_GYM_DEFAULT', TRUE);
+
