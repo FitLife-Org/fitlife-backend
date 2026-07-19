@@ -1,6 +1,9 @@
 package com.fitlife.equipment.mapper;
 
-import com.fitlife.equipment.dto.*;
+import com.fitlife.equipment.dto.EquipmentManagmentCreateRequest;
+import com.fitlife.equipment.dto.EquipmentManagmentResponse;
+import com.fitlife.equipment.dto.EquipmentManagmentUpdateRequest;
+import com.fitlife.equipment.dto.MaintenanceScheduleResponse;
 import com.fitlife.equipment.entity.EquipmentManagment;
 import com.fitlife.equipment.entity.EquipmentManagmentMaintenance;
 import com.fitlife.equipment.enums.EquipmentManagmentStatus;

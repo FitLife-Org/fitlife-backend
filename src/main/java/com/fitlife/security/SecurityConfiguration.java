@@ -132,6 +132,16 @@ public class SecurityConfiguration {
                         )
 
                         // =====================================
+                        // Admin / Staff equipment
+                        // =====================================
+                        .requestMatchers(
+                                "/admin/equipment/**"
+                        ).hasAnyRole(
+                                "ADMIN",
+                                "STAFF"
+                        )
+
+                        // =====================================
                         // Member payment
                         // =====================================
                         .requestMatchers(
