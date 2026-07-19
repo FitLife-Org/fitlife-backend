@@ -257,7 +257,7 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 ));
 
         List<AiPlanItem> items = aiPlanItemRepository
-                .findByAiSuggestionIdOrderBySortOrderAsc(
+                .findByAiSuggestionIdOrderBySortOrderAscIdAsc(
                         suggestion.getId()
                 );
 
@@ -409,8 +409,8 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
             );
 
             List<AiPlanItem> items = aiPlanItemRepository
-                    .findByAiSuggestionIdOrderBySortOrderAsc(
-                            updatedSuggestion.getId()
+                    .findByAiSuggestionIdOrderBySortOrderAscIdAsc(
+                            suggestion.getId()
                     );
 
             return toSuggestionDetailResponse(
@@ -453,7 +453,7 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 today.plusDays(1).atStartOfDay();
 
         long usage = aiSuggestionRepository
-                .countByMemberIdAndCreatedAtBetweenAndDeletedFalse(
+                .countByMemberIdAndRequestedAtBetweenAndDeletedFalse(
                         memberId,
                         from,
                         to
