@@ -6,17 +6,24 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * Toàn bộ dữ liệu đầu vào được đóng băng tại thời điểm
+ * tạo một AI Suggestion.
+ */
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class AiInputSnapshot {
-
-    private AiInputMemberSnapshot member;
 
     private AiInputUserSnapshot user;
 
+    private AiInputMemberSnapshot member;
+
+    /**
+     * Có thể null nếu Member chưa nhập Body Metric.
+     */
     private AiInputBodyMetricSnapshot latestBodyMetric;
 
     private AiInputRequestSnapshot request;

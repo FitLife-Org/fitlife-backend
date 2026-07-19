@@ -9,11 +9,16 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * Snapshot Body Metric được sử dụng tại thời điểm tạo AI Suggestion.
+ *
+ * Có thể null toàn bộ object nếu Member chưa có Body Metric.
+ */
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class AiInputBodyMetricSnapshot {
 
     private Long id;
