@@ -11,6 +11,7 @@ import com.fitlife.ai.dto.response.AiGeneratedBodyAnalysisResponse;
 import com.fitlife.ai.dto.response.AiGeneratedPlanResponse;
 import com.fitlife.ai.dto.response.AiSuggestionDetailResponse;
 import com.fitlife.ai.dto.response.AiSuggestionResponse;
+import com.fitlife.ai.dto.internal.AiPromptResult;
 import com.fitlife.ai.entity.AiFeedback;
 import com.fitlife.ai.entity.AiPlanItem;
 import com.fitlife.ai.entity.AiSuggestion;
@@ -47,12 +48,6 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class AiSuggestionServiceImpl implements AiSuggestionService {
-
-    private static final String FULL_PLAN_PROMPT_VERSION =
-            "FULL_PLAN_V1";
-
-    private static final String BODY_ANALYSIS_PROMPT_VERSION =
-            "BODY_ANALYSIS_V1";
 
     private final AiSuggestionRepository aiSuggestionRepository;
     private final AiPlanItemRepository aiPlanItemRepository;
@@ -119,9 +114,6 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 ))
                 .inputSnapshot(toJson(inputSnapshot))
                 .status(AiSuggestionStatus.PENDING)
-                .promptVersion(
-                        FULL_PLAN_PROMPT_VERSION
-                )
                 .warningMessage(
                         buildInitialWarningMessage(
                                 currentMember,
@@ -137,14 +129,19 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 aiSuggestionRepository.save(suggestion);
 
         try {
-            String prompt =
-                    aiPromptBuilderService
-                            .buildFullPlanPrompt(
-                                    inputSnapshot
-                            );
+            AiPromptResult promptResult =
+                    aiPromptBuilderService.buildFullPlanPrompt(
+                            inputSnapshot
+                    );
+
+            savedSuggestion.setPromptVersion(
+                    promptResult.getVersionCode()
+            );
 
             AiProviderResult providerResult =
-                    aiProviderService.generate(prompt);
+                    aiProviderService.generate(
+                            promptResult.getPrompt()
+                    );
 
             applyProviderMetadata(
                     savedSuggestion,
@@ -412,9 +409,6 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 ))
                 .inputSnapshot(toJson(inputSnapshot))
                 .status(AiSuggestionStatus.PENDING)
-                .promptVersion(
-                        BODY_ANALYSIS_PROMPT_VERSION
-                )
                 .warningMessage(
                         buildInitialWarningMessage(
                                 currentMember,
@@ -430,14 +424,20 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 aiSuggestionRepository.save(suggestion);
 
         try {
-            String prompt =
+            AiPromptResult promptResult =
                     aiPromptBuilderService
                             .buildBodyAnalysisPrompt(
                                     inputSnapshot
                             );
 
+            savedSuggestion.setPromptVersion(
+                    promptResult.getVersionCode()
+            );
+
             AiProviderResult providerResult =
-                    aiProviderService.generate(prompt);
+                    aiProviderService.generate(
+                            promptResult.getPrompt()
+                    );
 
             applyProviderMetadata(
                     savedSuggestion,

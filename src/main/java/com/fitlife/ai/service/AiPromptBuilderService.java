@@ -1,10 +1,9 @@
 package com.fitlife.ai.service;
 
 import com.fitlife.ai.dto.internal.AiInputSnapshot;
+import com.fitlife.ai.dto.internal.AiPromptResult;
 
 public interface AiPromptBuilderService {
-
-    String buildFullPlanPrompt(AiInputSnapshot snapshot);
-
-    String buildBodyAnalysisPrompt(AiInputSnapshot snapshot);
+    AiPromptResult buildFullPlanPrompt(AiInputSnapshot snapshot);
+    AiPromptResult buildBodyAnalysisPrompt(AiInputSnapshot snapshot);
 }
