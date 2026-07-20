@@ -62,129 +62,16 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
 
     private final AiSuggestionPersistenceService aiSuggestionPersistenceService;
 
+    private final AiFullPlanOrchestratorService aiFullPlanOrchestratorService;
+
     private final ObjectMapper objectMapper;
 
     @Override
     public AiSuggestionResponse createFullPlan(
             AiFullPlanRequest request
     ) {
-        Member currentMember =
-                currentMemberService.getCurrentMember();
-
-        User currentUser = currentMember.getUser();
-
-        aiUsageService.validateDailyLimit(
-                currentMember.getId()
-        );
-
-        BodyMetric latestBodyMetric = bodyMetricRepository
-                .findTopByMemberIdAndIsDeletedFalseOrderByRecordedAtDesc(
-                        currentMember.getId()
-                )
-                .orElse(null);
-
-        AiInputSnapshot inputSnapshot =
-                aiSnapshotService.buildFullPlanSnapshot(
-                        currentMember,
-                        latestBodyMetric,
-                        request
-                );
-
-        AiSuggestion suggestion = AiSuggestion.builder()
-                .member(currentMember)
-                .latestBodyMetric(latestBodyMetric)
-                .suggestionType(AiSuggestionType.FULL_PLAN)
-                .goal(request.getGoal().name())
-                .experienceLevel(request.getExperienceLevel())
-                .activityLevel(request.getActivityLevel())
-                .workoutDaysPerWeek(
-                        request.getWorkoutDaysPerWeek()
-                )
-                .workoutDurationMinutes(
-                        request.getWorkoutDurationMinutes()
-                )
-                .userNote(normalizeText(
-                        request.getUserNote()
-                ))
-                .preferredLanguage(resolveLanguage(
-                        request.getPreferredLanguage()
-                ))
-                .inputSnapshot(toJson(inputSnapshot))
-                .status(AiSuggestionStatus.PENDING)
-                .warningMessage(
-                        buildInitialWarningMessage(
-                                currentMember,
-                                latestBodyMetric
-                        )
-                )
-                .createdBy(currentUser)
-                .updatedBy(currentUser)
-                .deleted(false)
-                .build();
-
-        AiSuggestion savedSuggestion =
-                aiSuggestionPersistenceService.createPending(
-                        suggestion
-                );
-
-        try {
-            AiPromptResult promptResult =
-                    aiPromptBuilderService.buildFullPlanPrompt(
-                            inputSnapshot
-                    );
-
-            savedSuggestion.setPromptVersion(
-                    promptResult.getVersionCode()
-            );
-
-            AiProviderResult providerResult =
-                    aiProviderService.generate(
-                            promptResult.getPrompt()
-                    );
-
-            AiGeneratedPlanResponse generatedPlan =
-                    aiPlanParserService
-                            .parseGeneratedPlan(
-                                    providerResult
-                                            .getRawResponse()
-                            );
-            aiResponseValidatorService.validateFullPlan(
-                    generatedPlan,
-                    inputSnapshot
-            );
-
-            String finalWarning = mergeWarnings(
-                    savedSuggestion.getWarningMessage(),
-                    joinWarnings(generatedPlan.getWarnings())
-            );
-
-            AiSuggestion updatedSuggestion =
-                    aiSuggestionPersistenceService
-                            .markFullPlanSuccess(
-                                    savedSuggestion.getId(),
-                                    providerResult,
-                                    generatedPlan,
-                                    finalWarning
-                            );
-
-            return aiSuggestionMapper.toResponse(
-                    updatedSuggestion
-            );
-        } catch (AppException exception) {
-            safeMarkFailed(
-                    savedSuggestion.getId(),
-                    resolveFailureCode(exception)
-            );
-            throw exception;
-        } catch (Exception exception) {
-            safeMarkFailed(
-                    savedSuggestion.getId(),
-                    "AI_RESPONSE_INVALID"
-            );
-            throw new AppException(
-                    ErrorCode.AI_RESPONSE_INVALID
-            );
-        }
+        return aiFullPlanOrchestratorService
+                .createFullPlan(request);
     }
 
     @Override
