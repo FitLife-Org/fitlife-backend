@@ -2,6 +2,7 @@ package com.fitlife.ai.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fitlife.ai.dto.internal.AiInputSnapshot;
+import com.fitlife.ai.dto.internal.AiProviderResult;
 import com.fitlife.ai.dto.request.AiBodyAnalysisRequest;
 import com.fitlife.ai.dto.request.AiFeedbackRequest;
 import com.fitlife.ai.dto.request.AiFullPlanRequest;
@@ -118,11 +119,15 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 ))
                 .inputSnapshot(toJson(inputSnapshot))
                 .status(AiSuggestionStatus.PENDING)
-                .promptVersion(FULL_PLAN_PROMPT_VERSION)
-                .warningMessage(buildInitialWarningMessage(
-                        currentMember,
-                        latestBodyMetric
-                ))
+                .promptVersion(
+                        FULL_PLAN_PROMPT_VERSION
+                )
+                .warningMessage(
+                        buildInitialWarningMessage(
+                                currentMember,
+                                latestBodyMetric
+                        )
+                )
                 .createdBy(currentUser)
                 .updatedBy(currentUser)
                 .deleted(false)
@@ -133,29 +138,41 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
 
         try {
             String prompt =
-                    aiPromptBuilderService.buildFullPlanPrompt(
-                            inputSnapshot
-                    );
+                    aiPromptBuilderService
+                            .buildFullPlanPrompt(
+                                    inputSnapshot
+                            );
 
-            String rawAiResponse =
+            AiProviderResult providerResult =
                     aiProviderService.generate(prompt);
 
+            applyProviderMetadata(
+                    savedSuggestion,
+                    providerResult
+            );
+
             AiGeneratedPlanResponse generatedPlan =
-                    aiPlanParserService.parseGeneratedPlan(
-                            rawAiResponse
-                    );
+                    aiPlanParserService
+                            .parseGeneratedPlan(
+                                    providerResult
+                                            .getRawResponse()
+                            );
 
             savedSuggestion.setAiResponse(
                     toJson(generatedPlan)
             );
             savedSuggestion.setSummary(
-                    normalizeText(generatedPlan.getSummary())
+                    normalizeText(
+                            generatedPlan.getSummary()
+                    )
             );
             savedSuggestion.setWarningMessage(
                     mergeWarnings(
-                            savedSuggestion.getWarningMessage(),
+                            savedSuggestion
+                                    .getWarningMessage(),
                             joinWarnings(
-                                    generatedPlan.getWarnings()
+                                    generatedPlan
+                                            .getWarnings()
                             )
                     )
             );
@@ -175,10 +192,16 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                     updatedSuggestion
             );
         } catch (AppException exception) {
-            markSuggestionFailed(savedSuggestion);
+            markSuggestionFailed(
+                    savedSuggestion,
+                    resolveFailureCode(exception)
+            );
             throw exception;
         } catch (Exception exception) {
-            markSuggestionFailed(savedSuggestion);
+            markSuggestionFailed(
+                    savedSuggestion,
+                    "AI_RESPONSE_INVALID"
+            );
             throw new AppException(
                     ErrorCode.AI_RESPONSE_INVALID
             );
@@ -367,11 +390,12 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 );
 
         AiInputSnapshot inputSnapshot =
-                aiSnapshotService.buildBodyAnalysisSnapshot(
-                        currentMember,
-                        latestBodyMetric,
-                        request
-                );
+                aiSnapshotService
+                        .buildBodyAnalysisSnapshot(
+                                currentMember,
+                                latestBodyMetric,
+                                request
+                        );
 
         AiSuggestion suggestion = AiSuggestion.builder()
                 .member(currentMember)
@@ -391,10 +415,12 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 .promptVersion(
                         BODY_ANALYSIS_PROMPT_VERSION
                 )
-                .warningMessage(buildInitialWarningMessage(
-                        currentMember,
-                        latestBodyMetric
-                ))
+                .warningMessage(
+                        buildInitialWarningMessage(
+                                currentMember,
+                                latestBodyMetric
+                        )
+                )
                 .createdBy(currentUser)
                 .updatedBy(currentUser)
                 .deleted(false)
@@ -410,23 +436,33 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                                     inputSnapshot
                             );
 
-            String rawAiResponse =
+            AiProviderResult providerResult =
                     aiProviderService.generate(prompt);
 
+            applyProviderMetadata(
+                    savedSuggestion,
+                    providerResult
+            );
+
             AiGeneratedBodyAnalysisResponse analysis =
-                    aiPlanParserService.parseBodyAnalysis(
-                            rawAiResponse
-                    );
+                    aiPlanParserService
+                            .parseBodyAnalysis(
+                                    providerResult
+                                            .getRawResponse()
+                            );
 
             savedSuggestion.setAiResponse(
                     toJson(analysis)
             );
             savedSuggestion.setSummary(
-                    normalizeText(analysis.getSummary())
+                    normalizeText(
+                            analysis.getSummary()
+                    )
             );
             savedSuggestion.setWarningMessage(
                     mergeWarnings(
-                            savedSuggestion.getWarningMessage(),
+                            savedSuggestion
+                                    .getWarningMessage(),
                             joinWarnings(
                                     analysis.getWarnings()
                             )
@@ -455,20 +491,58 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                     null
             );
         } catch (AppException exception) {
-            markSuggestionFailed(savedSuggestion);
+            markSuggestionFailed(
+                    savedSuggestion,
+                    resolveFailureCode(exception)
+            );
             throw exception;
         } catch (Exception exception) {
-            markSuggestionFailed(savedSuggestion);
+            markSuggestionFailed(
+                    savedSuggestion,
+                    "AI_RESPONSE_INVALID"
+            );
             throw new AppException(
                     ErrorCode.AI_RESPONSE_INVALID
             );
         }
     }
 
+    private void applyProviderMetadata(
+            AiSuggestion suggestion,
+            AiProviderResult providerResult
+    ) {
+        if (providerResult == null
+                || providerResult.getProvider() == null
+                || providerResult.getRawResponse() == null
+                || providerResult
+                .getRawResponse()
+                .isBlank()) {
+            throw new AppException(
+                    ErrorCode.AI_RESPONSE_INVALID
+            );
+        }
+
+        suggestion.setProvider(
+                providerResult.getProvider()
+        );
+        suggestion.setModelName(
+                normalizeText(
+                        providerResult.getModelName()
+                )
+        );
+        suggestion.setProviderRequestId(
+                normalizeText(
+                        providerResult
+                                .getProviderRequestId()
+                )
+        );
+    }
+
     private PageResponse<AiSuggestionResponse> toPageResponse(
             Page<AiSuggestion> page
     ) {
-        return PageResponse.<AiSuggestionResponse>builder()
+        return PageResponse
+                .<AiSuggestionResponse>builder()
                 .content(
                         aiSuggestionMapper.toResponseList(
                                 page.getContent()
@@ -486,14 +560,28 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
     }
 
     private void markSuggestionFailed(
-            AiSuggestion suggestion
+            AiSuggestion suggestion,
+            String errorCode
     ) {
         suggestion.markFailed(
-                "AI_REQUEST_FAILED",
+                errorCode,
                 "Không thể xử lý yêu cầu AI vào lúc này."
         );
 
         aiSuggestionRepository.save(suggestion);
+    }
+
+    private String resolveFailureCode(
+            AppException exception
+    ) {
+        if (exception == null
+                || exception.getErrorCode() == null) {
+            return "AI_REQUEST_FAILED";
+        }
+
+        return exception
+                .getErrorCode()
+                .name();
     }
 
     private String resolveMemberGoal(
