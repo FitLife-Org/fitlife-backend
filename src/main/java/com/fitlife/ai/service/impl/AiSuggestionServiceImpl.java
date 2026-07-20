@@ -64,6 +64,8 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
 
     private final AiFullPlanOrchestratorService aiFullPlanOrchestratorService;
 
+    private final AiBodyAnalysisOrchestratorService aiBodyAnalysisOrchestratorService;
+
     private final ObjectMapper objectMapper;
 
     @Override
@@ -72,6 +74,14 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
     ) {
         return aiFullPlanOrchestratorService
                 .createFullPlan(request);
+    }
+
+    @Override
+    public AiSuggestionDetailResponse analyzeBodyMetric(
+            AiBodyAnalysisRequest request
+    ) {
+        return aiBodyAnalysisOrchestratorService
+                .analyzeBodyMetric(request);
     }
 
     @Override
@@ -230,137 +240,6 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 savedFeedback
         );
     }
-
-    @Override
-    public AiSuggestionDetailResponse analyzeBodyMetric(
-            AiBodyAnalysisRequest request
-    ) {
-        Member currentMember =
-                currentMemberService.getCurrentMember();
-
-        User currentUser = currentMember.getUser();
-
-        aiUsageService.validateDailyLimit(
-                currentMember.getId()
-        );
-
-        BodyMetric latestBodyMetric = bodyMetricRepository
-                .findTopByMemberIdAndIsDeletedFalseOrderByRecordedAtDesc(
-                        currentMember.getId()
-                )
-                .orElseThrow(() ->
-                        new AppException(
-                                ErrorCode.BODY_METRIC_NOT_FOUND
-                        )
-                );
-
-        AiInputSnapshot inputSnapshot =
-                aiSnapshotService.buildBodyAnalysisSnapshot(
-                        currentMember,
-                        latestBodyMetric,
-                        request
-                );
-
-        AiSuggestion suggestion = AiSuggestion.builder()
-                .member(currentMember)
-                .latestBodyMetric(latestBodyMetric)
-                .suggestionType(
-                        AiSuggestionType.BODY_ANALYSIS
-                )
-                .goal(resolveMemberGoal(currentMember))
-                .userNote(normalizeText(
-                        request.getUserNote()
-                ))
-                .preferredLanguage(resolveLanguage(
-                        request.getPreferredLanguage()
-                ))
-                .inputSnapshot(toJson(inputSnapshot))
-                .status(AiSuggestionStatus.PENDING)
-                .warningMessage(
-                        buildInitialWarningMessage(
-                                currentMember,
-                                latestBodyMetric
-                        )
-                )
-                .createdBy(currentUser)
-                .updatedBy(currentUser)
-                .deleted(false)
-                .build();
-
-        AiSuggestion savedSuggestion =
-                aiSuggestionPersistenceService.createPending(
-                        suggestion
-                );
-
-        try {
-            AiPromptResult promptResult =
-                    aiPromptBuilderService
-                            .buildBodyAnalysisPrompt(
-                                    inputSnapshot
-                            );
-
-            savedSuggestion.setPromptVersion(
-                    promptResult.getVersionCode()
-            );
-
-            AiProviderResult providerResult =
-                    aiProviderService.generate(
-                            promptResult.getPrompt()
-                    );
-
-            AiGeneratedBodyAnalysisResponse analysis =
-                    aiPlanParserService.parseBodyAnalysis(
-                            providerResult.getRawResponse()
-                    );
-
-            aiResponseValidatorService.validateBodyAnalysis(
-                    analysis,
-                    inputSnapshot
-            );
-
-            String finalWarning = mergeWarnings(
-                    savedSuggestion.getWarningMessage(),
-                    joinWarnings(analysis.getWarnings())
-            );
-
-            AiSuggestion updatedSuggestion =
-                    aiSuggestionPersistenceService
-                            .markBodyAnalysisSuccess(
-                                    savedSuggestion.getId(),
-                                    providerResult,
-                                    analysis,
-                                    finalWarning
-                            );
-
-            List<AiPlanItem> items = aiPlanItemRepository
-                    .findByAiSuggestionIdOrderBySortOrderAscIdAsc(
-                            updatedSuggestion.getId()
-                    );
-
-            return aiSuggestionMapper.toDetailResponse(
-                    updatedSuggestion,
-                    items,
-                    null
-            );
-        } catch (AppException exception) {
-            safeMarkFailed(
-                    savedSuggestion.getId(),
-                    resolveFailureCode(exception)
-            );
-
-            throw exception;
-        } catch (Exception exception) {
-            safeMarkFailed(
-                    savedSuggestion.getId(),
-                    "AI_RESPONSE_INVALID"
-            );
-
-            throw new AppException(
-                    ErrorCode.AI_RESPONSE_INVALID
-            );
-        }
-    }
-
 
 
     private PageResponse<AiSuggestionResponse> toPageResponse(
