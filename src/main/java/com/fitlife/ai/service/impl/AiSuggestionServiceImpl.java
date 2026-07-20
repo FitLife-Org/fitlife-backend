@@ -22,13 +22,7 @@ import com.fitlife.ai.mapper.AiSuggestionMapper;
 import com.fitlife.ai.repository.AiFeedbackRepository;
 import com.fitlife.ai.repository.AiPlanItemRepository;
 import com.fitlife.ai.repository.AiSuggestionRepository;
-import com.fitlife.ai.service.AiPlanParserService;
-import com.fitlife.ai.service.AiPromptBuilderService;
-import com.fitlife.ai.service.AiProviderService;
-import com.fitlife.ai.service.AiSnapshotService;
-import com.fitlife.ai.service.AiSuggestionService;
-import com.fitlife.ai.service.AiUsageService;
-import com.fitlife.ai.service.CurrentMemberService;
+import com.fitlife.ai.service.*;
 import com.fitlife.bodymetric.entity.BodyMetric;
 import com.fitlife.bodymetric.repository.BodyMetricRepository;
 import com.fitlife.common.exception.AppException;
@@ -63,6 +57,9 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
 
     private final AiSuggestionMapper aiSuggestionMapper;
     private final AiFeedbackMapper aiFeedbackMapper;
+
+    private final AiResponseValidatorService
+            aiResponseValidatorService;
 
     private final ObjectMapper objectMapper;
 
@@ -154,6 +151,10 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                                     providerResult
                                             .getRawResponse()
                             );
+            aiResponseValidatorService.validateFullPlan(
+                    generatedPlan,
+                    inputSnapshot
+            );
 
             savedSuggestion.setAiResponse(
                     toJson(generatedPlan)
@@ -445,11 +446,13 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
             );
 
             AiGeneratedBodyAnalysisResponse analysis =
-                    aiPlanParserService
-                            .parseBodyAnalysis(
-                                    providerResult
-                                            .getRawResponse()
-                            );
+                    aiPlanParserService.parseBodyAnalysis(
+                            providerResult.getRawResponse()
+                    );
+            aiResponseValidatorService.validateBodyAnalysis(
+                    analysis,
+                    inputSnapshot
+            );
 
             savedSuggestion.setAiResponse(
                     toJson(analysis)
