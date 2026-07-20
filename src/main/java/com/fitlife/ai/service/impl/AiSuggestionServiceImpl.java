@@ -28,6 +28,7 @@ import com.fitlife.ai.service.AiPlanParserService;
 import com.fitlife.ai.service.AiPromptBuilderService;
 import com.fitlife.ai.service.AiProviderService;
 import com.fitlife.ai.service.AiSuggestionService;
+import com.fitlife.ai.service.CurrentMemberService;
 import com.fitlife.bodymetric.entity.BodyMetric;
 import com.fitlife.bodymetric.repository.BodyMetricRepository;
 import com.fitlife.common.exception.AppException;
@@ -35,14 +36,10 @@ import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.common.response.PageResponse;
 import com.fitlife.member.entity.Member;
 import com.fitlife.member.enums.FitnessGoal;
-import com.fitlife.member.repository.MemberRepository;
 import com.fitlife.user.entity.User;
-import com.fitlife.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -57,22 +54,24 @@ import java.util.List;
 public class AiSuggestionServiceImpl implements AiSuggestionService {
 
     private static final int DAILY_AI_LIMIT = 5;
-    private static final ZoneId FITLIFE_ZONE_ID = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final ZoneId FITLIFE_ZONE_ID =
+            ZoneId.of("Asia/Ho_Chi_Minh");
 
-    private static final String FULL_PLAN_PROMPT_VERSION = "FULL_PLAN_V1";
-    private static final String BODY_ANALYSIS_PROMPT_VERSION = "BODY_ANALYSIS_V1";
+    private static final String FULL_PLAN_PROMPT_VERSION =
+            "FULL_PLAN_V1";
+
+    private static final String BODY_ANALYSIS_PROMPT_VERSION =
+            "BODY_ANALYSIS_V1";
 
     private final AiSuggestionRepository aiSuggestionRepository;
     private final AiPlanItemRepository aiPlanItemRepository;
     private final AiFeedbackRepository aiFeedbackRepository;
-
     private final BodyMetricRepository bodyMetricRepository;
-    private final MemberRepository memberRepository;
-    private final UserRepository userRepository;
 
     private final AiPromptBuilderService aiPromptBuilderService;
     private final AiProviderService aiProviderService;
     private final AiPlanParserService aiPlanParserService;
+    private final CurrentMemberService currentMemberService;
 
     private final AiSuggestionMapper aiSuggestionMapper;
     private final AiFeedbackMapper aiFeedbackMapper;
@@ -81,14 +80,20 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
 
     @Override
     @Transactional(noRollbackFor = AppException.class)
-    public AiSuggestionResponse createFullPlan(AiFullPlanRequest request) {
-        Member currentMember = getCurrentMember();
+    public AiSuggestionResponse createFullPlan(
+            AiFullPlanRequest request
+    ) {
+        Member currentMember =
+                currentMemberService.getCurrentMember();
+
         User currentUser = currentMember.getUser();
 
         checkDailyLimit(currentMember.getId());
 
         BodyMetric latestBodyMetric = bodyMetricRepository
-                .findTopByMemberIdAndIsDeletedFalseOrderByRecordedAtDesc(currentMember.getId())
+                .findTopByMemberIdAndIsDeletedFalseOrderByRecordedAtDesc(
+                        currentMember.getId()
+                )
                 .orElse(null);
 
         AiInputSnapshot inputSnapshot = buildFullPlanInputSnapshot(
@@ -106,29 +111,46 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 .experienceLevel(request.getExperienceLevel())
                 .activityLevel(request.getActivityLevel())
                 .workoutDaysPerWeek(request.getWorkoutDaysPerWeek())
-                .workoutDurationMinutes(request.getWorkoutDurationMinutes())
+                .workoutDurationMinutes(
+                        request.getWorkoutDurationMinutes()
+                )
                 .userNote(normalizeText(request.getUserNote()))
-                .preferredLanguage(resolveLanguage(request.getPreferredLanguage()))
+                .preferredLanguage(resolveLanguage(
+                        request.getPreferredLanguage()
+                ))
                 .inputSnapshot(toJson(inputSnapshot))
                 .status(AiSuggestionStatus.PENDING)
                 .promptVersion(FULL_PLAN_PROMPT_VERSION)
-                .warningMessage(buildInitialWarningMessage(currentMember, latestBodyMetric))
+                .warningMessage(buildInitialWarningMessage(
+                        currentMember,
+                        latestBodyMetric
+                ))
                 .createdBy(currentUser)
                 .updatedBy(currentUser)
                 .deleted(false)
                 .build();
 
-        AiSuggestion savedSuggestion = aiSuggestionRepository.save(suggestion);
+        AiSuggestion savedSuggestion =
+                aiSuggestionRepository.save(suggestion);
 
         try {
-            String prompt = aiPromptBuilderService.buildFullPlanPrompt(inputSnapshot);
-            String rawAiResponse = aiProviderService.generate(prompt);
+            String prompt =
+                    aiPromptBuilderService.buildFullPlanPrompt(
+                            inputSnapshot
+                    );
+
+            String rawAiResponse =
+                    aiProviderService.generate(prompt);
 
             AiGeneratedPlanResponse generatedPlan =
-                    aiPlanParserService.parseGeneratedPlan(rawAiResponse);
+                    aiPlanParserService.parseGeneratedPlan(
+                            rawAiResponse
+                    );
 
             savedSuggestion.setAiResponse(toJson(generatedPlan));
-            savedSuggestion.setSummary(normalizeText(generatedPlan.getSummary()));
+            savedSuggestion.setSummary(
+                    normalizeText(generatedPlan.getSummary())
+            );
             savedSuggestion.setWarningMessage(
                     mergeWarnings(
                             savedSuggestion.getWarningMessage(),
@@ -140,22 +162,32 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
             AiSuggestion updatedSuggestion =
                     aiSuggestionRepository.save(savedSuggestion);
 
-            aiPlanParserService.savePlanItems(updatedSuggestion, generatedPlan);
+            aiPlanParserService.savePlanItems(
+                    updatedSuggestion,
+                    generatedPlan
+            );
 
-            return aiSuggestionMapper.toResponse(updatedSuggestion);
+            return aiSuggestionMapper.toResponse(
+                    updatedSuggestion
+            );
         } catch (AppException exception) {
             markSuggestionFailed(savedSuggestion);
             throw exception;
         } catch (Exception exception) {
             markSuggestionFailed(savedSuggestion);
-            throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
+            throw new AppException(
+                    ErrorCode.AI_RESPONSE_INVALID
+            );
         }
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<AiSuggestionResponse> getMySuggestions(Pageable pageable) {
-        Member currentMember = getCurrentMember();
+    public PageResponse<AiSuggestionResponse> getMySuggestions(
+            Pageable pageable
+    ) {
+        Member currentMember =
+                currentMemberService.getCurrentMember();
 
         Page<AiSuggestion> page = aiSuggestionRepository
                 .findByMemberIdAndDeletedFalseOrderByCreatedAtDesc(
@@ -173,7 +205,9 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
             AiSuggestionStatus status,
             Pageable pageable
     ) {
-        Member currentMember = getCurrentMember();
+        Member currentMember =
+                currentMemberService.getCurrentMember();
+
         Page<AiSuggestion> page;
 
         if (suggestionType != null && status != null) {
@@ -211,15 +245,27 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
 
     @Override
     @Transactional(readOnly = true)
-    public AiSuggestionDetailResponse getMySuggestionDetail(Long id) {
-        Member currentMember = getCurrentMember();
+    public AiSuggestionDetailResponse getMySuggestionDetail(
+            Long id
+    ) {
+        Member currentMember =
+                currentMemberService.getCurrentMember();
 
         AiSuggestion suggestion = aiSuggestionRepository
-                .findByIdAndMemberIdAndDeletedFalse(id, currentMember.getId())
-                .orElseThrow(() -> new AppException(ErrorCode.AI_SUGGESTION_NOT_FOUND));
+                .findByIdAndMemberIdAndDeletedFalse(
+                        id,
+                        currentMember.getId()
+                )
+                .orElseThrow(() ->
+                        new AppException(
+                                ErrorCode.AI_SUGGESTION_NOT_FOUND
+                        )
+                );
 
         List<AiPlanItem> items = aiPlanItemRepository
-                .findByAiSuggestionIdOrderBySortOrderAscIdAsc(suggestion.getId());
+                .findByAiSuggestionIdOrderBySortOrderAscIdAsc(
+                        suggestion.getId()
+                );
 
         AiFeedback feedback = aiFeedbackRepository
                 .findByAiSuggestionIdAndMemberId(
@@ -241,25 +287,37 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
             Long aiSuggestionId,
             AiFeedbackRequest request
     ) {
-        Member currentMember = getCurrentMember();
+        Member currentMember =
+                currentMemberService.getCurrentMember();
 
         AiSuggestion suggestion = aiSuggestionRepository
                 .findByIdAndMemberIdAndDeletedFalse(
                         aiSuggestionId,
                         currentMember.getId()
                 )
-                .orElseThrow(() -> new AppException(ErrorCode.AI_SUGGESTION_NOT_FOUND));
+                .orElseThrow(() ->
+                        new AppException(
+                                ErrorCode.AI_SUGGESTION_NOT_FOUND
+                        )
+                );
 
-        if (suggestion.getStatus() != AiSuggestionStatus.SUCCESS
-                && suggestion.getStatus() != AiSuggestionStatus.APPLIED) {
-            throw new AppException(ErrorCode.AI_SUGGESTION_NOT_FOUND);
+        if (suggestion.getStatus()
+                != AiSuggestionStatus.SUCCESS
+                && suggestion.getStatus()
+                != AiSuggestionStatus.APPLIED) {
+            throw new AppException(
+                    ErrorCode.AI_SUGGESTION_NOT_FOUND
+            );
         }
 
-        if (aiFeedbackRepository.existsByAiSuggestionIdAndMemberId(
-                suggestion.getId(),
-                currentMember.getId()
-        )) {
-            throw new AppException(ErrorCode.AI_FEEDBACK_ALREADY_EXISTS);
+        if (aiFeedbackRepository
+                .existsByAiSuggestionIdAndMemberId(
+                        suggestion.getId(),
+                        currentMember.getId()
+                )) {
+            throw new AppException(
+                    ErrorCode.AI_FEEDBACK_ALREADY_EXISTS
+            );
         }
 
         AiFeedback feedback = AiFeedback.builder()
@@ -270,7 +328,8 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 .comment(normalizeText(request.getComment()))
                 .build();
 
-        AiFeedback savedFeedback = aiFeedbackRepository.save(feedback);
+        AiFeedback savedFeedback =
+                aiFeedbackRepository.save(feedback);
 
         return aiFeedbackMapper.toResponse(savedFeedback);
     }
@@ -280,7 +339,9 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
     public AiSuggestionDetailResponse analyzeBodyMetric(
             AiBodyAnalysisRequest request
     ) {
-        Member currentMember = getCurrentMember();
+        Member currentMember =
+                currentMemberService.getCurrentMember();
+
         User currentUser = currentMember.getUser();
 
         checkDailyLimit(currentMember.getId());
@@ -289,14 +350,19 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 .findTopByMemberIdAndIsDeletedFalseOrderByRecordedAtDesc(
                         currentMember.getId()
                 )
-                .orElseThrow(() -> new AppException(ErrorCode.BODY_METRIC_NOT_FOUND));
+                .orElseThrow(() ->
+                        new AppException(
+                                ErrorCode.BODY_METRIC_NOT_FOUND
+                        )
+                );
 
-        AiInputSnapshot inputSnapshot = buildBodyAnalysisInputSnapshot(
-                currentMember,
-                currentUser,
-                latestBodyMetric,
-                request
-        );
+        AiInputSnapshot inputSnapshot =
+                buildBodyAnalysisInputSnapshot(
+                        currentMember,
+                        currentUser,
+                        latestBodyMetric,
+                        request
+                );
 
         AiSuggestion suggestion = AiSuggestion.builder()
                 .member(currentMember)
@@ -304,29 +370,42 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 .suggestionType(AiSuggestionType.BODY_ANALYSIS)
                 .goal(resolveMemberGoal(currentMember))
                 .userNote(normalizeText(request.getUserNote()))
-                .preferredLanguage(resolveLanguage(request.getPreferredLanguage()))
+                .preferredLanguage(resolveLanguage(
+                        request.getPreferredLanguage()
+                ))
                 .inputSnapshot(toJson(inputSnapshot))
                 .status(AiSuggestionStatus.PENDING)
                 .promptVersion(BODY_ANALYSIS_PROMPT_VERSION)
-                .warningMessage(buildInitialWarningMessage(currentMember, latestBodyMetric))
+                .warningMessage(buildInitialWarningMessage(
+                        currentMember,
+                        latestBodyMetric
+                ))
                 .createdBy(currentUser)
                 .updatedBy(currentUser)
                 .deleted(false)
                 .build();
 
-        AiSuggestion savedSuggestion = aiSuggestionRepository.save(suggestion);
+        AiSuggestion savedSuggestion =
+                aiSuggestionRepository.save(suggestion);
 
         try {
             String prompt =
-                    aiPromptBuilderService.buildBodyAnalysisPrompt(inputSnapshot);
+                    aiPromptBuilderService.buildBodyAnalysisPrompt(
+                            inputSnapshot
+                    );
 
-            String rawAiResponse = aiProviderService.generate(prompt);
+            String rawAiResponse =
+                    aiProviderService.generate(prompt);
 
             AiGeneratedBodyAnalysisResponse analysis =
-                    aiPlanParserService.parseBodyAnalysis(rawAiResponse);
+                    aiPlanParserService.parseBodyAnalysis(
+                            rawAiResponse
+                    );
 
             savedSuggestion.setAiResponse(toJson(analysis));
-            savedSuggestion.setSummary(normalizeText(analysis.getSummary()));
+            savedSuggestion.setSummary(
+                    normalizeText(analysis.getSummary())
+            );
             savedSuggestion.setWarningMessage(
                     mergeWarnings(
                             savedSuggestion.getWarningMessage(),
@@ -358,7 +437,9 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
             throw exception;
         } catch (Exception exception) {
             markSuggestionFailed(savedSuggestion);
-            throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
+            throw new AppException(
+                    ErrorCode.AI_RESPONSE_INVALID
+            );
         }
     }
 
@@ -378,10 +459,17 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 .build();
     }
 
-    private void checkDailyLimit(Long memberId) {
-        LocalDate today = LocalDate.now(FITLIFE_ZONE_ID);
-        LocalDateTime from = today.atStartOfDay();
-        LocalDateTime to = today.plusDays(1).atStartOfDay();
+    private void checkDailyLimit(
+            Long memberId
+    ) {
+        LocalDate today =
+                LocalDate.now(FITLIFE_ZONE_ID);
+
+        LocalDateTime from =
+                today.atStartOfDay();
+
+        LocalDateTime to =
+                today.plusDays(1).atStartOfDay();
 
         long usage = aiSuggestionRepository
                 .countByMemberIdAndRequestedAtBetweenAndDeletedFalse(
@@ -391,7 +479,9 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 );
 
         if (usage >= DAILY_AI_LIMIT) {
-            throw new AppException(ErrorCode.AI_LIMIT_EXCEEDED);
+            throw new AppException(
+                    ErrorCode.AI_LIMIT_EXCEEDED
+            );
         }
     }
 
@@ -404,15 +494,27 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
         return AiInputSnapshot.builder()
                 .user(buildUserSnapshot(user))
                 .member(buildMemberSnapshot(member))
-                .latestBodyMetric(buildBodyMetricSnapshot(latestBodyMetric))
+                .latestBodyMetric(
+                        buildBodyMetricSnapshot(latestBodyMetric)
+                )
                 .request(AiInputRequestSnapshot.builder()
                         .goal(request.getGoal())
-                        .experienceLevel(request.getExperienceLevel())
-                        .activityLevel(request.getActivityLevel())
-                        .workoutDaysPerWeek(request.getWorkoutDaysPerWeek())
-                        .workoutDurationMinutes(request.getWorkoutDurationMinutes())
+                        .experienceLevel(
+                                request.getExperienceLevel()
+                        )
+                        .activityLevel(
+                                request.getActivityLevel()
+                        )
+                        .workoutDaysPerWeek(
+                                request.getWorkoutDaysPerWeek()
+                        )
+                        .workoutDurationMinutes(
+                                request.getWorkoutDurationMinutes()
+                        )
                         .mealsPerDay(null)
-                        .userNote(normalizeText(request.getUserNote()))
+                        .userNote(normalizeText(
+                                request.getUserNote()
+                        ))
                         .preferredLanguage(resolveLanguage(
                                 request.getPreferredLanguage()
                         ))
@@ -429,7 +531,9 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
         return AiInputSnapshot.builder()
                 .user(buildUserSnapshot(user))
                 .member(buildMemberSnapshot(member))
-                .latestBodyMetric(buildBodyMetricSnapshot(latestBodyMetric))
+                .latestBodyMetric(
+                        buildBodyMetricSnapshot(latestBodyMetric)
+                )
                 .request(AiInputRequestSnapshot.builder()
                         .goal(member.getFitnessGoal())
                         .experienceLevel(null)
@@ -437,7 +541,9 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                         .workoutDaysPerWeek(null)
                         .workoutDurationMinutes(null)
                         .mealsPerDay(null)
-                        .userNote(normalizeText(request.getUserNote()))
+                        .userNote(normalizeText(
+                                request.getUserNote()
+                        ))
                         .preferredLanguage(resolveLanguage(
                                 request.getPreferredLanguage()
                         ))
@@ -445,13 +551,17 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 .build();
     }
 
-    private AiInputUserSnapshot buildUserSnapshot(User user) {
+    private AiInputUserSnapshot buildUserSnapshot(
+            User user
+    ) {
         return AiInputUserSnapshot.builder()
                 .fullName(user.getFullName())
                 .build();
     }
 
-    private AiInputMemberSnapshot buildMemberSnapshot(Member member) {
+    private AiInputMemberSnapshot buildMemberSnapshot(
+            Member member
+    ) {
         return AiInputMemberSnapshot.builder()
                 .memberId(member.getId())
                 .memberCode(member.getMemberCode())
@@ -468,7 +578,9 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                                 ? null
                                 : member.getFitnessGoal().name()
                 )
-                .healthNote(normalizeText(member.getHealthNote()))
+                .healthNote(
+                        normalizeText(member.getHealthNote())
+                )
                 .build();
     }
 
@@ -484,35 +596,20 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 .heightCm(bodyMetric.getHeightCm())
                 .weightKg(bodyMetric.getWeightKg())
                 .bmi(bodyMetric.getBmi())
-                .bodyFatPercent(bodyMetric.getBodyFatPercent())
-                .muscleMassKg(bodyMetric.getMuscleMassKg())
+                .bodyFatPercent(
+                        bodyMetric.getBodyFatPercent()
+                )
+                .muscleMassKg(
+                        bodyMetric.getMuscleMassKg()
+                )
                 .note(normalizeText(bodyMetric.getNote()))
                 .recordedAt(bodyMetric.getRecordedAt())
                 .build();
     }
 
-    private Member getCurrentMember() {
-        Authentication authentication =
-                SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication == null
-                || !authentication.isAuthenticated()
-                || "anonymousUser".equals(authentication.getPrincipal())) {
-            throw new AppException(ErrorCode.USER_NOT_FOUND);
-        }
-
-        String principal = authentication.getName();
-
-        User user = userRepository
-                .findByUsernameOrEmail(principal, principal)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-
-        return memberRepository
-                .findByUserId(user.getId())
-                .orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_FOUND));
-    }
-
-    private void markSuggestionFailed(AiSuggestion suggestion) {
+    private void markSuggestionFailed(
+            AiSuggestion suggestion
+    ) {
         suggestion.markFailed(
                 "AI_REQUEST_FAILED",
                 "Không thể xử lý yêu cầu AI vào lúc này."
@@ -521,13 +618,17 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
         aiSuggestionRepository.save(suggestion);
     }
 
-    private String resolveMemberGoal(Member member) {
+    private String resolveMemberGoal(
+            Member member
+    ) {
         return member.getFitnessGoal() == null
                 ? FitnessGoal.IMPROVE_HEALTH.name()
                 : member.getFitnessGoal().name();
     }
 
-    private Integer calculateAge(LocalDate dateOfBirth) {
+    private Integer calculateAge(
+            LocalDate dateOfBirth
+    ) {
         if (dateOfBirth == null) {
             return null;
         }
@@ -538,7 +639,9 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
         ).getYears();
     }
 
-    private String resolveLanguage(String language) {
+    private String resolveLanguage(
+            String language
+    ) {
         if (language == null || language.isBlank()) {
             return "vi";
         }
@@ -546,24 +649,36 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
         return language.trim().toLowerCase();
     }
 
-    private String normalizeText(String value) {
+    private String normalizeText(
+            String value
+    ) {
         if (value == null) {
             return null;
         }
 
         String normalized = value.trim();
-        return normalized.isEmpty() ? null : normalized;
+
+        return normalized.isEmpty()
+                ? null
+                : normalized;
     }
 
-    private String joinWarnings(List<String> warnings) {
+    private String joinWarnings(
+            List<String> warnings
+    ) {
         if (warnings == null || warnings.isEmpty()) {
             return null;
         }
 
         return warnings.stream()
-                .filter(value -> value != null && !value.isBlank())
+                .filter(value ->
+                        value != null && !value.isBlank()
+                )
                 .map(String::trim)
-                .reduce((first, second) -> first + " " + second)
+                .reduce(
+                        (first, second) ->
+                                first + " " + second
+                )
                 .orElse(null);
     }
 
@@ -571,8 +686,11 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
             String first,
             String second
     ) {
-        String normalizedFirst = normalizeText(first);
-        String normalizedSecond = normalizeText(second);
+        String normalizedFirst =
+                normalizeText(first);
+
+        String normalizedSecond =
+                normalizeText(second);
 
         if (normalizedFirst == null) {
             return normalizedSecond;
@@ -582,14 +700,17 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
             return normalizedFirst;
         }
 
-        return normalizedFirst + " " + normalizedSecond;
+        return normalizedFirst
+                + " "
+                + normalizedSecond;
     }
 
     private String buildInitialWarningMessage(
             Member member,
             BodyMetric latestBodyMetric
     ) {
-        StringBuilder warning = new StringBuilder();
+        StringBuilder warning =
+                new StringBuilder();
 
         if (latestBodyMetric == null) {
             warning.append(
@@ -617,14 +738,22 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
             );
         }
 
-        return normalizeText(warning.toString());
+        return normalizeText(
+                warning.toString()
+        );
     }
 
-    private String toJson(Object value) {
+    private String toJson(
+            Object value
+    ) {
         try {
-            return objectMapper.writeValueAsString(value);
+            return objectMapper.writeValueAsString(
+                    value
+            );
         } catch (Exception exception) {
-            throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
+            throw new AppException(
+                    ErrorCode.AI_RESPONSE_INVALID
+            );
         }
     }
 }
