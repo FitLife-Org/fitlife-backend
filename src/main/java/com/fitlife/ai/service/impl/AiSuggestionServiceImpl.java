@@ -25,6 +25,7 @@ import com.fitlife.ai.service.AiPromptBuilderService;
 import com.fitlife.ai.service.AiProviderService;
 import com.fitlife.ai.service.AiSnapshotService;
 import com.fitlife.ai.service.AiSuggestionService;
+import com.fitlife.ai.service.AiUsageService;
 import com.fitlife.ai.service.CurrentMemberService;
 import com.fitlife.bodymetric.entity.BodyMetric;
 import com.fitlife.bodymetric.repository.BodyMetricRepository;
@@ -40,18 +41,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class AiSuggestionServiceImpl implements AiSuggestionService {
-
-    private static final int DAILY_AI_LIMIT = 5;
-    private static final ZoneId FITLIFE_ZONE_ID =
-            ZoneId.of("Asia/Ho_Chi_Minh");
 
     private static final String FULL_PLAN_PROMPT_VERSION =
             "FULL_PLAN_V1";
@@ -68,6 +62,7 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
     private final AiProviderService aiProviderService;
     private final AiPlanParserService aiPlanParserService;
     private final AiSnapshotService aiSnapshotService;
+    private final AiUsageService aiUsageService;
     private final CurrentMemberService currentMemberService;
 
     private final AiSuggestionMapper aiSuggestionMapper;
@@ -85,7 +80,9 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
 
         User currentUser = currentMember.getUser();
 
-        checkDailyLimit(currentMember.getId());
+        aiUsageService.validateDailyLimit(
+                currentMember.getId()
+        );
 
         BodyMetric latestBodyMetric = bodyMetricRepository
                 .findTopByMemberIdAndIsDeletedFalseOrderByRecordedAtDesc(
@@ -113,7 +110,9 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 .workoutDurationMinutes(
                         request.getWorkoutDurationMinutes()
                 )
-                .userNote(normalizeText(request.getUserNote()))
+                .userNote(normalizeText(
+                        request.getUserNote()
+                ))
                 .preferredLanguage(resolveLanguage(
                         request.getPreferredLanguage()
                 ))
@@ -146,7 +145,9 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                             rawAiResponse
                     );
 
-            savedSuggestion.setAiResponse(toJson(generatedPlan));
+            savedSuggestion.setAiResponse(
+                    toJson(generatedPlan)
+            );
             savedSuggestion.setSummary(
                     normalizeText(generatedPlan.getSummary())
             );
@@ -161,7 +162,9 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
             savedSuggestion.markSuccess();
 
             AiSuggestion updatedSuggestion =
-                    aiSuggestionRepository.save(savedSuggestion);
+                    aiSuggestionRepository.save(
+                            savedSuggestion
+                    );
 
             aiPlanParserService.savePlanItems(
                     updatedSuggestion,
@@ -326,13 +329,17 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 .member(currentMember)
                 .rating(request.getRating())
                 .useful(request.getUseful())
-                .comment(normalizeText(request.getComment()))
+                .comment(normalizeText(
+                        request.getComment()
+                ))
                 .build();
 
         AiFeedback savedFeedback =
                 aiFeedbackRepository.save(feedback);
 
-        return aiFeedbackMapper.toResponse(savedFeedback);
+        return aiFeedbackMapper.toResponse(
+                savedFeedback
+        );
     }
 
     @Override
@@ -345,7 +352,9 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
 
         User currentUser = currentMember.getUser();
 
-        checkDailyLimit(currentMember.getId());
+        aiUsageService.validateDailyLimit(
+                currentMember.getId()
+        );
 
         BodyMetric latestBodyMetric = bodyMetricRepository
                 .findTopByMemberIdAndIsDeletedFalseOrderByRecordedAtDesc(
@@ -367,15 +376,21 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
         AiSuggestion suggestion = AiSuggestion.builder()
                 .member(currentMember)
                 .latestBodyMetric(latestBodyMetric)
-                .suggestionType(AiSuggestionType.BODY_ANALYSIS)
+                .suggestionType(
+                        AiSuggestionType.BODY_ANALYSIS
+                )
                 .goal(resolveMemberGoal(currentMember))
-                .userNote(normalizeText(request.getUserNote()))
+                .userNote(normalizeText(
+                        request.getUserNote()
+                ))
                 .preferredLanguage(resolveLanguage(
                         request.getPreferredLanguage()
                 ))
                 .inputSnapshot(toJson(inputSnapshot))
                 .status(AiSuggestionStatus.PENDING)
-                .promptVersion(BODY_ANALYSIS_PROMPT_VERSION)
+                .promptVersion(
+                        BODY_ANALYSIS_PROMPT_VERSION
+                )
                 .warningMessage(buildInitialWarningMessage(
                         currentMember,
                         latestBodyMetric
@@ -390,9 +405,10 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
 
         try {
             String prompt =
-                    aiPromptBuilderService.buildBodyAnalysisPrompt(
-                            inputSnapshot
-                    );
+                    aiPromptBuilderService
+                            .buildBodyAnalysisPrompt(
+                                    inputSnapshot
+                            );
 
             String rawAiResponse =
                     aiProviderService.generate(prompt);
@@ -402,20 +418,26 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                             rawAiResponse
                     );
 
-            savedSuggestion.setAiResponse(toJson(analysis));
+            savedSuggestion.setAiResponse(
+                    toJson(analysis)
+            );
             savedSuggestion.setSummary(
                     normalizeText(analysis.getSummary())
             );
             savedSuggestion.setWarningMessage(
                     mergeWarnings(
                             savedSuggestion.getWarningMessage(),
-                            joinWarnings(analysis.getWarnings())
+                            joinWarnings(
+                                    analysis.getWarnings()
+                            )
                     )
             );
             savedSuggestion.markSuccess();
 
             AiSuggestion updatedSuggestion =
-                    aiSuggestionRepository.save(savedSuggestion);
+                    aiSuggestionRepository.save(
+                            savedSuggestion
+                    );
 
             aiPlanParserService.saveBodyAnalysisItems(
                     updatedSuggestion,
@@ -454,35 +476,13 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 )
                 .page(page.getNumber())
                 .size(page.getSize())
-                .totalElements(page.getTotalElements())
-                .totalPages(page.getTotalPages())
+                .totalElements(
+                        page.getTotalElements()
+                )
+                .totalPages(
+                        page.getTotalPages()
+                )
                 .build();
-    }
-
-    private void checkDailyLimit(
-            Long memberId
-    ) {
-        LocalDate today =
-                LocalDate.now(FITLIFE_ZONE_ID);
-
-        LocalDateTime from =
-                today.atStartOfDay();
-
-        LocalDateTime to =
-                today.plusDays(1).atStartOfDay();
-
-        long usage = aiSuggestionRepository
-                .countByMemberIdAndRequestedAtBetweenAndDeletedFalse(
-                        memberId,
-                        from,
-                        to
-                );
-
-        if (usage >= DAILY_AI_LIMIT) {
-            throw new AppException(
-                    ErrorCode.AI_LIMIT_EXCEEDED
-            );
-        }
     }
 
     private void markSuggestionFailed(
@@ -507,11 +507,14 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
     private String resolveLanguage(
             String language
     ) {
-        if (language == null || language.isBlank()) {
+        if (language == null
+                || language.isBlank()) {
             return "vi";
         }
 
-        return language.trim().toLowerCase();
+        return language
+                .trim()
+                .toLowerCase();
     }
 
     private String normalizeText(
@@ -531,13 +534,15 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
     private String joinWarnings(
             List<String> warnings
     ) {
-        if (warnings == null || warnings.isEmpty()) {
+        if (warnings == null
+                || warnings.isEmpty()) {
             return null;
         }
 
         return warnings.stream()
                 .filter(value ->
-                        value != null && !value.isBlank()
+                        value != null
+                                && !value.isBlank()
                 )
                 .map(String::trim)
                 .reduce(
@@ -612,9 +617,8 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
             Object value
     ) {
         try {
-            return objectMapper.writeValueAsString(
-                    value
-            );
+            return objectMapper
+                    .writeValueAsString(value);
         } catch (Exception exception) {
             throw new AppException(
                     ErrorCode.AI_RESPONSE_INVALID
