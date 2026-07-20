@@ -58,13 +58,13 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
     private final AiSuggestionMapper aiSuggestionMapper;
     private final AiFeedbackMapper aiFeedbackMapper;
 
-    private final AiResponseValidatorService
-            aiResponseValidatorService;
+    private final AiResponseValidatorService aiResponseValidatorService;
+
+    private final AiSuggestionPersistenceService aiSuggestionPersistenceService;
 
     private final ObjectMapper objectMapper;
 
     @Override
-    @Transactional(noRollbackFor = AppException.class)
     public AiSuggestionResponse createFullPlan(
             AiFullPlanRequest request
     ) {
@@ -123,7 +123,9 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 .build();
 
         AiSuggestion savedSuggestion =
-                aiSuggestionRepository.save(suggestion);
+                aiSuggestionPersistenceService.createPending(
+                        suggestion
+                );
 
         try {
             AiPromptResult promptResult =
@@ -140,11 +142,6 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                             promptResult.getPrompt()
                     );
 
-            applyProviderMetadata(
-                    savedSuggestion,
-                    providerResult
-            );
-
             AiGeneratedPlanResponse generatedPlan =
                     aiPlanParserService
                             .parseGeneratedPlan(
@@ -156,48 +153,32 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                     inputSnapshot
             );
 
-            savedSuggestion.setAiResponse(
-                    toJson(generatedPlan)
+            String finalWarning = mergeWarnings(
+                    savedSuggestion.getWarningMessage(),
+                    joinWarnings(generatedPlan.getWarnings())
             );
-            savedSuggestion.setSummary(
-                    normalizeText(
-                            generatedPlan.getSummary()
-                    )
-            );
-            savedSuggestion.setWarningMessage(
-                    mergeWarnings(
-                            savedSuggestion
-                                    .getWarningMessage(),
-                            joinWarnings(
-                                    generatedPlan
-                                            .getWarnings()
-                            )
-                    )
-            );
-            savedSuggestion.markSuccess();
 
             AiSuggestion updatedSuggestion =
-                    aiSuggestionRepository.save(
-                            savedSuggestion
-                    );
-
-            aiPlanParserService.savePlanItems(
-                    updatedSuggestion,
-                    generatedPlan
-            );
+                    aiSuggestionPersistenceService
+                            .markFullPlanSuccess(
+                                    savedSuggestion.getId(),
+                                    providerResult,
+                                    generatedPlan,
+                                    finalWarning
+                            );
 
             return aiSuggestionMapper.toResponse(
                     updatedSuggestion
             );
         } catch (AppException exception) {
-            markSuggestionFailed(
-                    savedSuggestion,
+            safeMarkFailed(
+                    savedSuggestion.getId(),
                     resolveFailureCode(exception)
             );
             throw exception;
         } catch (Exception exception) {
-            markSuggestionFailed(
-                    savedSuggestion,
+            safeMarkFailed(
+                    savedSuggestion.getId(),
                     "AI_RESPONSE_INVALID"
             );
             throw new AppException(
@@ -364,7 +345,6 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
     }
 
     @Override
-    @Transactional(noRollbackFor = AppException.class)
     public AiSuggestionDetailResponse analyzeBodyMetric(
             AiBodyAnalysisRequest request
     ) {
@@ -388,12 +368,11 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 );
 
         AiInputSnapshot inputSnapshot =
-                aiSnapshotService
-                        .buildBodyAnalysisSnapshot(
-                                currentMember,
-                                latestBodyMetric,
-                                request
-                        );
+                aiSnapshotService.buildBodyAnalysisSnapshot(
+                        currentMember,
+                        latestBodyMetric,
+                        request
+                );
 
         AiSuggestion suggestion = AiSuggestion.builder()
                 .member(currentMember)
@@ -422,7 +401,9 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 .build();
 
         AiSuggestion savedSuggestion =
-                aiSuggestionRepository.save(suggestion);
+                aiSuggestionPersistenceService.createPending(
+                        suggestion
+                );
 
         try {
             AiPromptResult promptResult =
@@ -440,48 +421,29 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                             promptResult.getPrompt()
                     );
 
-            applyProviderMetadata(
-                    savedSuggestion,
-                    providerResult
-            );
-
             AiGeneratedBodyAnalysisResponse analysis =
                     aiPlanParserService.parseBodyAnalysis(
                             providerResult.getRawResponse()
                     );
+
             aiResponseValidatorService.validateBodyAnalysis(
                     analysis,
                     inputSnapshot
             );
 
-            savedSuggestion.setAiResponse(
-                    toJson(analysis)
+            String finalWarning = mergeWarnings(
+                    savedSuggestion.getWarningMessage(),
+                    joinWarnings(analysis.getWarnings())
             );
-            savedSuggestion.setSummary(
-                    normalizeText(
-                            analysis.getSummary()
-                    )
-            );
-            savedSuggestion.setWarningMessage(
-                    mergeWarnings(
-                            savedSuggestion
-                                    .getWarningMessage(),
-                            joinWarnings(
-                                    analysis.getWarnings()
-                            )
-                    )
-            );
-            savedSuggestion.markSuccess();
 
             AiSuggestion updatedSuggestion =
-                    aiSuggestionRepository.save(
-                            savedSuggestion
-                    );
-
-            aiPlanParserService.saveBodyAnalysisItems(
-                    updatedSuggestion,
-                    analysis
-            );
+                    aiSuggestionPersistenceService
+                            .markBodyAnalysisSuccess(
+                                    savedSuggestion.getId(),
+                                    providerResult,
+                                    analysis,
+                                    finalWarning
+                            );
 
             List<AiPlanItem> items = aiPlanItemRepository
                     .findByAiSuggestionIdOrderBySortOrderAscIdAsc(
@@ -494,52 +456,25 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                     null
             );
         } catch (AppException exception) {
-            markSuggestionFailed(
-                    savedSuggestion,
+            safeMarkFailed(
+                    savedSuggestion.getId(),
                     resolveFailureCode(exception)
             );
+
             throw exception;
         } catch (Exception exception) {
-            markSuggestionFailed(
-                    savedSuggestion,
+            safeMarkFailed(
+                    savedSuggestion.getId(),
                     "AI_RESPONSE_INVALID"
             );
+
             throw new AppException(
                     ErrorCode.AI_RESPONSE_INVALID
             );
         }
     }
 
-    private void applyProviderMetadata(
-            AiSuggestion suggestion,
-            AiProviderResult providerResult
-    ) {
-        if (providerResult == null
-                || providerResult.getProvider() == null
-                || providerResult.getRawResponse() == null
-                || providerResult
-                .getRawResponse()
-                .isBlank()) {
-            throw new AppException(
-                    ErrorCode.AI_RESPONSE_INVALID
-            );
-        }
 
-        suggestion.setProvider(
-                providerResult.getProvider()
-        );
-        suggestion.setModelName(
-                normalizeText(
-                        providerResult.getModelName()
-                )
-        );
-        suggestion.setProviderRequestId(
-                normalizeText(
-                        providerResult
-                                .getProviderRequestId()
-                )
-        );
-    }
 
     private PageResponse<AiSuggestionResponse> toPageResponse(
             Page<AiSuggestion> page
@@ -562,17 +497,6 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 .build();
     }
 
-    private void markSuggestionFailed(
-            AiSuggestion suggestion,
-            String errorCode
-    ) {
-        suggestion.markFailed(
-                errorCode,
-                "Không thể xử lý yêu cầu AI vào lúc này."
-        );
-
-        aiSuggestionRepository.save(suggestion);
-    }
 
     private String resolveFailureCode(
             AppException exception
@@ -714,6 +638,21 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
             throw new AppException(
                     ErrorCode.AI_RESPONSE_INVALID
             );
+        }
+    }
+
+    private void safeMarkFailed(
+            Long suggestionId,
+            String errorCode
+    ) {
+        try {
+            aiSuggestionPersistenceService.markFailed(
+                    suggestionId,
+                    errorCode,
+                    "Không thể xử lý yêu cầu AI vào lúc này."
+            );
+        } catch (Exception ignored) {
+            // Không che mất exception gốc.
         }
     }
 }
