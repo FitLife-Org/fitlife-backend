@@ -1,11 +1,7 @@
 package com.fitlife.ai.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fitlife.ai.dto.internal.AiInputBodyMetricSnapshot;
-import com.fitlife.ai.dto.internal.AiInputMemberSnapshot;
-import com.fitlife.ai.dto.internal.AiInputRequestSnapshot;
 import com.fitlife.ai.dto.internal.AiInputSnapshot;
-import com.fitlife.ai.dto.internal.AiInputUserSnapshot;
 import com.fitlife.ai.dto.request.AiBodyAnalysisRequest;
 import com.fitlife.ai.dto.request.AiFeedbackRequest;
 import com.fitlife.ai.dto.request.AiFullPlanRequest;
@@ -27,6 +23,7 @@ import com.fitlife.ai.repository.AiSuggestionRepository;
 import com.fitlife.ai.service.AiPlanParserService;
 import com.fitlife.ai.service.AiPromptBuilderService;
 import com.fitlife.ai.service.AiProviderService;
+import com.fitlife.ai.service.AiSnapshotService;
 import com.fitlife.ai.service.AiSuggestionService;
 import com.fitlife.ai.service.CurrentMemberService;
 import com.fitlife.bodymetric.entity.BodyMetric;
@@ -45,7 +42,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.Period;
 import java.time.ZoneId;
 import java.util.List;
 
@@ -71,6 +67,7 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
     private final AiPromptBuilderService aiPromptBuilderService;
     private final AiProviderService aiProviderService;
     private final AiPlanParserService aiPlanParserService;
+    private final AiSnapshotService aiSnapshotService;
     private final CurrentMemberService currentMemberService;
 
     private final AiSuggestionMapper aiSuggestionMapper;
@@ -96,12 +93,12 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 )
                 .orElse(null);
 
-        AiInputSnapshot inputSnapshot = buildFullPlanInputSnapshot(
-                currentMember,
-                currentUser,
-                latestBodyMetric,
-                request
-        );
+        AiInputSnapshot inputSnapshot =
+                aiSnapshotService.buildFullPlanSnapshot(
+                        currentMember,
+                        latestBodyMetric,
+                        request
+                );
 
         AiSuggestion suggestion = AiSuggestion.builder()
                 .member(currentMember)
@@ -110,7 +107,9 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 .goal(request.getGoal().name())
                 .experienceLevel(request.getExperienceLevel())
                 .activityLevel(request.getActivityLevel())
-                .workoutDaysPerWeek(request.getWorkoutDaysPerWeek())
+                .workoutDaysPerWeek(
+                        request.getWorkoutDaysPerWeek()
+                )
                 .workoutDurationMinutes(
                         request.getWorkoutDurationMinutes()
                 )
@@ -154,7 +153,9 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
             savedSuggestion.setWarningMessage(
                     mergeWarnings(
                             savedSuggestion.getWarningMessage(),
-                            joinWarnings(generatedPlan.getWarnings())
+                            joinWarnings(
+                                    generatedPlan.getWarnings()
+                            )
                     )
             );
             savedSuggestion.markSuccess();
@@ -357,9 +358,8 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 );
 
         AiInputSnapshot inputSnapshot =
-                buildBodyAnalysisInputSnapshot(
+                aiSnapshotService.buildBodyAnalysisSnapshot(
                         currentMember,
-                        currentUser,
                         latestBodyMetric,
                         request
                 );
@@ -485,128 +485,6 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
         }
     }
 
-    private AiInputSnapshot buildFullPlanInputSnapshot(
-            Member member,
-            User user,
-            BodyMetric latestBodyMetric,
-            AiFullPlanRequest request
-    ) {
-        return AiInputSnapshot.builder()
-                .user(buildUserSnapshot(user))
-                .member(buildMemberSnapshot(member))
-                .latestBodyMetric(
-                        buildBodyMetricSnapshot(latestBodyMetric)
-                )
-                .request(AiInputRequestSnapshot.builder()
-                        .goal(request.getGoal())
-                        .experienceLevel(
-                                request.getExperienceLevel()
-                        )
-                        .activityLevel(
-                                request.getActivityLevel()
-                        )
-                        .workoutDaysPerWeek(
-                                request.getWorkoutDaysPerWeek()
-                        )
-                        .workoutDurationMinutes(
-                                request.getWorkoutDurationMinutes()
-                        )
-                        .mealsPerDay(null)
-                        .userNote(normalizeText(
-                                request.getUserNote()
-                        ))
-                        .preferredLanguage(resolveLanguage(
-                                request.getPreferredLanguage()
-                        ))
-                        .build())
-                .build();
-    }
-
-    private AiInputSnapshot buildBodyAnalysisInputSnapshot(
-            Member member,
-            User user,
-            BodyMetric latestBodyMetric,
-            AiBodyAnalysisRequest request
-    ) {
-        return AiInputSnapshot.builder()
-                .user(buildUserSnapshot(user))
-                .member(buildMemberSnapshot(member))
-                .latestBodyMetric(
-                        buildBodyMetricSnapshot(latestBodyMetric)
-                )
-                .request(AiInputRequestSnapshot.builder()
-                        .goal(member.getFitnessGoal())
-                        .experienceLevel(null)
-                        .activityLevel(null)
-                        .workoutDaysPerWeek(null)
-                        .workoutDurationMinutes(null)
-                        .mealsPerDay(null)
-                        .userNote(normalizeText(
-                                request.getUserNote()
-                        ))
-                        .preferredLanguage(resolveLanguage(
-                                request.getPreferredLanguage()
-                        ))
-                        .build())
-                .build();
-    }
-
-    private AiInputUserSnapshot buildUserSnapshot(
-            User user
-    ) {
-        return AiInputUserSnapshot.builder()
-                .fullName(user.getFullName())
-                .build();
-    }
-
-    private AiInputMemberSnapshot buildMemberSnapshot(
-            Member member
-    ) {
-        return AiInputMemberSnapshot.builder()
-                .memberId(member.getId())
-                .memberCode(member.getMemberCode())
-                .gender(
-                        member.getGender() == null
-                                ? null
-                                : member.getGender().name()
-                )
-                .dateOfBirth(member.getDateOfBirth())
-                .age(calculateAge(member.getDateOfBirth()))
-                .joinDate(member.getJoinDate())
-                .fitnessGoal(
-                        member.getFitnessGoal() == null
-                                ? null
-                                : member.getFitnessGoal().name()
-                )
-                .healthNote(
-                        normalizeText(member.getHealthNote())
-                )
-                .build();
-    }
-
-    private AiInputBodyMetricSnapshot buildBodyMetricSnapshot(
-            BodyMetric bodyMetric
-    ) {
-        if (bodyMetric == null) {
-            return null;
-        }
-
-        return AiInputBodyMetricSnapshot.builder()
-                .id(bodyMetric.getId())
-                .heightCm(bodyMetric.getHeightCm())
-                .weightKg(bodyMetric.getWeightKg())
-                .bmi(bodyMetric.getBmi())
-                .bodyFatPercent(
-                        bodyMetric.getBodyFatPercent()
-                )
-                .muscleMassKg(
-                        bodyMetric.getMuscleMassKg()
-                )
-                .note(normalizeText(bodyMetric.getNote()))
-                .recordedAt(bodyMetric.getRecordedAt())
-                .build();
-    }
-
     private void markSuggestionFailed(
             AiSuggestion suggestion
     ) {
@@ -624,19 +502,6 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
         return member.getFitnessGoal() == null
                 ? FitnessGoal.IMPROVE_HEALTH.name()
                 : member.getFitnessGoal().name();
-    }
-
-    private Integer calculateAge(
-            LocalDate dateOfBirth
-    ) {
-        if (dateOfBirth == null) {
-            return null;
-        }
-
-        return Period.between(
-                dateOfBirth,
-                LocalDate.now(FITLIFE_ZONE_ID)
-        ).getYears();
     }
 
     private String resolveLanguage(
