@@ -17,12 +17,21 @@ import java.time.LocalDateTime;
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uk_ai_feedbacks_suggestion_member",
-                        columnNames = {"ai_suggestion_id", "member_id"}
+                        columnNames = {
+                                "ai_suggestion_id",
+                                "member_id"
+                        }
                 )
         },
         indexes = {
-                @Index(name = "idx_ai_feedbacks_member", columnList = "member_id"),
-                @Index(name = "idx_ai_feedbacks_rating", columnList = "rating")
+                @Index(
+                        name = "idx_ai_feedbacks_member",
+                        columnList = "member_id"
+                ),
+                @Index(
+                        name = "idx_ai_feedbacks_rating",
+                        columnList = "rating"
+                )
         }
 )
 public class AiFeedback {
@@ -32,32 +41,66 @@ public class AiFeedback {
     private Long id;
 
     /**
-     * AI suggestion được đánh giá.
+     * AI Suggestion được đánh giá.
      */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ai_suggestion_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(
+            name = "ai_suggestion_id",
+            nullable = false,
+            foreignKey = @ForeignKey(
+                    name = "fk_ai_feedbacks_suggestion"
+            )
+    )
     private AiSuggestion aiSuggestion;
 
     /**
      * Member gửi feedback.
      */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "member_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(
+            name = "member_id",
+            nullable = false,
+            foreignKey = @ForeignKey(
+                    name = "fk_ai_feedbacks_member"
+            )
+    )
     private Member member;
 
     /**
      * Rating từ 1 đến 5.
+     *
+     * Validation chính được đặt tại DTO.
+     * Database có CHECK constraint bảo vệ thêm.
      */
-    @Column(name = "rating", nullable = false)
+    @Column(
+            name = "rating",
+            nullable = false
+    )
     private Integer rating;
 
-    @Column(name = "comment", columnDefinition = "TEXT")
+    /**
+     * Người dùng đánh giá suggestion có hữu ích hay không.
+     */
+    @Column(name = "useful")
+    private Boolean useful;
+
+    @Column(
+            name = "comment",
+            columnDefinition = "TEXT"
+    )
     private String comment;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(
+            name = "created_at",
+            nullable = false,
+            updatable = false
+    )
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
+    @Column(
+            name = "updated_at",
+            nullable = false
+    )
     private LocalDateTime updatedAt;
 
     @PrePersist

@@ -8,11 +8,14 @@ import lombok.Setter;
 
 import java.time.LocalDate;
 
+/**
+ * Snapshot dữ liệu nghiệp vụ Member cần thiết cho AI.
+ */
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class AiInputMemberSnapshot {
 
     private Long memberId;

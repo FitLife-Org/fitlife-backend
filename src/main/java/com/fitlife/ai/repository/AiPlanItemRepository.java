@@ -7,5 +7,11 @@ import java.util.List;
 
 public interface AiPlanItemRepository extends JpaRepository<AiPlanItem, Long> {
 
-    List<AiPlanItem> findByAiSuggestionIdOrderBySortOrderAsc(Long aiSuggestionId);
+    List<AiPlanItem> findByAiSuggestionIdOrderBySortOrderAscIdAsc(
+            Long aiSuggestionId
+    );
+
+    void deleteByAiSuggestionId(Long aiSuggestionId);
+
+    boolean existsByAiSuggestionId(Long aiSuggestionId);
 }
