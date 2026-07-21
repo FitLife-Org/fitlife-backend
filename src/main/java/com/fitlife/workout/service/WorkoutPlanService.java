@@ -10,6 +10,7 @@ import java.util.List;
 public interface WorkoutPlanService {
     WorkoutPlanResponse createWorkoutPlan(WorkoutPlanCreateRequest request, String currentUsername);
     List getMyWorkoutPlans(Long memberId);
+    List getMyWorkoutPlans(String currentUsername);
     WorkoutPlanDetailResponse getWorkoutPlanById(Long id);
     WorkoutPlanResponse updateWorkoutPlan(Long id, WorkoutPlanUpdateRequest request);
     void deleteWorkoutPlan(Long id);

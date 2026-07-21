@@ -9,4 +9,6 @@ import java.util.List;
 @Repository
 public interface WorkoutPlanRepository extends JpaRepository<WorkoutPlan, Long> {
     List<WorkoutPlan> findByMemberIdAndIsDeletedFalse(Long memberId);
+
+    List<WorkoutPlan> findByMemberIdAndIsDeletedFalseOrderByCreatedAtDesc(Long memberId);
 }

@@ -1,5 +1,7 @@
 package com.fitlife.workout.service.impl;
 
+import com.fitlife.user.entity.User;
+import com.fitlife.user.repository.UserRepository;
 import com.fitlife.workout.dto.request.*;
 import com.fitlife.workout.dto.response.*;
 import com.fitlife.workout.entity.*;
@@ -18,6 +20,7 @@ import java.util.UUID;
 public class WorkoutPlanServiceImpl implements WorkoutPlanService {
 
     private final WorkoutPlanRepository workoutPlanRepository;
+    private final UserRepository userRepository;
 
     @Override
     @Transactional
@@ -43,8 +46,7 @@ public class WorkoutPlanServiceImpl implements WorkoutPlanService {
 
         if (request.getDays() != null) {
             int dayCounter = 1;
-            List<?> dayList = request.getDays();
-            // 💡 DÒNG 46: Duyệt kiểu Object an toàn tuyệt đối
+            List dayList = request.getDays();
             for (Object dayObj : dayList) {
                 WorkoutPlanDayRequest dayReq = (WorkoutPlanDayRequest) dayObj;
 
@@ -63,7 +65,7 @@ public class WorkoutPlanServiceImpl implements WorkoutPlanService {
 
                 if (dayReq.getExercises() != null) {
                     int exCounter = 0;
-                    List<?> exList = dayReq.getExercises();
+                    List exList = dayReq.getExercises();
                     for (Object exObj : exList) {
                         WorkoutExerciseRequest exReq = (WorkoutExerciseRequest) exObj;
 
@@ -99,11 +101,35 @@ public class WorkoutPlanServiceImpl implements WorkoutPlanService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<WorkoutPlanResponse> getMyWorkoutPlans(Long memberId) {
-        List<?> plans = workoutPlanRepository.findByMemberIdAndIsDeletedFalse(memberId);
+    public List getMyWorkoutPlans(Long memberId) {
+        List plans = workoutPlanRepository.findByMemberIdAndIsDeletedFalse(memberId);
+        List responses = new ArrayList<>();
+
+        if (plans != null) {
+            for (Object obj : plans) {
+                WorkoutPlan plan = (WorkoutPlan) obj;
+                responses.add(mapToWorkoutPlanResponse(plan));
+            }
+        }
+        return responses;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WorkoutPlanResponse> getMyWorkoutPlans(String currentUsername) {
+        Long memberId = 1L;
+        if (currentUsername != null && !currentUsername.equals("anonymous")) {
+            User user = userRepository.findByEmail(currentUsername).orElse(null);
+            if (user != null) {
+                memberId = user.getId();
+            }
+        }
+
+        List plans = workoutPlanRepository.findByMemberIdAndIsDeletedFalseOrderByCreatedAtDesc(memberId);
         List<WorkoutPlanResponse> responses = new ArrayList<>();
 
         if (plans != null) {
+
             for (Object obj : plans) {
                 WorkoutPlan plan = (WorkoutPlan) obj;
                 responses.add(mapToWorkoutPlanResponse(plan));
@@ -118,11 +144,11 @@ public class WorkoutPlanServiceImpl implements WorkoutPlanService {
         WorkoutPlan plan = workoutPlanRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy giáo án với ID: " + id));
 
-        List<WorkoutPlanDayResponse> dayResponses = new ArrayList<>();
+        List dayResponses = new ArrayList<>();
         if (plan.getDays() != null) {
             for (Object dayObj : plan.getDays()) {
                 WorkoutPlanDay day = (WorkoutPlanDay) dayObj;
-                List<WorkoutExerciseResponse> exResponses = new ArrayList<>();
+                List exResponses = new ArrayList<>();
 
                 if (day.getExercises() != null) {
                     for (Object exObj : day.getExercises()) {

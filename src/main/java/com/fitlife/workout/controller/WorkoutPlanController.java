@@ -39,6 +39,13 @@ public class WorkoutPlanController {
         return ResponseEntity.ok(responses);
     }
 
+    @GetMapping("/me")
+    public ResponseEntity<List<WorkoutPlanResponse>> getMyWorkoutPlansMe(Authentication authentication) {
+        String currentUsername = (authentication != null) ? authentication.getName() : "anonymous";
+        List<WorkoutPlanResponse> responses = workoutPlanService.getMyWorkoutPlans(currentUsername);
+        return ResponseEntity.ok(responses);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<WorkoutPlanDetailResponse> getWorkoutPlanById(@PathVariable("id") Long id) {
         WorkoutPlanDetailResponse response = workoutPlanService.getWorkoutPlanById(id);
