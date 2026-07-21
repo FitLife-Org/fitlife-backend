@@ -797,6 +797,21 @@ public class WorkoutPlanServiceImpl implements WorkoutPlanService {
         return mapToWorkoutPlanResponse(savedPlan);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List getMemberWorkoutPlansForTrainer(Long memberId, String trainerUsername) {
+        List plans = workoutPlanRepository.findByMemberIdAndIsDeletedFalseOrderByCreatedAtDesc(memberId);
+        List responses = new ArrayList<>();
+
+        if (plans != null) {
+            for (Object obj : plans) {
+                WorkoutPlan plan = (WorkoutPlan) obj;
+                responses.add(mapToWorkoutPlanResponse(plan));
+            }
+        }
+        return responses;
+    }
+
 }
 
 

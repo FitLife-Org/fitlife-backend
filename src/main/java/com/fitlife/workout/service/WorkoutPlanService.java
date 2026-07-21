@@ -25,6 +25,8 @@ public interface WorkoutPlanService {
     WorkoutPlanResponse cloneWorkoutPlan(Long id, String currentUsername);
     WorkoutPlanDayResponse getTodayWorkoutDay(String currentUsername);
     WorkoutPlanResponse createWorkoutPlanForMember(Long memberId, WorkoutPlanCreateRequest request, String trainerUsername);
+    List getMemberWorkoutPlansForTrainer(Long memberId, String trainerUsername);
+
 
     void deleteWorkoutPlan(Long id);
 }
