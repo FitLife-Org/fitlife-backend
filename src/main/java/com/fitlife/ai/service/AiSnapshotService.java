@@ -3,6 +3,8 @@ package com.fitlife.ai.service;
 import com.fitlife.ai.dto.internal.AiInputSnapshot;
 import com.fitlife.ai.dto.request.AiBodyAnalysisRequest;
 import com.fitlife.ai.dto.request.AiFullPlanRequest;
+import com.fitlife.ai.dto.request.AiNutritionPlanRequest;
+import com.fitlife.ai.dto.request.AiWorkoutPlanRequest;
 import com.fitlife.bodymetric.entity.BodyMetric;
 import com.fitlife.member.entity.Member;
 
@@ -42,5 +44,17 @@ public interface AiSnapshotService {
             Member member,
             BodyMetric latestBodyMetric,
             AiBodyAnalysisRequest request
+    );
+
+    AiInputSnapshot buildWorkoutPlanSnapshot(
+            Member member,
+            BodyMetric latestBodyMetric,
+            AiWorkoutPlanRequest request
+    );
+
+    AiInputSnapshot buildNutritionPlanSnapshot(
+            Member member,
+            BodyMetric latestBodyMetric,
+            AiNutritionPlanRequest request
     );
 }

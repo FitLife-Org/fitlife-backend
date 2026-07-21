@@ -2,6 +2,8 @@ package com.fitlife.ai.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fitlife.ai.dto.internal.AiInputSnapshot;
+import com.fitlife.ai.dto.internal.AiPromptResult;
+import com.fitlife.ai.enums.AiPromptVersion;
 import com.fitlife.ai.service.AiPromptBuilderService;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
@@ -12,164 +14,447 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class AiPromptBuilderServiceImpl implements AiPromptBuilderService {
 
+    private static final String DEFAULT_LANGUAGE = "vi";
     private final ObjectMapper objectMapper;
 
     @Override
-    public String buildFullPlanPrompt(AiInputSnapshot snapshot) {
-        try {
-            String inputJson = objectMapper.writerWithDefaultPrettyPrinter()
-                    .writeValueAsString(snapshot);
+    public AiPromptResult buildFullPlanPrompt(AiInputSnapshot snapshot) {
+        validateSnapshot(snapshot);
+        String inputJson = toJson(snapshot);
+        String outputLanguage = resolveOutputLanguage(snapshot);
 
-            return """
-        You are a fitness AI assistant for FitLife.
+        String prompt = """
+                You are a fitness AI assistant for FitLife.
 
-        The user note may be written in Vietnamese or English.
-        You must understand both languages.
-        However, all user-facing text in the JSON values must be written in Vietnamese.
+                PROMPT CONTRACT:
+                - Contract version: %s
+                - Suggestion type: FULL_PLAN
+                - Output language: %s
+                - Return only one valid JSON object.
+                - Do not use markdown or code fences.
+                - Do not write text before or after JSON.
+                - Keep JSON keys exactly as defined below.
+                - Do not add unknown top-level fields.
+                - Do not use snake_case.
 
-        Return ONLY valid JSON.
-        Do not use markdown.
-        Do not wrap with ```json.
-        Do not add any explanation outside JSON.
-        Use exactly the JSON keys shown below.
-        Do not use snake_case.
-        Do not add extra top-level fields.
+                LANGUAGE RULES:
+                - Input may be Vietnamese or English.
+                - Understand both languages.
+                - All user-facing JSON string values must use the requested output language.
+                - JSON keys and enum-like values remain in English.
+                - Supported output languages: vi, en.
+                - Unsupported language falls back to Vietnamese.
 
-        Compact output rules:
-        - Keep the response compact.
-        - Summary must be under 50 Vietnamese words.
-        - BodyAnalysis must be under 80 Vietnamese words.
-        - WorkoutPlan must have exactly the requested workoutDaysPerWeek.
-        - Each workout day must have exactly 3 exercises.
-        - Each exercise note must be under 20 Vietnamese words.
-        - NutritionPlan must have exactly 3 meals.
-        - Each meal note must be under 20 Vietnamese words.
-        - Warnings must contain at most 2 items.
+                FULL PLAN RULES:
+                - workoutPlan must contain exactly request.workoutDaysPerWeek items.
+                - Each workout day must contain exactly 3 exercises.
+                - nutritionPlan.meals must contain exactly request.mealsPerDay items when provided; otherwise exactly 3.
+                - Respect workoutDurationMinutes and experienceLevel.
+                - Prefer safe, practical exercises and common gym equipment.
+                - If latestBodyMetric is null, still create the plan and add a warning.
+                - If healthNote is present, adapt conservatively and add a safety warning.
 
-        Strict type rules:
-        - summary: string
-        - bodyAnalysis: string
-        - workoutPlan: array
-        - nutritionPlan: object
-        - warnings: array of strings
-        - dayNo, sets, durationMinutes, targetCalories, calories: numbers
-        - proteinGrams, carbsGrams, fatGrams: numbers only, no units
-        - reps: string
-        - foodItems: string, not array
+                COMPACT RULES:
+                - summary: at most 50 words.
+                - bodyAnalysis: at most 80 words.
+                - exercise note: at most 20 words.
+                - meal note: at most 20 words.
+                - warnings: at most 2 items.
 
-        Safety rules:
-        - Do not diagnose diseases.
-        - Do not give medical treatment advice.
-        - If latestBodyMetric is null, add a warning.
-        - If healthNote exists, add a warning advising the member to consult a trainer or doctor.
-        - If experienceLevel is BEGINNER, choose safe and simple exercises.
+                STRICT TYPES:
+                - dayNo: integer
+                - sets: integer or null
+                - durationMinutes: integer or null
+                - restSeconds: integer or null
+                - targetCalories: positive integer
+                - calories: non-negative integer
+                - proteinGrams, carbsGrams, fatGrams: non-negative numbers
+                - reps, foodItems, portionText: string or null.
+                - foodItems must not be an array.
 
-        Input data:
-        %s
+                SAFETY RULES:
+                - Do not diagnose diseases or prescribe treatment.
+                - Do not claim medical certainty.
+                - Do not recommend unsafe rapid weight loss or extreme calorie restriction.
+                - Advise consulting a trainer or doctor when healthNote indicates concern.
+                - State that the plan is for reference.
 
-        Return JSON with exactly this structure:
-        {
-          "summary": "Tóm tắt ngắn bằng tiếng Việt",
-          "bodyAnalysis": "Phân tích cơ thể ngắn bằng tiếng Việt",
-          "workoutPlan": [
-            {
-              "dayNo": 1,
-              "dayOfWeek": "MONDAY",
-              "focus": "Mục tiêu buổi tập",
-              "exercises": [
+                INPUT SNAPSHOT:
+                %s
+
+                OUTPUT JSON CONTRACT:
                 {
-                  "name": "Tên bài tập",
-                  "sets": 3,
-                  "reps": "10-12",
-                  "durationMinutes": 10,
-                  "note": "Ghi chú ngắn"
+                  "summary": "string",
+                  "bodyAnalysis": "string",
+                  "workoutPlan": [
+                    {
+                      "dayNo": 1,
+                      "dayOfWeek": "MONDAY",
+                      "focus": "string",
+                      "exercises": [
+                        {
+                          "name": "string",
+                          "sets": 3,
+                          "reps": "10-12",
+                          "durationMinutes": 10,
+                          "restSeconds": 90,
+                          "note": "string"
+                        }
+                      ]
+                    }
+                  ],
+                  "nutritionPlan": {
+                    "targetCalories": 2200,
+                    "proteinGrams": 130,
+                    "carbsGrams": 250,
+                    "fatGrams": 60,
+                    "meals": [
+                      {
+                        "mealName": "string",
+                        "foodItems": "string",
+                        "portionText": "string",
+                        "calories": 500,
+                        "proteinGrams": 30,
+                        "carbsGrams": 60,
+                        "fatGrams": 12,
+                        "note": "string"
+                      }
+                    ]
+                  },
+                  "warnings": ["string"]
                 }
-              ]
-            }
-          ],
-          "nutritionPlan": {
-            "targetCalories": 2200,
-            "proteinGrams": 130,
-            "carbsGrams": 250,
-            "fatGrams": 60,
-            "meals": [
-              {
-                "mealName": "Tên bữa ăn",
-                "foodItems": "Danh sách món ăn",
-                "calories": 500,
-                "proteinGrams": 30,
-                "carbsGrams": 60,
-                "fatGrams": 12,
-                "note": "Ghi chú ngắn"
-              }
-            ]
-          },
-          "warnings": [
-            "Kế hoạch chỉ mang tính tham khảo."
-          ]
+                """.formatted(AiPromptVersion.FULL_PLAN_V1.getCode(), outputLanguage, inputJson);
+
+        return AiPromptResult.builder()
+                .version(AiPromptVersion.FULL_PLAN_V1)
+                .prompt(prompt)
+                .build();
+    }
+
+    @Override
+    public AiPromptResult buildBodyAnalysisPrompt(AiInputSnapshot snapshot) {
+        validateSnapshot(snapshot);
+        if (snapshot.getLatestBodyMetric() == null) {
+            throw new AppException(ErrorCode.BODY_METRIC_NOT_FOUND);
         }
-        """.formatted(inputJson);
+
+        String inputJson = toJson(snapshot);
+        String outputLanguage = resolveOutputLanguage(snapshot);
+
+        String prompt = """
+                You are a fitness AI assistant for FitLife.
+
+                PROMPT CONTRACT:
+                - Contract version: %s
+                - Suggestion type: BODY_ANALYSIS
+                - Output language: %s
+                - Return only one valid JSON object.
+                - Do not use markdown or code fences.
+                - Do not write text before or after JSON.
+                - Keep JSON keys exactly as defined below.
+                - Do not add unknown top-level fields.
+                - Do not use snake_case.
+
+                ANALYSIS RULES:
+                - Analyze latestBodyMetric only.
+                - Explain BMI, body fat and muscle mass only when present.
+                - Never invent missing values.
+                - Mention missing relevant metrics in warnings.
+                - Relate recommendations to member.fitnessGoal when present.
+                - Keep recommendations practical, safe and non-medical.
+
+                COMPACT RULES:
+                - summary: at most 40 words.
+                - bodyAnalysis: at most 80 words.
+                - bmiAssessment, bodyFatAssessment, muscleAssessment: at most 40 words each.
+                - recommendation: at most 80 words.
+                - warnings: at most 2 items.
+
+                SAFETY RULES:
+                - Do not diagnose diseases or prescribe treatment.
+                - Do not claim medical certainty.
+                - Do not infer missing medical information.
+                - If healthNote is present, advise consulting a trainer or doctor.
+                - State that the analysis is for reference.
+
+                INPUT SNAPSHOT:
+                %s
+
+                OUTPUT JSON CONTRACT:
+                {
+                  "summary": "string",
+                  "bodyAnalysis": "string",
+                  "bmiAssessment": "string",
+                  "bodyFatAssessment": "string",
+                  "muscleAssessment": "string",
+                  "recommendation": "string",
+                  "warnings": ["string"]
+                }
+                """.formatted(AiPromptVersion.BODY_ANALYSIS_V1.getCode(), outputLanguage, inputJson);
+
+        return AiPromptResult.builder()
+                .version(AiPromptVersion.BODY_ANALYSIS_V1)
+                .prompt(prompt)
+                .build();
+    }
+
+
+
+    private String resolveOutputLanguage(AiInputSnapshot snapshot) {
+        String language = snapshot.getRequest().getPreferredLanguage();
+        if (language == null || language.isBlank()) return DEFAULT_LANGUAGE;
+        String normalized = language.trim().toLowerCase();
+        return "en".equals(normalized) || "vi".equals(normalized) ? normalized : DEFAULT_LANGUAGE;
+    }
+
+    private String toJson(AiInputSnapshot snapshot) {
+        try {
+            return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(snapshot);
         } catch (Exception exception) {
             throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
         }
     }
 
     @Override
-    public String buildBodyAnalysisPrompt(AiInputSnapshot snapshot) {
-        try {
-            String inputJson = objectMapper.writerWithDefaultPrettyPrinter()
-                    .writeValueAsString(snapshot);
+    public AiPromptResult buildWorkoutPlanPrompt(
+            AiInputSnapshot snapshot
+    ) {
+        validateSnapshot(snapshot);
 
-            return """
-                You are a fitness AI assistant for FitLife.
+        String inputJson = toJson(snapshot);
+        String outputLanguage =
+                resolveOutputLanguage(snapshot);
 
-                The user note may be written in Vietnamese or English.
-                You must understand both languages.
-                However, all user-facing text in JSON values must be written in Vietnamese.
+        String prompt = """
+            You are a fitness AI assistant for FitLife.
 
-                Task:
-                - Analyze the member's latest body metrics.
-                - Explain BMI, body fat, muscle mass, and general fitness direction.
-                - Give safe and practical recommendations for a normal gym member in Vietnam.
+            PROMPT CONTRACT:
+            - Contract version: %s
+            - Suggestion type: WORKOUT_PLAN
+            - Output language: %s
+            - Return only one valid JSON object.
+            - Do not use markdown.
+            - Do not wrap output in code fences.
+            - Do not write text before or after JSON.
+            - Keep JSON keys exactly as defined.
+            - Do not add nutritionPlan.
+            - Do not add unknown top-level fields.
 
-                Important rules:
-                - Return ONLY valid JSON.
-                - Do not use markdown.
-                - Do not wrap with ```json.
-                - Do not add explanation outside JSON.
-                - JSON keys must remain in English.
-                - Do not use snake_case.
-                - Keep every field concise.
-                - summary must be under 40 Vietnamese words.
-                - bodyAnalysis must be under 80 Vietnamese words.
-                - recommendation must be under 80 Vietnamese words.
-                - warnings must contain at most 2 items.
+            LANGUAGE RULES:
+            - Understand Vietnamese and English input.
+            - User-facing values must use the requested output language.
+            - JSON keys and enum-like values remain in English.
+            - Supported output languages: vi and en.
+            - Use Vietnamese when language is unsupported.
 
-                Safety rules:
-                - Do not diagnose diseases.
-                - Do not give medical treatment advice.
-                - Do not claim medical certainty.
-                - If data is missing, mention it in warnings.
-                - If healthNote exists, advise consulting a trainer or doctor.
+            WORKOUT RULES:
+            - workoutPlan must contain exactly request.workoutDaysPerWeek days.
+            - Each workout day must contain exactly 3 exercises.
+            - Respect request.workoutDurationMinutes.
+            - Choose exercises appropriate for experienceLevel.
+            - Prefer common gym equipment.
+            - For BEGINNER, prioritize safe and simple movements.
+            - If latestBodyMetric is null, add a warning.
+            - If healthNote exists, add a safety warning.
 
-                Input data:
-                %s
+            STRICT TYPE RULES:
+            - summary: string
+            - bodyAnalysis: string
+            - workoutPlan: array
+            - warnings: array of strings
+            - dayNo: integer
+            - sets: integer or null
+            - reps: string or null
+            - durationMinutes: integer or null
+            - restSeconds: integer or null
 
-                Return JSON exactly with this structure:
+            SAFETY RULES:
+            - Do not diagnose diseases.
+            - Do not provide medical treatment.
+            - Do not claim medical certainty.
+            - Do not recommend unsafe training volume.
+            - State that the plan is for reference.
+
+            INPUT SNAPSHOT:
+            %s
+
+            OUTPUT JSON CONTRACT:
+            {
+              "summary": "string",
+              "bodyAnalysis": "string",
+              "workoutPlan": [
                 {
-                  "summary": "Tóm tắt ngắn bằng tiếng Việt",
-                  "bodyAnalysis": "Phân tích tổng quan chỉ số cơ thể bằng tiếng Việt",
-                  "bmiAssessment": "Nhận xét BMI bằng tiếng Việt",
-                  "bodyFatAssessment": "Nhận xét tỷ lệ mỡ bằng tiếng Việt",
-                  "muscleAssessment": "Nhận xét khối lượng cơ bằng tiếng Việt",
-                  "recommendation": "Gợi ý hướng tập luyện và dinh dưỡng ngắn bằng tiếng Việt",
-                  "warnings": [
-                    "Lưu ý an toàn bằng tiếng Việt"
+                  "dayNo": 1,
+                  "dayOfWeek": "MONDAY",
+                  "focus": "string",
+                  "exercises": [
+                    {
+                      "name": "string",
+                      "sets": 3,
+                      "reps": "10-12",
+                      "durationMinutes": 10,
+                      "restSeconds": 90,
+                      "note": "string"
+                    }
                   ]
                 }
-                """.formatted(inputJson);
-        } catch (Exception exception) {
-            throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
+              ],
+              "warnings": [
+                "string"
+              ]
+            }
+            """.formatted(
+                AiPromptVersion.WORKOUT_PLAN_V1
+                        .getCode(),
+                outputLanguage,
+                inputJson
+        );
+
+        return AiPromptResult.builder()
+                .version(
+                        AiPromptVersion.WORKOUT_PLAN_V1
+                )
+                .prompt(prompt)
+                .build();
+    }
+
+    @Override
+    public AiPromptResult buildNutritionPlanPrompt(
+            AiInputSnapshot snapshot
+    ) {
+        validateSnapshot(snapshot);
+
+        String inputJson = toJson(snapshot);
+
+        String outputLanguage =
+                resolveOutputLanguage(snapshot);
+
+        String prompt = """
+            You are a fitness AI assistant for FitLife.
+
+            PROMPT CONTRACT:
+            - Contract version: %s
+            - Suggestion type: NUTRITION_PLAN
+            - Output language: %s
+            - Return only one valid JSON object.
+            - Do not use markdown.
+            - Do not wrap output in code fences.
+            - Do not write text before or after JSON.
+            - Keep JSON keys exactly as defined.
+            - Do not add workoutPlan.
+            - Do not add unknown top-level fields.
+            - Do not use snake_case.
+
+            LANGUAGE RULES:
+            - Understand Vietnamese and English input.
+            - User-facing JSON string values must use the requested output language.
+            - JSON keys remain in English.
+            - Supported output languages are vi and en.
+            - Use Vietnamese when the requested language is unsupported.
+
+            NUTRITION RULES:
+            - nutritionPlan must not be null.
+            - nutritionPlan.meals must contain exactly request.mealsPerDay items.
+            - Use common foods that are practical and available in Vietnam.
+            - Respect member.fitnessGoal and request.activityLevel.
+            - Use latestBodyMetric when available.
+            - If latestBodyMetric is null, still create the plan and add a warning.
+            - If healthNote exists, add a safety warning.
+            - Avoid unrealistic or extreme dietary recommendations.
+            - Avoid recommending supplements as mandatory.
+            - Do not create workoutPlan.
+
+            ENERGY AND MACRO RULES:
+            - targetCalories must be a positive integer.
+            - proteinGrams must be a non-negative number.
+            - carbsGrams must be a non-negative number.
+            - fatGrams must be a non-negative number.
+            - Meal calories and macros must be non-negative.
+            - The sum of meal calories should be reasonably close to targetCalories.
+            - The sum of meal macros should be reasonably consistent with the daily macros.
+            - Do not include units inside numeric fields.
+
+            COMPACT RULES:
+            - summary: at most 50 words.
+            - bodyAnalysis: at most 80 words.
+            - meal note: at most 20 words.
+            - warnings: at most 2 items.
+            - foodItems should be concise and readable.
+            - portionText should describe practical serving sizes.
+
+            STRICT TYPE RULES:
+            - summary: string
+            - bodyAnalysis: string
+            - nutritionPlan: object
+            - warnings: array of strings
+            - targetCalories: integer
+            - calories: integer
+            - proteinGrams: number
+            - carbsGrams: number
+            - fatGrams: number
+            - meals: array
+            - mealName: string
+            - foodItems: string, not array
+            - portionText: string or null
+            - note: string or null
+
+            SAFETY RULES:
+            - Do not diagnose diseases.
+            - Do not prescribe medical treatment.
+            - Do not claim medical certainty.
+            - Do not recommend starvation diets.
+            - Do not recommend unsafe rapid weight loss.
+            - Do not recommend extreme calorie restriction.
+            - If healthNote indicates a health concern, advise consulting a doctor or nutrition professional.
+            - State that the plan is for reference and may need adjustment.
+
+            INPUT SNAPSHOT:
+            %s
+
+            OUTPUT JSON CONTRACT:
+            {
+              "summary": "string",
+              "bodyAnalysis": "string",
+              "nutritionPlan": {
+                "targetCalories": 2200,
+                "proteinGrams": 130,
+                "carbsGrams": 250,
+                "fatGrams": 60,
+                "meals": [
+                  {
+                    "mealName": "string",
+                    "foodItems": "string",
+                    "portionText": "string",
+                    "calories": 500,
+                    "proteinGrams": 30,
+                    "carbsGrams": 60,
+                    "fatGrams": 12,
+                    "note": "string"
+                  }
+                ]
+              },
+              "warnings": [
+                "string"
+              ]
+            }
+            """.formatted(
+                AiPromptVersion.NUTRITION_PLAN_V1
+                        .getCode(),
+                outputLanguage,
+                inputJson
+        );
+
+        return AiPromptResult.builder()
+                .version(
+                        AiPromptVersion.NUTRITION_PLAN_V1
+                )
+                .prompt(prompt)
+                .build();
+    }
+
+    private void validateSnapshot(AiInputSnapshot snapshot) {
+        if (snapshot == null || snapshot.getMember() == null || snapshot.getRequest() == null) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
         }
     }
 }
