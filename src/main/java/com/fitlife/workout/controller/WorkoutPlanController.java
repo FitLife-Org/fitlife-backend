@@ -110,4 +110,16 @@ public class WorkoutPlanController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/{id}/complete")
+    public ResponseEntity completeWorkoutPlan(
+            @PathVariable("id") Long id,
+            Authentication authentication) {
+
+        String currentUsername = (authentication != null) ? authentication.getName() : "anonymous";
+        WorkoutPlanResponse response = workoutPlanService.completeWorkoutPlan(id, currentUsername);
+        return ResponseEntity.ok(response);
+    }
+
+
+
 }
