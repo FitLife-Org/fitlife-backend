@@ -1,9 +1,6 @@
 package com.fitlife.ai.service.impl;
 
-import com.fitlife.ai.dto.request.AiBodyAnalysisRequest;
-import com.fitlife.ai.dto.request.AiFeedbackRequest;
-import com.fitlife.ai.dto.request.AiFullPlanRequest;
-import com.fitlife.ai.dto.request.AiWorkoutPlanRequest;
+import com.fitlife.ai.dto.request.*;
 import com.fitlife.ai.dto.response.AiFeedbackResponse;
 import com.fitlife.ai.dto.response.AiSuggestionDetailResponse;
 import com.fitlife.ai.dto.response.AiSuggestionResponse;
@@ -17,11 +14,7 @@ import com.fitlife.ai.mapper.AiSuggestionMapper;
 import com.fitlife.ai.repository.AiFeedbackRepository;
 import com.fitlife.ai.repository.AiPlanItemRepository;
 import com.fitlife.ai.repository.AiSuggestionRepository;
-import com.fitlife.ai.service.AiBodyAnalysisOrchestratorService;
-import com.fitlife.ai.service.AiFullPlanOrchestratorService;
-import com.fitlife.ai.service.AiSuggestionService;
-import com.fitlife.ai.service.AiWorkoutPlanOrchestratorService;
-import com.fitlife.ai.service.CurrentMemberService;
+import com.fitlife.ai.service.*;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.common.response.PageResponse;
@@ -66,6 +59,9 @@ public class AiSuggestionServiceImpl
     private final AiFeedbackMapper
             aiFeedbackMapper;
 
+    private final AiNutritionPlanOrchestratorService
+            aiNutritionPlanOrchestratorService;
+
     @Override
     public AiSuggestionResponse createFullPlan(
             AiFullPlanRequest request
@@ -88,6 +84,14 @@ public class AiSuggestionServiceImpl
     ) {
         return aiWorkoutPlanOrchestratorService
                 .createWorkoutPlan(request);
+    }
+
+    @Override
+    public AiSuggestionResponse createNutritionPlan(
+            AiNutritionPlanRequest request
+    ) {
+        return aiNutritionPlanOrchestratorService
+                .createNutritionPlan(request);
     }
 
     @Override

@@ -10,4 +10,8 @@ public interface AiPromptBuilderService {
     AiPromptResult buildWorkoutPlanPrompt(
             AiInputSnapshot snapshot
     );
+
+    AiPromptResult buildNutritionPlanPrompt(
+            AiInputSnapshot snapshot
+    );
 }

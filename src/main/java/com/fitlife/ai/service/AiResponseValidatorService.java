@@ -2,6 +2,7 @@ package com.fitlife.ai.service;
 
 import com.fitlife.ai.dto.internal.AiInputSnapshot;
 import com.fitlife.ai.dto.response.AiGeneratedBodyAnalysisResponse;
+import com.fitlife.ai.dto.response.AiGeneratedNutritionPlanResponse;
 import com.fitlife.ai.dto.response.AiGeneratedPlanResponse;
 import com.fitlife.ai.dto.response.AiGeneratedWorkoutPlanResponse;
 
@@ -22,6 +23,11 @@ public interface AiResponseValidatorService {
 
     void validateWorkoutPlan(
             AiGeneratedWorkoutPlanResponse response,
+            AiInputSnapshot snapshot
+    );
+
+    void validateNutritionPlan(
+            AiGeneratedNutritionPlanResponse response,
             AiInputSnapshot snapshot
     );
 }

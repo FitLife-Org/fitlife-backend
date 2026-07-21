@@ -1,9 +1,6 @@
 package com.fitlife.ai.service;
 
-import com.fitlife.ai.dto.request.AiBodyAnalysisRequest;
-import com.fitlife.ai.dto.request.AiFeedbackRequest;
-import com.fitlife.ai.dto.request.AiFullPlanRequest;
-import com.fitlife.ai.dto.request.AiWorkoutPlanRequest;
+import com.fitlife.ai.dto.request.*;
 import com.fitlife.ai.dto.response.AiFeedbackResponse;
 import com.fitlife.ai.dto.response.AiSuggestionDetailResponse;
 import com.fitlife.ai.dto.response.AiSuggestionResponse;
@@ -43,5 +40,9 @@ public interface AiSuggestionService {
     AiFeedbackResponse submitFeedback(
             Long aiSuggestionId,
             AiFeedbackRequest request
+    );
+
+    AiSuggestionResponse createNutritionPlan(
+            AiNutritionPlanRequest request
     );
 }

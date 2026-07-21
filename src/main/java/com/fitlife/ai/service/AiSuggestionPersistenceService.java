@@ -2,6 +2,7 @@ package com.fitlife.ai.service;
 
 import com.fitlife.ai.dto.internal.AiProviderResult;
 import com.fitlife.ai.dto.response.AiGeneratedBodyAnalysisResponse;
+import com.fitlife.ai.dto.response.AiGeneratedNutritionPlanResponse;
 import com.fitlife.ai.dto.response.AiGeneratedPlanResponse;
 import com.fitlife.ai.dto.response.AiGeneratedWorkoutPlanResponse;
 import com.fitlife.ai.entity.AiSuggestion;
@@ -44,6 +45,13 @@ public interface AiSuggestionPersistenceService {
             Long suggestionId,
             AiProviderResult providerResult,
             AiGeneratedWorkoutPlanResponse generated,
+            String warningMessage
+    );
+
+    AiSuggestion markNutritionPlanSuccess(
+            Long suggestionId,
+            AiProviderResult providerResult,
+            AiGeneratedNutritionPlanResponse generated,
             String warningMessage
     );
 }

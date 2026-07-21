@@ -1,7 +1,14 @@
 package com.fitlife.ai.service.impl;
 
 import com.fitlife.ai.dto.internal.AiInputSnapshot;
-import com.fitlife.ai.dto.response.*;
+import com.fitlife.ai.dto.response.AiGeneratedBodyAnalysisResponse;
+import com.fitlife.ai.dto.response.AiGeneratedExerciseResponse;
+import com.fitlife.ai.dto.response.AiGeneratedMealResponse;
+import com.fitlife.ai.dto.response.AiGeneratedNutritionPlanResponse;
+import com.fitlife.ai.dto.response.AiGeneratedNutritionResponse;
+import com.fitlife.ai.dto.response.AiGeneratedPlanResponse;
+import com.fitlife.ai.dto.response.AiGeneratedWorkoutDayResponse;
+import com.fitlife.ai.dto.response.AiGeneratedWorkoutPlanResponse;
 import com.fitlife.ai.service.AiResponseValidatorService;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
@@ -35,12 +42,12 @@ public class AiResponseValidatorServiceImpl
         validateRequiredText(response.getBodyAnalysis());
         validateWarnings(response.getWarnings());
 
-        validateWorkoutPlan(
+        validateWorkoutPlanContent(
                 response.getWorkoutPlan(),
                 snapshot
         );
 
-        validateNutritionPlan(
+        validateNutritionPlanContent(
                 response.getNutritionPlan(),
                 snapshot
         );
@@ -69,9 +76,11 @@ public class AiResponseValidatorServiceImpl
         validateOptionalText(
                 response.getBmiAssessment()
         );
+
         validateOptionalText(
                 response.getBodyFatAssessment()
         );
+
         validateOptionalText(
                 response.getMuscleAssessment()
         );
@@ -83,7 +92,49 @@ public class AiResponseValidatorServiceImpl
         validateWarnings(response.getWarnings());
     }
 
-    private void validateWorkoutPlan(
+    @Override
+    public void validateWorkoutPlan(
+            AiGeneratedWorkoutPlanResponse response,
+            AiInputSnapshot snapshot
+    ) {
+        validateSnapshot(snapshot);
+
+        if (response == null) {
+            invalid();
+        }
+
+        validateRequiredText(response.getSummary());
+        validateRequiredText(response.getBodyAnalysis());
+        validateWarnings(response.getWarnings());
+
+        validateWorkoutPlanContent(
+                response.getWorkoutPlan(),
+                snapshot
+        );
+    }
+
+    @Override
+    public void validateNutritionPlan(
+            AiGeneratedNutritionPlanResponse response,
+            AiInputSnapshot snapshot
+    ) {
+        validateSnapshot(snapshot);
+
+        if (response == null) {
+            invalid();
+        }
+
+        validateRequiredText(response.getSummary());
+        validateRequiredText(response.getBodyAnalysis());
+        validateWarnings(response.getWarnings());
+
+        validateNutritionPlanContent(
+                response.getNutritionPlan(),
+                snapshot
+        );
+    }
+
+    private void validateWorkoutPlanContent(
             List<AiGeneratedWorkoutDayResponse> workoutPlan,
             AiInputSnapshot snapshot
     ) {
@@ -102,9 +153,11 @@ public class AiResponseValidatorServiceImpl
             invalid();
         }
 
-        Set<Integer> dayNumbers = new HashSet<>();
+        Set<Integer> dayNumbers =
+                new HashSet<>();
 
-        for (AiGeneratedWorkoutDayResponse day : workoutPlan) {
+        for (AiGeneratedWorkoutDayResponse day :
+                workoutPlan) {
             if (day == null
                     || day.getDayNo() == null
                     || day.getDayNo() < 1
@@ -127,7 +180,8 @@ public class AiResponseValidatorServiceImpl
                 invalid();
             }
 
-            for (AiGeneratedExerciseResponse exercise : exercises) {
+            for (AiGeneratedExerciseResponse exercise :
+                    exercises) {
                 validateExercise(exercise);
             }
         }
@@ -142,15 +196,19 @@ public class AiResponseValidatorServiceImpl
 
         validateRequiredText(exercise.getName());
 
-        Integer sets = exercise.getSets();
+        Integer sets =
+                exercise.getSets();
+
         Integer durationMinutes =
                 exercise.getDurationMinutes();
 
-        if (sets == null && durationMinutes == null) {
+        if (sets == null
+                && durationMinutes == null) {
             invalid();
         }
 
-        if (sets != null && (sets < 1 || sets > 100)) {
+        if (sets != null
+                && (sets < 1 || sets > 100)) {
             invalid();
         }
 
@@ -161,10 +219,13 @@ public class AiResponseValidatorServiceImpl
         }
 
         if (sets != null) {
-            validateRequiredText(exercise.getReps());
+            validateRequiredText(
+                    exercise.getReps()
+            );
         }
 
-        Integer restSeconds = exercise.getRestSeconds();
+        Integer restSeconds =
+                exercise.getRestSeconds();
 
         if (restSeconds != null
                 && (restSeconds < 0
@@ -172,10 +233,12 @@ public class AiResponseValidatorServiceImpl
             invalid();
         }
 
-        validateOptionalText(exercise.getNote());
+        validateOptionalText(
+                exercise.getNote()
+        );
     }
 
-    private void validateNutritionPlan(
+    private void validateNutritionPlanContent(
             AiGeneratedNutritionResponse nutrition,
             AiInputSnapshot snapshot
     ) {
@@ -187,26 +250,31 @@ public class AiResponseValidatorServiceImpl
                 nutrition.getTargetCalories()
         );
 
-        validateNonNegativeDecimal(
+        validateRequiredNonNegativeDecimal(
                 nutrition.getProteinGrams()
         );
-        validateNonNegativeDecimal(
+
+        validateRequiredNonNegativeDecimal(
                 nutrition.getCarbsGrams()
         );
-        validateNonNegativeDecimal(
+
+        validateRequiredNonNegativeDecimal(
                 nutrition.getFatGrams()
         );
 
-        int expectedMeals = resolveExpectedMeals(snapshot);
+        int expectedMeals =
+                resolveExpectedMeals(snapshot);
 
         List<AiGeneratedMealResponse> meals =
                 nutrition.getMeals();
 
-        if (meals == null || meals.size() != expectedMeals) {
+        if (meals == null
+                || meals.size() != expectedMeals) {
             invalid();
         }
 
-        for (AiGeneratedMealResponse meal : meals) {
+        for (AiGeneratedMealResponse meal :
+                meals) {
             validateMeal(meal);
         }
     }
@@ -218,16 +286,37 @@ public class AiResponseValidatorServiceImpl
             invalid();
         }
 
-        validateRequiredText(meal.getMealName());
-        validateRequiredText(meal.getFoodItems());
+        validateRequiredText(
+                meal.getMealName()
+        );
 
-        validateOptionalText(meal.getPortionText());
-        validateOptionalText(meal.getNote());
+        validateRequiredText(
+                meal.getFoodItems()
+        );
 
-        validateNonNegativeInteger(meal.getCalories());
-        validateNonNegativeDecimal(meal.getProteinGrams());
-        validateNonNegativeDecimal(meal.getCarbsGrams());
-        validateNonNegativeDecimal(meal.getFatGrams());
+        validateOptionalText(
+                meal.getPortionText()
+        );
+
+        validateOptionalText(
+                meal.getNote()
+        );
+
+        validateRequiredNonNegativeInteger(
+                meal.getCalories()
+        );
+
+        validateRequiredNonNegativeDecimal(
+                meal.getProteinGrams()
+        );
+
+        validateRequiredNonNegativeDecimal(
+                meal.getCarbsGrams()
+        );
+
+        validateRequiredNonNegativeDecimal(
+                meal.getFatGrams()
+        );
     }
 
     private int resolveExpectedMeals(
@@ -241,7 +330,8 @@ public class AiResponseValidatorServiceImpl
             return DEFAULT_MEALS_PER_DAY;
         }
 
-        if (mealsPerDay < 1 || mealsPerDay > 10) {
+        if (mealsPerDay < 1
+                || mealsPerDay > 10) {
             invalid();
         }
 
@@ -251,11 +341,8 @@ public class AiResponseValidatorServiceImpl
     private void validateWarnings(
             List<String> warnings
     ) {
-        if (warnings == null) {
-            invalid();
-        }
-
-        if (warnings.size() > MAX_WARNINGS) {
+        if (warnings == null
+                || warnings.size() > MAX_WARNINGS) {
             invalid();
         }
 
@@ -279,7 +366,8 @@ public class AiResponseValidatorServiceImpl
     private void validateRequiredText(
             String value
     ) {
-        if (value == null || value.isBlank()) {
+        if (value == null
+                || value.isBlank()) {
             invalid();
         }
     }
@@ -287,7 +375,8 @@ public class AiResponseValidatorServiceImpl
     private void validateOptionalText(
             String value
     ) {
-        if (value != null && value.isBlank()) {
+        if (value != null
+                && value.isBlank()) {
             invalid();
         }
     }
@@ -295,24 +384,26 @@ public class AiResponseValidatorServiceImpl
     private void validatePositiveInteger(
             Integer value
     ) {
-        if (value == null || value <= 0) {
+        if (value == null
+                || value <= 0) {
             invalid();
         }
     }
 
-    private void validateNonNegativeInteger(
+    private void validateRequiredNonNegativeInteger(
             Integer value
     ) {
-        if (value != null && value < 0) {
+        if (value == null
+                || value < 0) {
             invalid();
         }
     }
 
-    private void validateNonNegativeDecimal(
+    private void validateRequiredNonNegativeDecimal(
             BigDecimal value
     ) {
-        if (value != null
-                && value.compareTo(BigDecimal.ZERO) < 0) {
+        if (value == null
+                || value.compareTo(BigDecimal.ZERO) < 0) {
             invalid();
         }
     }
@@ -320,35 +411,6 @@ public class AiResponseValidatorServiceImpl
     private void invalid() {
         throw new AppException(
                 ErrorCode.AI_RESPONSE_INVALID
-        );
-    }
-
-    @Override
-    public void validateWorkoutPlan(
-            AiGeneratedWorkoutPlanResponse response,
-            AiInputSnapshot snapshot
-    ) {
-        validateSnapshot(snapshot);
-
-        if (response == null) {
-            invalid();
-        }
-
-        validateRequiredText(
-                response.getSummary()
-        );
-
-        validateRequiredText(
-                response.getBodyAnalysis()
-        );
-
-        validateWarnings(
-                response.getWarnings()
-        );
-
-        validateWorkoutPlan(
-                response.getWorkoutPlan(),
-                snapshot
         );
     }
 }

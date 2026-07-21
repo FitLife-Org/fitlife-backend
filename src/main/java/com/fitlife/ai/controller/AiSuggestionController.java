@@ -1,9 +1,6 @@
 package com.fitlife.ai.controller;
 
-import com.fitlife.ai.dto.request.AiBodyAnalysisRequest;
-import com.fitlife.ai.dto.request.AiFeedbackRequest;
-import com.fitlife.ai.dto.request.AiFullPlanRequest;
-import com.fitlife.ai.dto.request.AiWorkoutPlanRequest;
+import com.fitlife.ai.dto.request.*;
 import com.fitlife.ai.dto.response.AiFeedbackResponse;
 import com.fitlife.ai.dto.response.AiSuggestionDetailResponse;
 import com.fitlife.ai.dto.response.AiSuggestionResponse;
@@ -58,6 +55,22 @@ public class AiSuggestionController {
                 .data(
                         aiSuggestionService
                                 .createWorkoutPlan(request)
+                )
+                .build();
+    }
+
+    @PostMapping("/nutrition-plan")
+    public ApiResponse<AiSuggestionResponse> createNutritionPlan(
+            @Valid @RequestBody
+            AiNutritionPlanRequest request
+    ) {
+        return ApiResponse.<AiSuggestionResponse>builder()
+                .message(
+                        "AI nutrition plan created successfully"
+                )
+                .data(
+                        aiSuggestionService
+                                .createNutritionPlan(request)
                 )
                 .build();
     }

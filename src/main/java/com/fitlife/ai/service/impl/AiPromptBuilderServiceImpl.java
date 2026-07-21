@@ -193,11 +193,7 @@ public class AiPromptBuilderServiceImpl implements AiPromptBuilderService {
                 .build();
     }
 
-    private void validateSnapshot(AiInputSnapshot snapshot) {
-        if (snapshot == null || snapshot.getMember() == null || snapshot.getRequest() == null) {
-            throw new AppException(ErrorCode.INVALID_REQUEST);
-        }
-    }
+
 
     private String resolveOutputLanguage(AiInputSnapshot snapshot) {
         String language = snapshot.getRequest().getPreferredLanguage();
@@ -315,5 +311,145 @@ public class AiPromptBuilderServiceImpl implements AiPromptBuilderService {
                 )
                 .prompt(prompt)
                 .build();
+    }
+
+    @Override
+    public AiPromptResult buildNutritionPlanPrompt(
+            AiInputSnapshot snapshot
+    ) {
+        validateSnapshot(snapshot);
+
+        String inputJson = toJson(snapshot);
+
+        String outputLanguage =
+                resolveOutputLanguage(snapshot);
+
+        String prompt = """
+            You are a fitness AI assistant for FitLife.
+
+            PROMPT CONTRACT:
+            - Contract version: %s
+            - Suggestion type: NUTRITION_PLAN
+            - Output language: %s
+            - Return only one valid JSON object.
+            - Do not use markdown.
+            - Do not wrap output in code fences.
+            - Do not write text before or after JSON.
+            - Keep JSON keys exactly as defined.
+            - Do not add workoutPlan.
+            - Do not add unknown top-level fields.
+            - Do not use snake_case.
+
+            LANGUAGE RULES:
+            - Understand Vietnamese and English input.
+            - User-facing JSON string values must use the requested output language.
+            - JSON keys remain in English.
+            - Supported output languages are vi and en.
+            - Use Vietnamese when the requested language is unsupported.
+
+            NUTRITION RULES:
+            - nutritionPlan must not be null.
+            - nutritionPlan.meals must contain exactly request.mealsPerDay items.
+            - Use common foods that are practical and available in Vietnam.
+            - Respect member.fitnessGoal and request.activityLevel.
+            - Use latestBodyMetric when available.
+            - If latestBodyMetric is null, still create the plan and add a warning.
+            - If healthNote exists, add a safety warning.
+            - Avoid unrealistic or extreme dietary recommendations.
+            - Avoid recommending supplements as mandatory.
+            - Do not create workoutPlan.
+
+            ENERGY AND MACRO RULES:
+            - targetCalories must be a positive integer.
+            - proteinGrams must be a non-negative number.
+            - carbsGrams must be a non-negative number.
+            - fatGrams must be a non-negative number.
+            - Meal calories and macros must be non-negative.
+            - The sum of meal calories should be reasonably close to targetCalories.
+            - The sum of meal macros should be reasonably consistent with the daily macros.
+            - Do not include units inside numeric fields.
+
+            COMPACT RULES:
+            - summary: at most 50 words.
+            - bodyAnalysis: at most 80 words.
+            - meal note: at most 20 words.
+            - warnings: at most 2 items.
+            - foodItems should be concise and readable.
+            - portionText should describe practical serving sizes.
+
+            STRICT TYPE RULES:
+            - summary: string
+            - bodyAnalysis: string
+            - nutritionPlan: object
+            - warnings: array of strings
+            - targetCalories: integer
+            - calories: integer
+            - proteinGrams: number
+            - carbsGrams: number
+            - fatGrams: number
+            - meals: array
+            - mealName: string
+            - foodItems: string, not array
+            - portionText: string or null
+            - note: string or null
+
+            SAFETY RULES:
+            - Do not diagnose diseases.
+            - Do not prescribe medical treatment.
+            - Do not claim medical certainty.
+            - Do not recommend starvation diets.
+            - Do not recommend unsafe rapid weight loss.
+            - Do not recommend extreme calorie restriction.
+            - If healthNote indicates a health concern, advise consulting a doctor or nutrition professional.
+            - State that the plan is for reference and may need adjustment.
+
+            INPUT SNAPSHOT:
+            %s
+
+            OUTPUT JSON CONTRACT:
+            {
+              "summary": "string",
+              "bodyAnalysis": "string",
+              "nutritionPlan": {
+                "targetCalories": 2200,
+                "proteinGrams": 130,
+                "carbsGrams": 250,
+                "fatGrams": 60,
+                "meals": [
+                  {
+                    "mealName": "string",
+                    "foodItems": "string",
+                    "portionText": "string",
+                    "calories": 500,
+                    "proteinGrams": 30,
+                    "carbsGrams": 60,
+                    "fatGrams": 12,
+                    "note": "string"
+                  }
+                ]
+              },
+              "warnings": [
+                "string"
+              ]
+            }
+            """.formatted(
+                AiPromptVersion.NUTRITION_PLAN_V1
+                        .getCode(),
+                outputLanguage,
+                inputJson
+        );
+
+        return AiPromptResult.builder()
+                .version(
+                        AiPromptVersion.NUTRITION_PLAN_V1
+                )
+                .prompt(prompt)
+                .build();
+    }
+
+    private void validateSnapshot(AiInputSnapshot snapshot) {
+        if (snapshot == null || snapshot.getMember() == null || snapshot.getRequest() == null) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
     }
 }

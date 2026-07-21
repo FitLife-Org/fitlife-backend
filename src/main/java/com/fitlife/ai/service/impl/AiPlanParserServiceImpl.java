@@ -32,6 +32,11 @@ public class AiPlanParserServiceImpl implements AiPlanParserService {
             "AI đã phân tích chỉ số cơ thể hiện tại.";
     private static final String DEFAULT_BODY_ANALYSIS_WARNING =
             "Kết quả chỉ mang tính tham khảo.";
+    private static final String DEFAULT_NUTRITION_PLAN_SUMMARY =
+            "AI đã tạo kế hoạch dinh dưỡng cá nhân hóa.";
+
+    private static final String DEFAULT_NUTRITION_PLAN_WARNING =
+            "Kế hoạch dinh dưỡng chỉ mang tính tham khảo.";
 
     private final ObjectMapper objectMapper;
     private final AiPlanItemRepository aiPlanItemRepository;
@@ -55,6 +60,36 @@ public class AiPlanParserServiceImpl implements AiPlanParserService {
             throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
         }
     }
+
+    @Override
+    public AiGeneratedNutritionPlanResponse parseNutritionPlan(
+            String rawResponse
+    ) {
+        String cleanedJson =
+                cleanJson(rawResponse);
+
+        try {
+            AiGeneratedNutritionPlanResponse response =
+                    objectMapper.readValue(
+                            cleanedJson,
+                            AiGeneratedNutritionPlanResponse.class
+                    );
+
+            normalizeNutritionPlan(response);
+
+            return response;
+        } catch (JsonProcessingException exception) {
+            log.warn(
+                    "Không thể parse Gemini nutrition-plan response: {}",
+                    exception.getOriginalMessage()
+            );
+
+            throw new AppException(
+                    ErrorCode.AI_RESPONSE_INVALID
+            );
+        }
+    }
+
 
     @Override
     @Transactional
@@ -600,6 +635,196 @@ public class AiPlanParserServiceImpl implements AiPlanParserService {
                 .noneMatch(this::hasText)) {
             response.setWarnings(
                     List.of(DEFAULT_PLAN_WARNING)
+            );
+        }
+    }
+
+
+    @Override
+    @Transactional
+    public void saveNutritionPlanItems(
+            AiSuggestion aiSuggestion,
+            AiGeneratedNutritionPlanResponse response
+    ) {
+        if (aiSuggestion == null
+                || aiSuggestion.getId() == null
+                || response == null) {
+            throw new AppException(
+                    ErrorCode.AI_RESPONSE_INVALID
+            );
+        }
+
+        List<AiPlanItem> items =
+                new ArrayList<>();
+
+        int sortOrder = 0;
+
+        /*
+         * 1. Lưu phần phân tích cơ thể.
+         */
+        if (hasText(response.getBodyAnalysis())) {
+            items.add(
+                    AiPlanItem.builder()
+                            .aiSuggestion(aiSuggestion)
+                            .itemType(
+                                    AiPlanItemType.BODY_ANALYSIS
+                            )
+                            .title("Phân tích cơ thể")
+                            .description(
+                                    response
+                                            .getBodyAnalysis()
+                                            .trim()
+                            )
+                            .sortOrder(sortOrder++)
+                            .build()
+            );
+        }
+
+        /*
+         * 2. Lưu tổng quan dinh dưỡng.
+         */
+        AiGeneratedNutritionResponse nutrition =
+                response.getNutritionPlan();
+
+        if (nutrition != null) {
+            items.add(
+                    AiPlanItem.builder()
+                            .aiSuggestion(aiSuggestion)
+                            .itemType(
+                                    AiPlanItemType.NUTRITION
+                            )
+                            .title("Tổng quan dinh dưỡng")
+                            .description(
+                                    buildNutritionDescription(
+                                            nutrition
+                                    )
+                            )
+                            .calories(
+                                    nutrition.getTargetCalories()
+                            )
+                            .proteinGrams(
+                                    nutrition.getProteinGrams()
+                            )
+                            .carbsGrams(
+                                    nutrition.getCarbsGrams()
+                            )
+                            .fatGrams(
+                                    nutrition.getFatGrams()
+                            )
+                            .sortOrder(sortOrder++)
+                            .build()
+            );
+
+            /*
+             * 3. Lưu từng bữa ăn.
+             */
+            if (nutrition.getMeals() != null) {
+                for (AiGeneratedMealResponse meal :
+                        nutrition.getMeals()) {
+
+                    if (meal == null) {
+                        continue;
+                    }
+
+                    String mealName =
+                            hasText(meal.getMealName())
+                                    ? meal.getMealName().trim()
+                                    : "Bữa ăn";
+
+                    items.add(
+                            AiPlanItem.builder()
+                                    .aiSuggestion(aiSuggestion)
+                                    .itemType(
+                                            AiPlanItemType.MEAL
+                                    )
+                                    .title(mealName)
+                                    .description(
+                                            normalizeText(
+                                                    meal.getFoodItems()
+                                            )
+                                    )
+                                    .mealName(mealName)
+                                    .portionText(
+                                            normalizeText(
+                                                    meal.getPortionText()
+                                            )
+                                    )
+                                    .calories(
+                                            meal.getCalories()
+                                    )
+                                    .proteinGrams(
+                                            meal.getProteinGrams()
+                                    )
+                                    .carbsGrams(
+                                            meal.getCarbsGrams()
+                                    )
+                                    .fatGrams(
+                                            meal.getFatGrams()
+                                    )
+                                    .sortOrder(sortOrder++)
+                                    .build()
+                    );
+                }
+            }
+        }
+
+        /*
+         * 4. Lưu warning.
+         */
+        if (response.getWarnings() != null) {
+            for (String warning :
+                    response.getWarnings()) {
+
+                if (!hasText(warning)) {
+                    continue;
+                }
+
+                items.add(
+                        AiPlanItem.builder()
+                                .aiSuggestion(aiSuggestion)
+                                .itemType(
+                                        AiPlanItemType.WARNING
+                                )
+                                .title("Lưu ý")
+                                .description(warning.trim())
+                                .sortOrder(sortOrder++)
+                                .build()
+                );
+            }
+        }
+
+        if (!items.isEmpty()) {
+            aiPlanItemRepository.saveAll(items);
+        }
+    }
+
+    private void normalizeNutritionPlan(
+            AiGeneratedNutritionPlanResponse response
+    ) {
+        if (response == null) {
+            throw new AppException(
+                    ErrorCode.AI_RESPONSE_INVALID
+            );
+        }
+
+        if (!hasText(response.getSummary())) {
+            response.setSummary(
+                    DEFAULT_NUTRITION_PLAN_SUMMARY
+            );
+        } else {
+            response.setSummary(
+                    response.getSummary().trim()
+            );
+        }
+
+        if (response.getWarnings() == null
+                || response.getWarnings()
+                .stream()
+                .noneMatch(this::hasText)) {
+            response.setWarnings(
+                    List.of(
+                            DEFAULT_NUTRITION_PLAN_WARNING
+                    )
             );
         }
     }
