@@ -312,4 +312,41 @@ public class WorkoutPlanServiceImpl implements WorkoutPlanService {
 
 
 
+    @Override
+    @Transactional
+    public WorkoutPlanResponse patchWorkoutPlan(Long id, WorkoutPlanUpdateRequest request, String currentUsername) {
+        // Lấy memberId từ Token đăng nhập
+        Long memberId = 1L;
+        if (currentUsername != null && !currentUsername.equals("anonymous")) {
+            User user = userRepository.findByEmail(currentUsername).orElse(null);
+            if (user != null) {
+                memberId = user.getId();
+            }
+        }
+
+        Object optObj = workoutPlanRepository.findByIdAndMemberIdAndIsDeletedFalse(id, memberId);
+        WorkoutPlan plan = null;
+        if (optObj instanceof Optional) {
+            Optional opt = (Optional) optObj;
+            if (opt.isPresent()) {
+                plan = (WorkoutPlan) opt.get();
+            }
+        }
+
+        if (plan == null) {
+            throw new RuntimeException("Không tìm thấy giáo án hoặc bạn không có quyền cập nhật giáo án này!");
+        }
+
+
+        if (request.getName() != null) plan.setName(request.getName());
+        if (request.getDescription() != null) plan.setDescription(request.getDescription());
+        if (request.getGoal() != null) plan.setGoal(request.getGoal());
+        if (request.getDurationWeeks() != null) plan.setDurationWeeks(request.getDurationWeeks());
+        if (request.getWorkoutDaysPerWeek() != null) plan.setWorkoutDaysPerWeek(request.getWorkoutDaysPerWeek());
+        if (request.getWorkoutDurationMinutes() != null) plan.setWorkoutDurationMinutes(request.getWorkoutDurationMinutes());
+
+        WorkoutPlan savedPlan = workoutPlanRepository.save(plan);
+        return mapToWorkoutPlanResponse(savedPlan);
+    }
+
 }

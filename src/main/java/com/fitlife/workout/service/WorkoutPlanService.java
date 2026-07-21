@@ -9,20 +9,14 @@ import java.util.List;
 
 public interface WorkoutPlanService {
     WorkoutPlanResponse createWorkoutPlan(WorkoutPlanCreateRequest request, String currentUsername);
-
-
     List getMyWorkoutPlans(Long memberId);
     List getMyWorkoutPlans(String currentUsername);
-
     WorkoutPlanDetailResponse getActiveWorkoutPlan(String currentUsername);
-
     WorkoutPlanDetailResponse getWorkoutPlanById(Long id);
-
-    WorkoutPlanResponse updateWorkoutPlan(Long id, WorkoutPlanUpdateRequest request);
-    void deleteWorkoutPlan(Long id);
-
     WorkoutPlanDetailResponse getWorkoutPlanById(Long id, String currentUsername);
+    WorkoutPlanResponse updateWorkoutPlan(Long id, WorkoutPlanUpdateRequest request);
 
+    WorkoutPlanResponse patchWorkoutPlan(Long id, WorkoutPlanUpdateRequest request, String currentUsername);
 
-
+    void deleteWorkoutPlan(Long id);
 }

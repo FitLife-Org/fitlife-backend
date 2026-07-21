@@ -76,4 +76,16 @@ public class WorkoutPlanController {
         workoutPlanService.deleteWorkoutPlan(id);
         return ResponseEntity.noContent().build();
     }
+
+
+    @PatchMapping("/{id}")
+    public ResponseEntity patchWorkoutPlan(
+            @PathVariable("id") Long id,
+            @RequestBody WorkoutPlanUpdateRequest request,
+            Authentication authentication) {
+
+        String currentUsername = (authentication != null) ? authentication.getName() : "anonymous";
+        WorkoutPlanResponse response = workoutPlanService.patchWorkoutPlan(id, request, currentUsername);
+        return ResponseEntity.ok(response);
+    }
 }
