@@ -130,4 +130,15 @@ public class WorkoutPlanController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/{id}/clone")
+    public ResponseEntity cloneWorkoutPlan(
+            @PathVariable("id") Long id,
+            Authentication authentication) {
+
+        String currentUsername = (authentication != null) ? authentication.getName() : "anonymous";
+        WorkoutPlanResponse response = workoutPlanService.cloneWorkoutPlan(id, currentUsername);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+
 }

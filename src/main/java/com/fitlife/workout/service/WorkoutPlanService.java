@@ -21,7 +21,7 @@ public interface WorkoutPlanService {
     WorkoutPlanResponse activateWorkoutPlan(Long id, String currentUsername);
     WorkoutPlanResponse completeWorkoutPlan(Long id, String currentUsername);
     WorkoutPlanResponse archiveWorkoutPlan(Long id, String currentUsername);
-
+    WorkoutPlanResponse cloneWorkoutPlan(Long id, String currentUsername);
 
 
 

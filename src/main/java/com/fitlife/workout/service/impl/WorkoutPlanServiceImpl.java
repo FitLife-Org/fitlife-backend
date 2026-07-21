@@ -538,7 +538,101 @@ public class WorkoutPlanServiceImpl implements WorkoutPlanService {
         return mapToWorkoutPlanResponse(savedPlan);
     }
 
+    @Override
+    @Transactional
+    public WorkoutPlanResponse cloneWorkoutPlan(Long id, String currentUsername) {
+        Long memberId = 1L;
+        if (currentUsername != null && !currentUsername.equals("anonymous")) {
+            User user = userRepository.findByEmail(currentUsername).orElse(null);
+            if (user != null) {
+                memberId = user.getId();
+            }
+        }
 
+        Object optObj = workoutPlanRepository.findByIdAndMemberIdAndIsDeletedFalse(id, memberId);
+        WorkoutPlan sourcePlan = null;
+        if (optObj instanceof Optional) {
+            Optional opt = (Optional) optObj;
+            if (opt.isPresent()) {
+                sourcePlan = (WorkoutPlan) opt.get();
+            }
+        }
+
+        if (sourcePlan == null) {
+            throw new RuntimeException("Không tìm thấy giáo án hoặc bạn không có quyền nhân bản giáo án này!");
+        }
+
+        String generatedCode = "WP-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+
+        WorkoutPlan newPlan = WorkoutPlan.builder()
+                .memberId(memberId)
+                .code(generatedCode)
+                .name(sourcePlan.getName() + " (Bản sao)")
+                .goal(sourcePlan.getGoal())
+                .experienceLevel(sourcePlan.getExperienceLevel())
+                .durationWeeks(sourcePlan.getDurationWeeks())
+                .workoutDaysPerWeek(sourcePlan.getWorkoutDaysPerWeek())
+                .workoutDurationMinutes(sourcePlan.getWorkoutDurationMinutes())
+                .description(sourcePlan.getDescription())
+                .note(sourcePlan.getNote())
+                .sourceType("CLONED")
+                .status("DRAFT")
+                .isDeleted(false)
+                .days(new ArrayList<>())
+                .build();
+
+        if (sourcePlan.getDays() != null) {
+            for (Object dayObj : sourcePlan.getDays()) {
+                WorkoutPlanDay sourceDay = (WorkoutPlanDay) dayObj;
+
+                WorkoutPlanDay newDay = WorkoutPlanDay.builder()
+                        .workoutPlan(newPlan)
+                        .weekNo(sourceDay.getWeekNo())
+                        .dayNo(sourceDay.getDayNo())
+                        .dayOfWeek(sourceDay.getDayOfWeek())
+                        .name(sourceDay.getName())
+                        .focusArea(sourceDay.getFocusArea())
+                        .estimatedMinutes(sourceDay.getEstimatedMinutes())
+                        .note(sourceDay.getNote())
+                        .sortOrder(sourceDay.getSortOrder())
+                        .isRestDay(sourceDay.getIsRestDay())
+                        .exercises(new ArrayList<>())
+                        .build();
+
+                if (sourceDay.getExercises() != null) {
+                    for (Object exObj : sourceDay.getExercises()) {
+                        WorkoutExercise sourceEx = (WorkoutExercise) exObj;
+
+                        WorkoutExercise newEx = WorkoutExercise.builder()
+                                .workoutPlanDay(newDay)
+                                .exerciseName(sourceEx.getExerciseName())
+                                .targetMuscle(sourceEx.getTargetMuscle())
+                                .equipmentId(sourceEx.getEquipmentId())
+                                .sets(sourceEx.getSets())
+                                .reps(sourceEx.getReps())
+                                .weightKg(sourceEx.getWeightKg())
+                                .durationMinutes(sourceEx.getDurationMinutes())
+                                .distanceKm(sourceEx.getDistanceKm())
+                                .restSeconds(sourceEx.getRestSeconds())
+                                .tempo(sourceEx.getTempo())
+                                .rpe(sourceEx.getRpe())
+                                .instruction(sourceEx.getInstruction())
+                                .note(sourceEx.getNote())
+                                .videoUrl(sourceEx.getVideoUrl())
+                                .sortOrder(sourceEx.getSortOrder())
+                                .isOptional(sourceEx.getIsOptional())
+                                .build();
+
+                        newDay.getExercises().add(newEx);
+                    }
+                }
+                newPlan.getDays().add(newDay);
+            }
+        }
+
+        WorkoutPlan savedPlan = workoutPlanRepository.save(newPlan);
+        return mapToWorkoutPlanResponse(savedPlan);
+    }
 
 
 
