@@ -3,15 +3,22 @@ package com.fitlife.trainer.service;
 import com.fitlife.trainer.dto.request.TrainerCreateRequest;
 import com.fitlife.trainer.dto.request.TrainerUpdateRequest;
 import com.fitlife.trainer.dto.response.TrainerResponse;
+
 import java.util.List;
 
-
 public interface TrainerService {
-    TrainerResponse createTrainer(TrainerCreateRequest request);
 
-    TrainerResponse updateMyProfile(TrainerUpdateRequest request);
+    TrainerResponse createTrainer(
+            TrainerCreateRequest request
+    );
 
-    List getActiveTrainers();
+    TrainerResponse updateMyProfile(
+            TrainerUpdateRequest request
+    );
 
-    TrainerResponse getTrainerById(Long id);
+    List<TrainerResponse> getActiveTrainers();
+
+    TrainerResponse getTrainerById(
+            Long id
+    );
 }
