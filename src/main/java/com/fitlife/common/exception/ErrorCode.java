@@ -509,38 +509,47 @@ public enum ErrorCode {
             HttpStatus.BAD_GATEWAY
     ),
 
-    AI_EMBEDDING_DIMENSION_MISMATCH(
+    AI_EMBEDDING_RESPONSE_INVALID(
             12009,
+            "AI embedding response is invalid",
+            HttpStatus.BAD_GATEWAY
+    ),
+
+    AI_EMBEDDING_DIMENSION_MISMATCH(
+            12010,
             "Embedding dimension does not match vector database configuration",
             HttpStatus.INTERNAL_SERVER_ERROR
     ),
 
     AI_KNOWLEDGE_NOT_FOUND(
-            12010,
+            12011,
             "AI knowledge not found",
             HttpStatus.NOT_FOUND
     ),
 
     AI_KNOWLEDGE_CODE_EXISTS(
-            12011,
+            12012,
             "AI knowledge code already exists",
             HttpStatus.BAD_REQUEST
     ),
 
     AI_KNOWLEDGE_INDEX_FAILED(
-            12012,
+            12013,
             "AI knowledge indexing failed",
             HttpStatus.BAD_GATEWAY
     ),
 
     QDRANT_OPERATION_FAILED(
-            12013,
+            12014,
             "Qdrant operation failed",
             HttpStatus.BAD_GATEWAY
     ),
 
-
-
+    QDRANT_DISABLED(
+            12015,
+            "Qdrant integration is disabled",
+            HttpStatus.SERVICE_UNAVAILABLE
+    ),
 
     // =========================
     // Check-in errors: 13000 - 13999

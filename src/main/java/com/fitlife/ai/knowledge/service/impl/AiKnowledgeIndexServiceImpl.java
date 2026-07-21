@@ -3,20 +3,27 @@ package com.fitlife.ai.knowledge.service.impl;
 import com.fitlife.ai.embedding.dto.AiEmbeddingResult;
 import com.fitlife.ai.embedding.service.AiEmbeddingService;
 import com.fitlife.ai.knowledge.entity.AiKnowledge;
-import com.fitlife.ai.qdrant.service.AiQdrantPointService;
 import com.fitlife.ai.knowledge.repository.AiKnowledgeRepository;
-import com.fitlife.ai.knowledge.service.*;
-import com.fitlife.common.exception.*;
+import com.fitlife.ai.knowledge.service.AiKnowledgeIndexService;
+import com.fitlife.ai.knowledge.service.AiKnowledgePersistenceService;
+import com.fitlife.ai.qdrant.service.AiQdrantPointService;
+import com.fitlife.common.exception.AppException;
+import com.fitlife.common.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class AiKnowledgeIndexServiceImpl implements AiKnowledgeIndexService {
+public class AiKnowledgeIndexServiceImpl
+        implements AiKnowledgeIndexService {
+
     private final AiKnowledgeRepository repository;
     private final AiKnowledgePersistenceService persistenceService;
     private final AiEmbeddingService embeddingService;
@@ -24,62 +31,139 @@ public class AiKnowledgeIndexServiceImpl implements AiKnowledgeIndexService {
 
     @Override
     public void indexKnowledge(Long id) {
-        AiKnowledge k = required(id);
-        if (Boolean.TRUE.equals(k.getDeleted()) || !Boolean.TRUE.equals(k.getActive())) {
-            deleteIfPresent(k);
+        AiKnowledge knowledge = required(id);
+
+        if (Boolean.TRUE.equals(knowledge.getDeleted())
+                || !Boolean.TRUE.equals(knowledge.getActive())) {
+            deleteIfPresent(knowledge);
             return;
         }
 
-        String pointId = resolvePointId(k);
+        String pointId = resolvePointId(knowledge);
+
         try {
             AiEmbeddingResult embedding =
-                    embeddingService.embedDocument(buildEmbeddingText(k), k.getTitle());
+                    embeddingService.embedDocument(
+                            buildEmbeddingText(knowledge),
+                            knowledge.getTitle()
+                    );
 
-            qdrantPointService.upsert(pointId, embedding.vector(), buildPayload(k));
-            persistenceService.markIndexed(id, pointId);
-        } catch (Exception e) {
-            log.error("Knowledge indexing failed. id={}, reason={}", id, e.getMessage(), e);
-            persistenceService.markFailed(id, e.getMessage());
-            if (e instanceof AppException appException) throw appException;
-            throw new AppException(ErrorCode.AI_KNOWLEDGE_INDEX_FAILED);
+            validateEmbedding(embedding);
+
+            qdrantPointService.upsert(
+                    pointId,
+                    embedding.vector(),
+                    buildPayload(knowledge)
+            );
+
+            persistenceService.markIndexed(
+                    knowledge.getId(),
+                    pointId
+            );
+
+        } catch (AppException ex) {
+            log.error(
+                    "Knowledge indexing failed. id={}, reason={}",
+                    id,
+                    ex.getMessage(),
+                    ex
+            );
+
+            persistenceService.markFailed(
+                    id,
+                    safeErrorMessage(ex)
+            );
+
+            throw ex;
+
+        } catch (Exception ex) {
+            log.error(
+                    "Knowledge indexing failed. id={}, reason={}",
+                    id,
+                    ex.getMessage(),
+                    ex
+            );
+
+            persistenceService.markFailed(
+                    id,
+                    safeErrorMessage(ex)
+            );
+
+            throw new AppException(
+                    ErrorCode.AI_KNOWLEDGE_INDEX_FAILED
+            );
         }
     }
 
     @Override
     public void deleteKnowledgePoint(Long id) {
-        deleteIfPresent(required(id));
+        AiKnowledge knowledge = required(id);
+        deleteIfPresent(knowledge);
     }
 
     @Override
     public int reindexAll() {
-        int count = 0;
-        for (AiKnowledge k : repository.findAllByDeletedFalseAndActiveTrue()) {
+        int successCount = 0;
+
+        for (AiKnowledge knowledge :
+                repository.findAllByDeletedFalseAndActiveTrue()) {
             try {
-                indexKnowledge(k.getId());
-                count++;
-            } catch (Exception e) {
-                log.warn("Reindex skipped. id={}, reason={}", k.getId(), e.getMessage());
+                indexKnowledge(knowledge.getId());
+                successCount++;
+
+            } catch (Exception ex) {
+                log.warn(
+                        "Reindex skipped. id={}, reason={}",
+                        knowledge.getId(),
+                        ex.getMessage()
+                );
             }
         }
-        return count;
+
+        return successCount;
     }
 
-    private void deleteIfPresent(AiKnowledge k) {
-        if (k.getQdrantPointId() != null && !k.getQdrantPointId().isBlank()) {
-            qdrantPointService.delete(k.getQdrantPointId());
+    private void deleteIfPresent(AiKnowledge knowledge) {
+        String pointId = knowledge.getQdrantPointId();
+
+        if (pointId == null || pointId.isBlank()) {
+            return;
+        }
+
+        qdrantPointService.delete(pointId);
+    }
+
+    private void validateEmbedding(
+            AiEmbeddingResult embedding
+    ) {
+        if (embedding == null
+                || embedding.vector() == null
+                || embedding.vector().isEmpty()) {
+            throw new AppException(
+                    ErrorCode.AI_EMBEDDING_RESPONSE_INVALID
+            );
         }
     }
 
-    private String resolvePointId(AiKnowledge k) {
-        if (k.getQdrantPointId() != null && !k.getQdrantPointId().isBlank()) {
-            return k.getQdrantPointId();
+    private String resolvePointId(
+            AiKnowledge knowledge
+    ) {
+        if (knowledge.getQdrantPointId() != null
+                && !knowledge.getQdrantPointId().isBlank()) {
+            return knowledge.getQdrantPointId();
         }
+
         return UUID.nameUUIDFromBytes(
-                ("fitlife-ai-knowledge-" + k.getId()).getBytes(StandardCharsets.UTF_8)
+                (
+                        "fitlife-ai-knowledge-"
+                                + knowledge.getId()
+                ).getBytes(StandardCharsets.UTF_8)
         ).toString();
     }
 
-    private String buildEmbeddingText(AiKnowledge k) {
+    private String buildEmbeddingText(
+            AiKnowledge knowledge
+    ) {
         return """
                 Title: %s
                 Category: %s
@@ -89,29 +173,95 @@ public class AiKnowledgeIndexServiceImpl implements AiKnowledgeIndexService {
                 Content:
                 %s
                 """.formatted(
-                k.getTitle(), k.getCategory(),
-                k.getGoal()==null?"":k.getGoal(),
-                k.getExperienceLevel()==null?"":k.getExperienceLevel(),
-                k.getLanguage(), k.getContent()
-        );
+                safe(knowledge.getTitle()),
+                knowledge.getCategory() == null
+                        ? ""
+                        : knowledge.getCategory().name(),
+                safe(knowledge.getGoal()),
+                safe(knowledge.getExperienceLevel()),
+                safe(knowledge.getLanguage()),
+                safe(knowledge.getContent())
+        ).trim();
     }
 
-    private Map<String,Object> buildPayload(AiKnowledge k) {
-        Map<String,Object> p = new LinkedHashMap<>();
-        p.put("knowledgeId", k.getId());
-        p.put("code", k.getCode());
-        p.put("title", k.getTitle());
-        p.put("content", k.getContent());
-        p.put("category", k.getCategory().name());
-        p.put("language", k.getLanguage());
-        p.put("active", k.getActive());
-        if (k.getGoal()!=null) p.put("goal", k.getGoal());
-        if (k.getExperienceLevel()!=null) p.put("experienceLevel", k.getExperienceLevel());
-        return p;
+    private Map<String, Object> buildPayload(
+            AiKnowledge knowledge
+    ) {
+        Map<String, Object> payload =
+                new LinkedHashMap<>();
+
+        payload.put(
+                "knowledgeId",
+                knowledge.getId()
+        );
+        payload.put(
+                "code",
+                knowledge.getCode()
+        );
+        payload.put(
+                "title",
+                knowledge.getTitle()
+        );
+        payload.put(
+                "content",
+                knowledge.getContent()
+        );
+        payload.put(
+                "category",
+                knowledge.getCategory().name()
+        );
+        payload.put(
+                "language",
+                knowledge.getLanguage()
+        );
+        payload.put(
+                "active",
+                Boolean.TRUE.equals(
+                        knowledge.getActive()
+                )
+        );
+
+        if (knowledge.getGoal() != null
+                && !knowledge.getGoal().isBlank()) {
+            payload.put(
+                    "goal",
+                    knowledge.getGoal()
+            );
+        }
+
+        if (knowledge.getExperienceLevel() != null
+                && !knowledge.getExperienceLevel().isBlank()) {
+            payload.put(
+                    "experienceLevel",
+                    knowledge.getExperienceLevel()
+            );
+        }
+
+        return payload;
     }
 
     private AiKnowledge required(Long id) {
         return repository.findByIdAndDeletedFalse(id)
-                .orElseThrow(() -> new AppException(ErrorCode.AI_KNOWLEDGE_NOT_FOUND));
+                .orElseThrow(
+                        () -> new AppException(
+                                ErrorCode.AI_KNOWLEDGE_NOT_FOUND
+                        )
+                );
+    }
+
+    private String safe(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    private String safeErrorMessage(Throwable throwable) {
+        String message = throwable.getMessage();
+
+        if (message == null || message.isBlank()) {
+            return throwable.getClass().getSimpleName();
+        }
+
+        return message.length() <= 500
+                ? message
+                : message.substring(0, 500);
     }
 }

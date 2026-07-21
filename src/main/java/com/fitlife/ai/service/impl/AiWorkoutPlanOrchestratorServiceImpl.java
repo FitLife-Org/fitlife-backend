@@ -11,6 +11,7 @@ import com.fitlife.ai.entity.AiSuggestion;
 import com.fitlife.ai.enums.AiSuggestionStatus;
 import com.fitlife.ai.enums.AiSuggestionType;
 import com.fitlife.ai.mapper.AiSuggestionMapper;
+import com.fitlife.ai.retrieval.service.AiKnowledgeRetrievalService;
 import com.fitlife.ai.service.*;
 import com.fitlife.bodymetric.entity.BodyMetric;
 import com.fitlife.bodymetric.repository.BodyMetricRepository;
