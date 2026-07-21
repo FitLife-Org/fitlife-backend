@@ -459,8 +459,8 @@ public enum ErrorCode {
 
 
     // =========================
-    // AI errors: 12000 - 12999
-    // =========================
+// AI errors: 12000 - 12999
+// =========================
     AI_SUGGESTION_NOT_FOUND(
             12001,
             "AI suggestion not found",
@@ -495,6 +495,24 @@ public enum ErrorCode {
             12006,
             "AI response was truncated. Please try again with a shorter request.",
             HttpStatus.BAD_GATEWAY
+    ),
+
+    AI_PROVIDER_DISABLED(
+            12007,
+            "AI provider is disabled",
+            HttpStatus.SERVICE_UNAVAILABLE
+    ),
+
+    AI_EMBEDDING_FAILED(
+            12008,
+            "AI embedding generation failed",
+            HttpStatus.BAD_GATEWAY
+    ),
+
+    AI_EMBEDDING_DIMENSION_MISMATCH(
+            12009,
+            "Embedding dimension does not match vector database configuration",
+            HttpStatus.INTERNAL_SERVER_ERROR
     ),
 
 
