@@ -515,6 +515,32 @@ public enum ErrorCode {
             HttpStatus.INTERNAL_SERVER_ERROR
     ),
 
+    AI_KNOWLEDGE_NOT_FOUND(
+            12010,
+            "AI knowledge not found",
+            HttpStatus.NOT_FOUND
+    ),
+
+    AI_KNOWLEDGE_CODE_EXISTS(
+            12011,
+            "AI knowledge code already exists",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    AI_KNOWLEDGE_INDEX_FAILED(
+            12012,
+            "AI knowledge indexing failed",
+            HttpStatus.BAD_GATEWAY
+    ),
+
+    QDRANT_OPERATION_FAILED(
+            12013,
+            "Qdrant operation failed",
+            HttpStatus.BAD_GATEWAY
+    ),
+
+
+
 
     // =========================
     // Check-in errors: 13000 - 13999

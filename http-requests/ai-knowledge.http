@@ -1,0 +1,46 @@
+@baseUrl = http://localhost:8080/api/v1
+@token = YOUR_ADMIN_JWT
+@id = 1
+
+### CREATE
+POST {{baseUrl}}/admin/ai/knowledge
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "code": "WK-BEGINNER-001",
+  "title": "Nguyên tắc tập cho người mới",
+  "content": "Ưu tiên kỹ thuật, biên độ chuyển động và tăng tải từ từ.",
+  "category": "WORKOUT",
+  "goal": "GAIN_MUSCLE",
+  "experienceLevel": "BEGINNER",
+  "language": "vi",
+  "active": true
+}
+
+### DETAIL
+GET {{baseUrl}}/admin/ai/knowledge/{{id}}
+Authorization: Bearer {{token}}
+
+### LIST
+GET {{baseUrl}}/admin/ai/knowledge?page=0&size=20&sort=createdAt,desc
+Authorization: Bearer {{token}}
+
+### REINDEX
+POST {{baseUrl}}/admin/ai/knowledge/{{id}}/reindex
+Authorization: Bearer {{token}}
+
+### REINDEX ALL
+POST {{baseUrl}}/admin/ai/knowledge/reindex-all
+Authorization: Bearer {{token}}
+
+### DISABLE
+PATCH {{baseUrl}}/admin/ai/knowledge/{{id}}/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"active": false}
+
+### DELETE
+DELETE {{baseUrl}}/admin/ai/knowledge/{{id}}
+Authorization: Bearer {{token}}
