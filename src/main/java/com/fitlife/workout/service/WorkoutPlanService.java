@@ -24,7 +24,7 @@ public interface WorkoutPlanService {
     WorkoutPlanResponse archiveWorkoutPlan(Long id, String currentUsername);
     WorkoutPlanResponse cloneWorkoutPlan(Long id, String currentUsername);
     WorkoutPlanDayResponse getTodayWorkoutDay(String currentUsername);
-
+    WorkoutPlanResponse createWorkoutPlanForMember(Long memberId, WorkoutPlanCreateRequest request, String trainerUsername);
 
     void deleteWorkoutPlan(Long id);
 }

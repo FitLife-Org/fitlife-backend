@@ -719,6 +719,84 @@ public class WorkoutPlanServiceImpl implements WorkoutPlanService {
                 .build();
     }
 
+    @Override
+    @Transactional
+    public WorkoutPlanResponse createWorkoutPlanForMember(Long memberId, WorkoutPlanCreateRequest request, String trainerUsername) {
+        String generatedCode = "WP-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+
+        WorkoutPlan plan = WorkoutPlan.builder()
+                .memberId(memberId)
+                .code(generatedCode)
+                .name(request.getName())
+                .goal(request.getGoal())
+                .experienceLevel(request.getExperienceLevel())
+                .durationWeeks(request.getDurationWeeks() != null ? request.getDurationWeeks() : 4)
+                .workoutDaysPerWeek(request.getWorkoutDaysPerWeek() != null ? request.getWorkoutDaysPerWeek() : 3)
+                .workoutDurationMinutes(request.getWorkoutDurationMinutes())
+                .description(request.getDescription())
+                .note(request.getNote())
+                .sourceType("TRAINER")
+                .status("DRAFT")
+                .isDeleted(false)
+                .days(new ArrayList<>())
+                .build();
+
+        if (request.getDays() != null) {
+            int dayCounter = 1;
+            List dayList = request.getDays();
+            for (Object dayObj : dayList) {
+                WorkoutPlanDayRequest dayReq = (WorkoutPlanDayRequest) dayObj;
+
+                WorkoutPlanDay day = WorkoutPlanDay.builder()
+                        .workoutPlan(plan)
+                        .weekNo(dayReq.getWeekNo() != null ? dayReq.getWeekNo() : 1)
+                        .dayNo(dayReq.getDayNo() != null ? dayReq.getDayNo() : dayCounter++)
+                        .dayOfWeek(dayReq.getDayOfWeek())
+                        .name(dayReq.getName())
+                        .focusArea(dayReq.getFocusArea())
+                        .estimatedMinutes(dayReq.getEstimatedMinutes())
+                        .note(dayReq.getNote())
+                        .sortOrder(dayReq.getSortOrder() != null ? dayReq.getSortOrder() : 0)
+                        .isRestDay(dayReq.getIsRestDay() != null ? dayReq.getIsRestDay() : false)
+                        .exercises(new ArrayList<>())
+                        .build();
+
+                if (dayReq.getExercises() != null) {
+                    int exCounter = 0;
+                    List exList = dayReq.getExercises();
+                    for (Object exObj : exList) {
+                        WorkoutExerciseRequest exReq = (WorkoutExerciseRequest) exObj;
+
+                        WorkoutExercise exercise = WorkoutExercise.builder()
+                                .workoutPlanDay(day)
+                                .exerciseName(exReq.getExerciseName())
+                                .targetMuscle(exReq.getTargetMuscle())
+                                .equipmentId(exReq.getEquipmentId())
+                                .sets(exReq.getSets())
+                                .reps(exReq.getReps())
+                                .weightKg(exReq.getWeightKg())
+                                .durationMinutes(exReq.getDurationMinutes())
+                                .distanceKm(exReq.getDistanceKm())
+                                .restSeconds(exReq.getRestSeconds())
+                                .tempo(exReq.getTempo())
+                                .rpe(exReq.getRpe())
+                                .instruction(exReq.getInstruction())
+                                .note(exReq.getNote())
+                                .videoUrl(exReq.getVideoUrl())
+                                .sortOrder(exReq.getSortOrder() != null ? exReq.getSortOrder() : exCounter++)
+                                .isOptional(exReq.getIsOptional() != null ? exReq.getIsOptional() : false)
+                                .build();
+                        day.getExercises().add(exercise);
+                    }
+                }
+                plan.getDays().add(day);
+            }
+        }
+
+        WorkoutPlan savedPlan = workoutPlanRepository.save(plan);
+        return mapToWorkoutPlanResponse(savedPlan);
+    }
+
 }
 
 

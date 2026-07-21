@@ -147,5 +147,16 @@ public class WorkoutPlanController {
         WorkoutPlanDayResponse response = workoutPlanService.getTodayWorkoutDay(currentUsername);
         return ResponseEntity.ok(response);
     }
+    @PostMapping("/{memberId}/workout-plans")
+    public ResponseEntity createWorkoutPlanForMember(
+            @PathVariable("memberId") Long memberId,
+            @RequestBody WorkoutPlanCreateRequest request,
+            Authentication authentication) {
+
+        String trainerUsername = (authentication != null) ? authentication.getName() : "anonymous";
+        WorkoutPlanResponse response = workoutPlanService.createWorkoutPlanForMember(memberId, request, trainerUsername);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
 
 }
