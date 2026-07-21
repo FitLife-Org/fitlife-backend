@@ -2,6 +2,7 @@ package com.fitlife.workout.service;
 
 import com.fitlife.workout.dto.request.WorkoutPlanCreateRequest;
 import com.fitlife.workout.dto.request.WorkoutPlanUpdateRequest;
+import com.fitlife.workout.dto.response.WorkoutPlanDayResponse;
 import com.fitlife.workout.dto.response.WorkoutPlanDetailResponse;
 import com.fitlife.workout.dto.response.WorkoutPlanResponse;
 
@@ -22,7 +23,7 @@ public interface WorkoutPlanService {
     WorkoutPlanResponse completeWorkoutPlan(Long id, String currentUsername);
     WorkoutPlanResponse archiveWorkoutPlan(Long id, String currentUsername);
     WorkoutPlanResponse cloneWorkoutPlan(Long id, String currentUsername);
-
+    WorkoutPlanDayResponse getTodayWorkoutDay(String currentUsername);
 
 
     void deleteWorkoutPlan(Long id);

@@ -634,7 +634,90 @@ public class WorkoutPlanServiceImpl implements WorkoutPlanService {
         return mapToWorkoutPlanResponse(savedPlan);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public WorkoutPlanDayResponse getTodayWorkoutDay(String currentUsername) {
+        Long memberId = 1L;
+        if (currentUsername != null && !currentUsername.equals("anonymous")) {
+            User user = userRepository.findByEmail(currentUsername).orElse(null);
+            if (user != null) {
+                memberId = user.getId();
+            }
+        }
 
+
+        Object optObj = workoutPlanRepository.findFirstByMemberIdAndStatusAndIsDeletedFalse(memberId, "ACTIVE");
+        WorkoutPlan activePlan = null;
+        if (optObj instanceof Optional) {
+            Optional opt = (Optional) optObj;
+            if (opt.isPresent()) {
+                activePlan = (WorkoutPlan) opt.get();
+            }
+        }
+
+        if (activePlan == null) {
+            throw new RuntimeException("Bạn hiện chưa có giáo án tập luyện nào đang hoạt động!");
+        }
+
+
+        String todayOfWeek = java.time.LocalDate.now().getDayOfWeek().name();
+
+        WorkoutPlanDay todayDay = null;
+        if (activePlan.getDays() != null) {
+            for (Object dayObj : activePlan.getDays()) {
+                WorkoutPlanDay day = (WorkoutPlanDay) dayObj;
+                if (day.getDayOfWeek() != null && day.getDayOfWeek().equalsIgnoreCase(todayOfWeek)) {
+                    todayDay = day;
+                    break;
+                }
+            }
+        }
+
+        if (todayDay == null) {
+            throw new RuntimeException("Hôm nay (" + todayOfWeek + ") bạn không có lịch tập nào trong giáo án hiện tại!");
+        }
+
+
+        List exResponses = new ArrayList<>();
+        if (todayDay.getExercises() != null) {
+            for (Object exObj : todayDay.getExercises()) {
+                WorkoutExercise ex = (WorkoutExercise) exObj;
+                exResponses.add(WorkoutExerciseResponse.builder()
+                        .id(ex.getId())
+                        .exerciseName(ex.getExerciseName())
+                        .targetMuscle(ex.getTargetMuscle())
+                        .equipmentId(ex.getEquipmentId())
+                        .sets(ex.getSets())
+                        .reps(ex.getReps())
+                        .weightKg(ex.getWeightKg())
+                        .durationMinutes(ex.getDurationMinutes())
+                        .distanceKm(ex.getDistanceKm())
+                        .restSeconds(ex.getRestSeconds())
+                        .tempo(ex.getTempo())
+                        .rpe(ex.getRpe())
+                        .instruction(ex.getInstruction())
+                        .note(ex.getNote())
+                        .videoUrl(ex.getVideoUrl())
+                        .sortOrder(ex.getSortOrder())
+                        .isOptional(ex.getIsOptional())
+                        .build());
+            }
+        }
+
+        return WorkoutPlanDayResponse.builder()
+                .id(todayDay.getId())
+                .weekNo(todayDay.getWeekNo())
+                .dayNo(todayDay.getDayNo())
+                .dayOfWeek(todayDay.getDayOfWeek())
+                .name(todayDay.getName())
+                .focusArea(todayDay.getFocusArea())
+                .estimatedMinutes(todayDay.getEstimatedMinutes())
+                .note(todayDay.getNote())
+                .sortOrder(todayDay.getSortOrder())
+                .isRestDay(todayDay.getIsRestDay())
+                .exercises(exResponses)
+                .build();
+    }
 
 }
 

@@ -2,6 +2,7 @@ package com.fitlife.workout.controller;
 
 import com.fitlife.workout.dto.request.WorkoutPlanCreateRequest;
 import com.fitlife.workout.dto.request.WorkoutPlanUpdateRequest;
+import com.fitlife.workout.dto.response.WorkoutPlanDayResponse;
 import com.fitlife.workout.dto.response.WorkoutPlanDetailResponse;
 import com.fitlife.workout.dto.response.WorkoutPlanResponse;
 import com.fitlife.workout.service.WorkoutPlanService;
@@ -140,5 +141,11 @@ public class WorkoutPlanController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @GetMapping("/me/today")
+    public ResponseEntity getTodayWorkoutDay(Authentication authentication) {
+        String currentUsername = (authentication != null) ? authentication.getName() : "anonymous";
+        WorkoutPlanDayResponse response = workoutPlanService.getTodayWorkoutDay(currentUsername);
+        return ResponseEntity.ok(response);
+    }
 
 }
