@@ -88,4 +88,17 @@ public class WorkoutPlanController {
         WorkoutPlanResponse response = workoutPlanService.patchWorkoutPlan(id, request, currentUsername);
         return ResponseEntity.ok(response);
     }
+
+
+    @PutMapping("/{id}/structure")
+    public ResponseEntity updateWorkoutPlanStructure(
+            @PathVariable("id") Long id,
+            @RequestBody List daysRequest,
+            Authentication authentication) {
+
+        String currentUsername = (authentication != null) ? authentication.getName() : "anonymous";
+        WorkoutPlanDetailResponse response = workoutPlanService.updateWorkoutPlanStructure(id, daysRequest, currentUsername);
+        return ResponseEntity.ok(response);
+    }
+
 }
