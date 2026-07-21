@@ -68,4 +68,10 @@ public class WorkoutPlanController {
         workoutPlanService.deleteWorkoutPlan(id);
         return ResponseEntity.noContent().build();
     }
+    @GetMapping("/me/active")
+    public ResponseEntity getActiveWorkoutPlan(Authentication authentication) {
+        String currentUsername = (authentication != null) ? authentication.getName() : "anonymous";
+        WorkoutPlanDetailResponse response = workoutPlanService.getActiveWorkoutPlan(currentUsername);
+        return ResponseEntity.ok(response);
+    }
 }

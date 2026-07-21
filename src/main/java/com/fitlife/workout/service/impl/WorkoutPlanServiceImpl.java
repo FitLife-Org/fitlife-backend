@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -21,6 +22,7 @@ public class WorkoutPlanServiceImpl implements WorkoutPlanService {
 
     private final WorkoutPlanRepository workoutPlanRepository;
     private final UserRepository userRepository;
+
 
     @Override
     @Transactional
@@ -116,7 +118,7 @@ public class WorkoutPlanServiceImpl implements WorkoutPlanService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<WorkoutPlanResponse> getMyWorkoutPlans(String currentUsername) {
+    public List getMyWorkoutPlans(String currentUsername) {
         Long memberId = 1L;
         if (currentUsername != null && !currentUsername.equals("anonymous")) {
             User user = userRepository.findByEmail(currentUsername).orElse(null);
@@ -126,10 +128,9 @@ public class WorkoutPlanServiceImpl implements WorkoutPlanService {
         }
 
         List plans = workoutPlanRepository.findByMemberIdAndIsDeletedFalseOrderByCreatedAtDesc(memberId);
-        List<WorkoutPlanResponse> responses = new ArrayList<>();
+        List responses = new ArrayList<>();
 
         if (plans != null) {
-
             for (Object obj : plans) {
                 WorkoutPlan plan = (WorkoutPlan) obj;
                 responses.add(mapToWorkoutPlanResponse(plan));
@@ -140,9 +141,35 @@ public class WorkoutPlanServiceImpl implements WorkoutPlanService {
 
     @Override
     @Transactional(readOnly = true)
+    public WorkoutPlanDetailResponse getActiveWorkoutPlan(String currentUsername) {
+        Long memberId = 1L;
+        if (currentUsername != null && !currentUsername.equals("anonymous")) {
+            User user = userRepository.findByEmail(currentUsername).orElse(null);
+            if (user != null) {
+                memberId = user.getId();
+            }
+        }
+
+        Object optObj = workoutPlanRepository.findFirstByMemberIdAndStatusAndIsDeletedFalse(memberId, "ACTIVE");
+        if (optObj instanceof Optional) {
+            Optional opt = (Optional) optObj;
+            if (opt.isPresent()) {
+                WorkoutPlan plan = (WorkoutPlan) opt.get();
+                return getWorkoutPlanById(plan.getId());
+            }
+        }
+
+        throw new RuntimeException("Bạn hiện chưa có giáo án tập luyện nào đang hoạt động!");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public WorkoutPlanDetailResponse getWorkoutPlanById(Long id) {
-        WorkoutPlan plan = workoutPlanRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy giáo án với ID: " + id));
+        WorkoutPlan plan = (WorkoutPlan) workoutPlanRepository.findById(id).orElse(null);
+
+        if (plan == null) {
+            throw new RuntimeException("Không tìm thấy giáo án với ID: " + id);
+        }
 
         List dayResponses = new ArrayList<>();
         if (plan.getDays() != null) {
@@ -214,8 +241,11 @@ public class WorkoutPlanServiceImpl implements WorkoutPlanService {
     @Override
     @Transactional
     public WorkoutPlanResponse updateWorkoutPlan(Long id, WorkoutPlanUpdateRequest request) {
-        WorkoutPlan plan = workoutPlanRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy giáo án với ID: " + id));
+        WorkoutPlan plan = (WorkoutPlan) workoutPlanRepository.findById(id).orElse(null);
+
+        if (plan == null) {
+            throw new RuntimeException("Không tìm thấy giáo án với ID: " + id);
+        }
 
         if (request.getName() != null) plan.setName(request.getName());
         if (request.getDescription() != null) plan.setDescription(request.getDescription());
@@ -231,8 +261,12 @@ public class WorkoutPlanServiceImpl implements WorkoutPlanService {
     @Override
     @Transactional
     public void deleteWorkoutPlan(Long id) {
-        WorkoutPlan plan = workoutPlanRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy giáo án với ID: " + id));
+        WorkoutPlan plan = (WorkoutPlan) workoutPlanRepository.findById(id).orElse(null);
+
+        if (plan == null) {
+            throw new RuntimeException("Không tìm thấy giáo án với ID: " + id);
+        }
+
         plan.setIsDeleted(true);
         workoutPlanRepository.save(plan);
     }
