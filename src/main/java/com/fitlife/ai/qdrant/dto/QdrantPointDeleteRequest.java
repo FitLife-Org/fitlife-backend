@@ -1,4 +1,4 @@
-package com.fitlife.ai.knowledge.qdrant.dto;
+package com.fitlife.ai.qdrant.dto;
 import java.util.List;
 public record QdrantPointDeleteRequest(List<String> points) {
     public static QdrantPointDeleteRequest single(String id) {

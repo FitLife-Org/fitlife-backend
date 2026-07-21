@@ -4,7 +4,7 @@ import com.fitlife.ai.embedding.dto.AiEmbeddingResult;
 import com.fitlife.ai.embedding.service.AiEmbeddingService;
 import com.fitlife.ai.knowledge.entity.AiKnowledge;
 import com.fitlife.ai.knowledge.enums.AiKnowledgeCategory;
-import com.fitlife.ai.knowledge.qdrant.service.AiQdrantPointService;
+import com.fitlife.ai.qdrant.service.AiQdrantPointService;
 import com.fitlife.ai.knowledge.repository.AiKnowledgeRepository;
 import com.fitlife.ai.knowledge.service.AiKnowledgePersistenceService;
 import com.fitlife.ai.knowledge.service.impl.AiKnowledgeIndexServiceImpl;

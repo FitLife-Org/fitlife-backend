@@ -3,7 +3,7 @@ package com.fitlife.ai.knowledge.service.impl;
 import com.fitlife.ai.embedding.dto.AiEmbeddingResult;
 import com.fitlife.ai.embedding.service.AiEmbeddingService;
 import com.fitlife.ai.knowledge.entity.AiKnowledge;
-import com.fitlife.ai.knowledge.qdrant.service.AiQdrantPointService;
+import com.fitlife.ai.qdrant.service.AiQdrantPointService;
 import com.fitlife.ai.knowledge.repository.AiKnowledgeRepository;
 import com.fitlife.ai.knowledge.service.*;
 import com.fitlife.common.exception.*;

@@ -1,4 +1,4 @@
-package com.fitlife.ai.knowledge.qdrant.dto;
+package com.fitlife.ai.qdrant.dto;
 import java.util.*;
 public record QdrantPointUpsertRequest(List<Point> points) {
     public record Point(String id, List<Float> vector, Map<String,Object> payload) {}
