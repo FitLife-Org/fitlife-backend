@@ -436,7 +436,45 @@ public class WorkoutPlanServiceImpl implements WorkoutPlanService {
         return getWorkoutPlanById(savedPlan.getId());
     }
 
+    @Override
+    @Transactional
+    public WorkoutPlanResponse activateWorkoutPlan(Long id, String currentUsername) {
+        Long memberId = 1L;
+        if (currentUsername != null && !currentUsername.equals("anonymous")) {
+            User user = userRepository.findByEmail(currentUsername).orElse(null);
+            if (user != null) {
+                memberId = user.getId();
+            }
+        }
 
+
+        Object optObj = workoutPlanRepository.findByIdAndMemberIdAndIsDeletedFalse(id, memberId);
+        WorkoutPlan targetPlan = null;
+        if (optObj instanceof Optional) {
+            Optional opt = (Optional) optObj;
+            if (opt.isPresent()) {
+                targetPlan = (WorkoutPlan) opt.get();
+            }
+        }
+
+        if (targetPlan == null) {
+            throw new RuntimeException("Không tìm thấy giáo án hoặc bạn không có quyền kích hoạt giáo án này!");
+        }
+
+        List activePlans = workoutPlanRepository.findByMemberIdAndStatusAndIsDeletedFalse(memberId, "ACTIVE");
+        if (activePlans != null) {
+            for (Object obj : activePlans) {
+                WorkoutPlan activePlan = (WorkoutPlan) obj;
+                activePlan.setStatus("INACTIVE");
+                workoutPlanRepository.save(activePlan);
+            }
+        }
+
+        targetPlan.setStatus("ACTIVE");
+        WorkoutPlan savedPlan = workoutPlanRepository.save(targetPlan);
+
+        return mapToWorkoutPlanResponse(savedPlan);
+    }
 }
 
 

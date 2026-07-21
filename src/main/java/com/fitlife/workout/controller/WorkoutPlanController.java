@@ -100,5 +100,14 @@ public class WorkoutPlanController {
         WorkoutPlanDetailResponse response = workoutPlanService.updateWorkoutPlanStructure(id, daysRequest, currentUsername);
         return ResponseEntity.ok(response);
     }
+    @PostMapping("/{id}/activate")
+    public ResponseEntity activateWorkoutPlan(
+            @PathVariable("id") Long id,
+            Authentication authentication) {
+
+        String currentUsername = (authentication != null) ? authentication.getName() : "anonymous";
+        WorkoutPlanResponse response = workoutPlanService.activateWorkoutPlan(id, currentUsername);
+        return ResponseEntity.ok(response);
+    }
 
 }

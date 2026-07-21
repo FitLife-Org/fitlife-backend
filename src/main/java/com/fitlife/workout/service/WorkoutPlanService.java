@@ -18,7 +18,7 @@ public interface WorkoutPlanService {
 
     WorkoutPlanResponse patchWorkoutPlan(Long id, WorkoutPlanUpdateRequest request, String currentUsername);
     WorkoutPlanDetailResponse updateWorkoutPlanStructure(Long id, List daysRequest, String currentUsername);
-
+    WorkoutPlanResponse activateWorkoutPlan(Long id, String currentUsername);
 
     void deleteWorkoutPlan(Long id);
 }
