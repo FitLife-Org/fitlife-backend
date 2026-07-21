@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fitlife.ai.dto.internal.AiProviderResult;
 import com.fitlife.ai.dto.response.AiGeneratedBodyAnalysisResponse;
 import com.fitlife.ai.dto.response.AiGeneratedPlanResponse;
+import com.fitlife.ai.dto.response.AiGeneratedWorkoutPlanResponse;
 import com.fitlife.ai.entity.AiSuggestion;
 import com.fitlife.ai.repository.AiSuggestionRepository;
 import com.fitlife.ai.service.AiPlanParserService;
@@ -257,5 +258,60 @@ public class AiSuggestionPersistenceServiceImpl
         return normalized == null
                 ? defaultValue
                 : normalized;
+    }
+
+    @Override
+    @Transactional(
+            propagation = Propagation.REQUIRES_NEW
+    )
+    public AiSuggestion markWorkoutPlanSuccess(
+            Long suggestionId,
+            AiProviderResult providerResult,
+            AiGeneratedWorkoutPlanResponse generated,
+            String warningMessage
+    ) {
+        AiSuggestion suggestion =
+                getSuggestionForUpdate(suggestionId);
+
+        validateProviderResult(providerResult);
+
+        if (generated == null) {
+            throw new AppException(
+                    ErrorCode.AI_RESPONSE_INVALID
+            );
+        }
+
+        applyProviderMetadata(
+                suggestion,
+                providerResult
+        );
+
+        suggestion.setAiResponse(
+                toJson(generated)
+        );
+
+        suggestion.setSummary(
+                normalizeText(
+                        generated.getSummary()
+                )
+        );
+
+        suggestion.setWarningMessage(
+                normalizeText(warningMessage)
+        );
+
+        suggestion.markSuccess();
+
+        AiSuggestion savedSuggestion =
+                aiSuggestionRepository.saveAndFlush(
+                        suggestion
+                );
+
+        aiPlanParserService.saveWorkoutPlanItems(
+                savedSuggestion,
+                generated
+        );
+
+        return savedSuggestion;
     }
 }

@@ -7,6 +7,7 @@ import com.fitlife.ai.dto.internal.AiInputSnapshot;
 import com.fitlife.ai.dto.internal.AiInputUserSnapshot;
 import com.fitlife.ai.dto.request.AiBodyAnalysisRequest;
 import com.fitlife.ai.dto.request.AiFullPlanRequest;
+import com.fitlife.ai.dto.request.AiWorkoutPlanRequest;
 import com.fitlife.ai.service.AiSnapshotService;
 import com.fitlife.bodymetric.entity.BodyMetric;
 import com.fitlife.common.exception.AppException;
@@ -218,5 +219,69 @@ public class AiSnapshotServiceImpl implements AiSnapshotService {
         return normalized.isEmpty()
                 ? null
                 : normalized;
+    }
+
+    @Override
+    public AiInputSnapshot buildWorkoutPlanSnapshot(
+            Member member,
+            BodyMetric latestBodyMetric,
+            AiWorkoutPlanRequest request
+    ) {
+        if (member == null
+                || member.getUser() == null
+                || request == null) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        return AiInputSnapshot.builder()
+                .user(
+                        buildUserSnapshot(
+                                member.getUser()
+                        )
+                )
+                .member(
+                        buildMemberSnapshot(member)
+                )
+                .latestBodyMetric(
+                        buildBodyMetricSnapshot(
+                                latestBodyMetric
+                        )
+                )
+                .request(
+                        AiInputRequestSnapshot.builder()
+                                .goal(request.getGoal())
+                                .experienceLevel(
+                                        request
+                                                .getExperienceLevel()
+                                )
+                                .activityLevel(
+                                        request
+                                                .getActivityLevel()
+                                )
+                                .workoutDaysPerWeek(
+                                        request
+                                                .getWorkoutDaysPerWeek()
+                                )
+                                .workoutDurationMinutes(
+                                        request
+                                                .getWorkoutDurationMinutes()
+                                )
+                                .mealsPerDay(null)
+                                .userNote(
+                                        normalizeText(
+                                                request.getUserNote()
+                                        )
+                                )
+                                .preferredLanguage(
+                                        resolveLanguage(
+                                                request
+                                                        .getPreferredLanguage()
+                                        )
+                                )
+                                .build()
+                )
+                .build();
     }
 }

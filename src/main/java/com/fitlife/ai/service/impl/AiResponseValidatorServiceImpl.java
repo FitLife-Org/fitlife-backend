@@ -1,12 +1,7 @@
 package com.fitlife.ai.service.impl;
 
 import com.fitlife.ai.dto.internal.AiInputSnapshot;
-import com.fitlife.ai.dto.response.AiGeneratedBodyAnalysisResponse;
-import com.fitlife.ai.dto.response.AiGeneratedExerciseResponse;
-import com.fitlife.ai.dto.response.AiGeneratedMealResponse;
-import com.fitlife.ai.dto.response.AiGeneratedNutritionResponse;
-import com.fitlife.ai.dto.response.AiGeneratedPlanResponse;
-import com.fitlife.ai.dto.response.AiGeneratedWorkoutDayResponse;
+import com.fitlife.ai.dto.response.*;
 import com.fitlife.ai.service.AiResponseValidatorService;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
@@ -325,6 +320,35 @@ public class AiResponseValidatorServiceImpl
     private void invalid() {
         throw new AppException(
                 ErrorCode.AI_RESPONSE_INVALID
+        );
+    }
+
+    @Override
+    public void validateWorkoutPlan(
+            AiGeneratedWorkoutPlanResponse response,
+            AiInputSnapshot snapshot
+    ) {
+        validateSnapshot(snapshot);
+
+        if (response == null) {
+            invalid();
+        }
+
+        validateRequiredText(
+                response.getSummary()
+        );
+
+        validateRequiredText(
+                response.getBodyAnalysis()
+        );
+
+        validateWarnings(
+                response.getWarnings()
+        );
+
+        validateWorkoutPlan(
+                response.getWorkoutPlan(),
+                snapshot
         );
     }
 }

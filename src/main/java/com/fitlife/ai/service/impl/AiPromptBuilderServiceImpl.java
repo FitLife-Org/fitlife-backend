@@ -213,4 +213,107 @@ public class AiPromptBuilderServiceImpl implements AiPromptBuilderService {
             throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
         }
     }
+
+    @Override
+    public AiPromptResult buildWorkoutPlanPrompt(
+            AiInputSnapshot snapshot
+    ) {
+        validateSnapshot(snapshot);
+
+        String inputJson = toJson(snapshot);
+        String outputLanguage =
+                resolveOutputLanguage(snapshot);
+
+        String prompt = """
+            You are a fitness AI assistant for FitLife.
+
+            PROMPT CONTRACT:
+            - Contract version: %s
+            - Suggestion type: WORKOUT_PLAN
+            - Output language: %s
+            - Return only one valid JSON object.
+            - Do not use markdown.
+            - Do not wrap output in code fences.
+            - Do not write text before or after JSON.
+            - Keep JSON keys exactly as defined.
+            - Do not add nutritionPlan.
+            - Do not add unknown top-level fields.
+
+            LANGUAGE RULES:
+            - Understand Vietnamese and English input.
+            - User-facing values must use the requested output language.
+            - JSON keys and enum-like values remain in English.
+            - Supported output languages: vi and en.
+            - Use Vietnamese when language is unsupported.
+
+            WORKOUT RULES:
+            - workoutPlan must contain exactly request.workoutDaysPerWeek days.
+            - Each workout day must contain exactly 3 exercises.
+            - Respect request.workoutDurationMinutes.
+            - Choose exercises appropriate for experienceLevel.
+            - Prefer common gym equipment.
+            - For BEGINNER, prioritize safe and simple movements.
+            - If latestBodyMetric is null, add a warning.
+            - If healthNote exists, add a safety warning.
+
+            STRICT TYPE RULES:
+            - summary: string
+            - bodyAnalysis: string
+            - workoutPlan: array
+            - warnings: array of strings
+            - dayNo: integer
+            - sets: integer or null
+            - reps: string or null
+            - durationMinutes: integer or null
+            - restSeconds: integer or null
+
+            SAFETY RULES:
+            - Do not diagnose diseases.
+            - Do not provide medical treatment.
+            - Do not claim medical certainty.
+            - Do not recommend unsafe training volume.
+            - State that the plan is for reference.
+
+            INPUT SNAPSHOT:
+            %s
+
+            OUTPUT JSON CONTRACT:
+            {
+              "summary": "string",
+              "bodyAnalysis": "string",
+              "workoutPlan": [
+                {
+                  "dayNo": 1,
+                  "dayOfWeek": "MONDAY",
+                  "focus": "string",
+                  "exercises": [
+                    {
+                      "name": "string",
+                      "sets": 3,
+                      "reps": "10-12",
+                      "durationMinutes": 10,
+                      "restSeconds": 90,
+                      "note": "string"
+                    }
+                  ]
+                }
+              ],
+              "warnings": [
+                "string"
+              ]
+            }
+            """.formatted(
+                AiPromptVersion.WORKOUT_PLAN_V1
+                        .getCode(),
+                outputLanguage,
+                inputJson
+        );
+
+        return AiPromptResult.builder()
+                .version(
+                        AiPromptVersion.WORKOUT_PLAN_V1
+                )
+                .prompt(prompt)
+                .build();
+    }
 }

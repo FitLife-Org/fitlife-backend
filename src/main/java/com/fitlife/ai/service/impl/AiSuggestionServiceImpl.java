@@ -1,17 +1,12 @@
 package com.fitlife.ai.service.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fitlife.ai.dto.internal.AiInputSnapshot;
-import com.fitlife.ai.dto.internal.AiProviderResult;
 import com.fitlife.ai.dto.request.AiBodyAnalysisRequest;
 import com.fitlife.ai.dto.request.AiFeedbackRequest;
 import com.fitlife.ai.dto.request.AiFullPlanRequest;
+import com.fitlife.ai.dto.request.AiWorkoutPlanRequest;
 import com.fitlife.ai.dto.response.AiFeedbackResponse;
-import com.fitlife.ai.dto.response.AiGeneratedBodyAnalysisResponse;
-import com.fitlife.ai.dto.response.AiGeneratedPlanResponse;
 import com.fitlife.ai.dto.response.AiSuggestionDetailResponse;
 import com.fitlife.ai.dto.response.AiSuggestionResponse;
-import com.fitlife.ai.dto.internal.AiPromptResult;
 import com.fitlife.ai.entity.AiFeedback;
 import com.fitlife.ai.entity.AiPlanItem;
 import com.fitlife.ai.entity.AiSuggestion;
@@ -22,15 +17,15 @@ import com.fitlife.ai.mapper.AiSuggestionMapper;
 import com.fitlife.ai.repository.AiFeedbackRepository;
 import com.fitlife.ai.repository.AiPlanItemRepository;
 import com.fitlife.ai.repository.AiSuggestionRepository;
-import com.fitlife.ai.service.*;
-import com.fitlife.bodymetric.entity.BodyMetric;
-import com.fitlife.bodymetric.repository.BodyMetricRepository;
+import com.fitlife.ai.service.AiBodyAnalysisOrchestratorService;
+import com.fitlife.ai.service.AiFullPlanOrchestratorService;
+import com.fitlife.ai.service.AiSuggestionService;
+import com.fitlife.ai.service.AiWorkoutPlanOrchestratorService;
+import com.fitlife.ai.service.CurrentMemberService;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.common.response.PageResponse;
 import com.fitlife.member.entity.Member;
-import com.fitlife.member.enums.FitnessGoal;
-import com.fitlife.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -41,32 +36,35 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class AiSuggestionServiceImpl implements AiSuggestionService {
+public class AiSuggestionServiceImpl
+        implements AiSuggestionService {
 
-    private final AiSuggestionRepository aiSuggestionRepository;
-    private final AiPlanItemRepository aiPlanItemRepository;
-    private final AiFeedbackRepository aiFeedbackRepository;
-    private final BodyMetricRepository bodyMetricRepository;
+    private final AiSuggestionRepository
+            aiSuggestionRepository;
 
-    private final AiPromptBuilderService aiPromptBuilderService;
-    private final AiProviderService aiProviderService;
-    private final AiPlanParserService aiPlanParserService;
-    private final AiSnapshotService aiSnapshotService;
-    private final AiUsageService aiUsageService;
-    private final CurrentMemberService currentMemberService;
+    private final AiPlanItemRepository
+            aiPlanItemRepository;
 
-    private final AiSuggestionMapper aiSuggestionMapper;
-    private final AiFeedbackMapper aiFeedbackMapper;
+    private final AiFeedbackRepository
+            aiFeedbackRepository;
 
-    private final AiResponseValidatorService aiResponseValidatorService;
+    private final CurrentMemberService
+            currentMemberService;
 
-    private final AiSuggestionPersistenceService aiSuggestionPersistenceService;
+    private final AiFullPlanOrchestratorService
+            aiFullPlanOrchestratorService;
 
-    private final AiFullPlanOrchestratorService aiFullPlanOrchestratorService;
+    private final AiBodyAnalysisOrchestratorService
+            aiBodyAnalysisOrchestratorService;
 
-    private final AiBodyAnalysisOrchestratorService aiBodyAnalysisOrchestratorService;
+    private final AiWorkoutPlanOrchestratorService
+            aiWorkoutPlanOrchestratorService;
 
-    private final ObjectMapper objectMapper;
+    private final AiSuggestionMapper
+            aiSuggestionMapper;
+
+    private final AiFeedbackMapper
+            aiFeedbackMapper;
 
     @Override
     public AiSuggestionResponse createFullPlan(
@@ -85,25 +83,36 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
     }
 
     @Override
+    public AiSuggestionResponse createWorkoutPlan(
+            AiWorkoutPlanRequest request
+    ) {
+        return aiWorkoutPlanOrchestratorService
+                .createWorkoutPlan(request);
+    }
+
+    @Override
     @Transactional(readOnly = true)
-    public PageResponse<AiSuggestionResponse> getMySuggestions(
+    public PageResponse<AiSuggestionResponse>
+    getMySuggestions(
             Pageable pageable
     ) {
         Member currentMember =
                 currentMemberService.getCurrentMember();
 
-        Page<AiSuggestion> page = aiSuggestionRepository
-                .findByMemberIdAndDeletedFalseOrderByCreatedAtDesc(
-                        currentMember.getId(),
-                        pageable
-                );
+        Page<AiSuggestion> page =
+                aiSuggestionRepository
+                        .findByMemberIdAndDeletedFalseOrderByCreatedAtDesc(
+                                currentMember.getId(),
+                                pageable
+                        );
 
         return toPageResponse(page);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<AiSuggestionResponse> getMySuggestionsByFilter(
+    public PageResponse<AiSuggestionResponse>
+    getMySuggestionsByFilter(
             AiSuggestionType suggestionType,
             AiSuggestionStatus status,
             Pageable pageable
@@ -148,34 +157,39 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
 
     @Override
     @Transactional(readOnly = true)
-    public AiSuggestionDetailResponse getMySuggestionDetail(
+    public AiSuggestionDetailResponse
+    getMySuggestionDetail(
             Long id
     ) {
         Member currentMember =
                 currentMemberService.getCurrentMember();
 
-        AiSuggestion suggestion = aiSuggestionRepository
-                .findByIdAndMemberIdAndDeletedFalse(
-                        id,
-                        currentMember.getId()
-                )
-                .orElseThrow(() ->
-                        new AppException(
-                                ErrorCode.AI_SUGGESTION_NOT_FOUND
+        AiSuggestion suggestion =
+                aiSuggestionRepository
+                        .findByIdAndMemberIdAndDeletedFalse(
+                                id,
+                                currentMember.getId()
                         )
-                );
+                        .orElseThrow(() ->
+                                new AppException(
+                                        ErrorCode
+                                                .AI_SUGGESTION_NOT_FOUND
+                                )
+                        );
 
-        List<AiPlanItem> items = aiPlanItemRepository
-                .findByAiSuggestionIdOrderBySortOrderAscIdAsc(
-                        suggestion.getId()
-                );
+        List<AiPlanItem> items =
+                aiPlanItemRepository
+                        .findByAiSuggestionIdOrderBySortOrderAscIdAsc(
+                                suggestion.getId()
+                        );
 
-        AiFeedback feedback = aiFeedbackRepository
-                .findByAiSuggestionIdAndMemberId(
-                        suggestion.getId(),
-                        currentMember.getId()
-                )
-                .orElse(null);
+        AiFeedback feedback =
+                aiFeedbackRepository
+                        .findByAiSuggestionIdAndMemberId(
+                                suggestion.getId(),
+                                currentMember.getId()
+                        )
+                        .orElse(null);
 
         return aiSuggestionMapper.toDetailResponse(
                 suggestion,
@@ -193,16 +207,18 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
         Member currentMember =
                 currentMemberService.getCurrentMember();
 
-        AiSuggestion suggestion = aiSuggestionRepository
-                .findByIdAndMemberIdAndDeletedFalse(
-                        aiSuggestionId,
-                        currentMember.getId()
-                )
-                .orElseThrow(() ->
-                        new AppException(
-                                ErrorCode.AI_SUGGESTION_NOT_FOUND
+        AiSuggestion suggestion =
+                aiSuggestionRepository
+                        .findByIdAndMemberIdAndDeletedFalse(
+                                aiSuggestionId,
+                                currentMember.getId()
                         )
-                );
+                        .orElseThrow(() ->
+                                new AppException(
+                                        ErrorCode
+                                                .AI_SUGGESTION_NOT_FOUND
+                                )
+                        );
 
         if (suggestion.getStatus()
                 != AiSuggestionStatus.SUCCESS
@@ -213,11 +229,14 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
             );
         }
 
-        if (aiFeedbackRepository
-                .existsByAiSuggestionIdAndMemberId(
-                        suggestion.getId(),
-                        currentMember.getId()
-                )) {
+        boolean feedbackExists =
+                aiFeedbackRepository
+                        .existsByAiSuggestionIdAndMemberId(
+                                suggestion.getId(),
+                                currentMember.getId()
+                        );
+
+        if (feedbackExists) {
             throw new AppException(
                     ErrorCode.AI_FEEDBACK_ALREADY_EXISTS
             );
@@ -241,8 +260,8 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
         );
     }
 
-
-    private PageResponse<AiSuggestionResponse> toPageResponse(
+    private PageResponse<AiSuggestionResponse>
+    toPageResponse(
             Page<AiSuggestion> page
     ) {
         return PageResponse
@@ -254,48 +273,9 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
                 )
                 .page(page.getNumber())
                 .size(page.getSize())
-                .totalElements(
-                        page.getTotalElements()
-                )
-                .totalPages(
-                        page.getTotalPages()
-                )
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
                 .build();
-    }
-
-
-    private String resolveFailureCode(
-            AppException exception
-    ) {
-        if (exception == null
-                || exception.getErrorCode() == null) {
-            return "AI_REQUEST_FAILED";
-        }
-
-        return exception
-                .getErrorCode()
-                .name();
-    }
-
-    private String resolveMemberGoal(
-            Member member
-    ) {
-        return member.getFitnessGoal() == null
-                ? FitnessGoal.IMPROVE_HEALTH.name()
-                : member.getFitnessGoal().name();
-    }
-
-    private String resolveLanguage(
-            String language
-    ) {
-        if (language == null
-                || language.isBlank()) {
-            return "vi";
-        }
-
-        return language
-                .trim()
-                .toLowerCase();
     }
 
     private String normalizeText(
@@ -310,115 +290,5 @@ public class AiSuggestionServiceImpl implements AiSuggestionService {
         return normalized.isEmpty()
                 ? null
                 : normalized;
-    }
-
-    private String joinWarnings(
-            List<String> warnings
-    ) {
-        if (warnings == null
-                || warnings.isEmpty()) {
-            return null;
-        }
-
-        return warnings.stream()
-                .filter(value ->
-                        value != null
-                                && !value.isBlank()
-                )
-                .map(String::trim)
-                .reduce(
-                        (first, second) ->
-                                first + " " + second
-                )
-                .orElse(null);
-    }
-
-    private String mergeWarnings(
-            String first,
-            String second
-    ) {
-        String normalizedFirst =
-                normalizeText(first);
-
-        String normalizedSecond =
-                normalizeText(second);
-
-        if (normalizedFirst == null) {
-            return normalizedSecond;
-        }
-
-        if (normalizedSecond == null) {
-            return normalizedFirst;
-        }
-
-        return normalizedFirst
-                + " "
-                + normalizedSecond;
-    }
-
-    private String buildInitialWarningMessage(
-            Member member,
-            BodyMetric latestBodyMetric
-    ) {
-        StringBuilder warning =
-                new StringBuilder();
-
-        if (latestBodyMetric == null) {
-            warning.append(
-                    "Member chưa có Body Metric mới nhất. "
-            );
-            warning.append(
-                    "Kết quả AI chỉ mang tính tham khảo."
-            );
-        }
-
-        if (member.getHealthNote() != null
-                && !member.getHealthNote().isBlank()) {
-            if (warning.length() > 0) {
-                warning.append(" ");
-            }
-
-            warning.append(
-                    "Member có ghi chú sức khỏe, "
-            );
-            warning.append(
-                    "nên hỏi huấn luyện viên hoặc bác sĩ "
-            );
-            warning.append(
-                    "trước khi áp dụng."
-            );
-        }
-
-        return normalizeText(
-                warning.toString()
-        );
-    }
-
-    private String toJson(
-            Object value
-    ) {
-        try {
-            return objectMapper
-                    .writeValueAsString(value);
-        } catch (Exception exception) {
-            throw new AppException(
-                    ErrorCode.AI_RESPONSE_INVALID
-            );
-        }
-    }
-
-    private void safeMarkFailed(
-            Long suggestionId,
-            String errorCode
-    ) {
-        try {
-            aiSuggestionPersistenceService.markFailed(
-                    suggestionId,
-                    errorCode,
-                    "Không thể xử lý yêu cầu AI vào lúc này."
-            );
-        } catch (Exception ignored) {
-            // Không che mất exception gốc.
-        }
     }
 }
