@@ -812,6 +812,40 @@ public class WorkoutPlanServiceImpl implements WorkoutPlanService {
         return responses;
     }
 
+    @Override
+    @Transactional
+    public WorkoutPlanResponse patchWorkoutPlanForMember(Long memberId, Long id, WorkoutPlanUpdateRequest request, String trainerUsername) {
+
+        Object optObj = workoutPlanRepository.findByIdAndMemberIdAndIsDeletedFalse(id, memberId);
+        WorkoutPlan plan = null;
+        if (optObj instanceof Optional) {
+            Optional opt = (Optional) optObj;
+            if (opt.isPresent()) {
+                plan = (WorkoutPlan) opt.get();
+            }
+        }
+
+        if (plan == null) {
+            throw new RuntimeException("Không tìm thấy giáo án hoặc giáo án không thuộc về hội viên này!");
+        }
+
+
+        if (request.getName() != null) plan.setName(request.getName());
+        if (request.getDescription() != null) plan.setDescription(request.getDescription());
+        if (request.getGoal() != null) plan.setGoal(request.getGoal());
+        if (request.getDurationWeeks() != null) plan.setDurationWeeks(request.getDurationWeeks());
+        if (request.getWorkoutDaysPerWeek() != null) plan.setWorkoutDaysPerWeek(request.getWorkoutDaysPerWeek());
+        if (request.getWorkoutDurationMinutes() != null) plan.setWorkoutDurationMinutes(request.getWorkoutDurationMinutes());
+
+        WorkoutPlan savedPlan = workoutPlanRepository.save(plan);
+        return mapToWorkoutPlanResponse(savedPlan);
+    }
+
+
+
+
+
+
 }
 
 
