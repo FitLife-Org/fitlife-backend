@@ -292,21 +292,39 @@ public class AiPlanParserServiceImpl implements AiPlanParserService {
         }
     }
 
-    private void normalizeGeneratedPlan(AiGeneratedPlanResponse response) {
+    private void normalizeGeneratedPlan(
+            AiGeneratedPlanResponse response
+    ) {
         if (response == null) {
-            throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
+            throw new AppException(
+                    ErrorCode.AI_RESPONSE_INVALID
+            );
         }
 
-        if (!hasText(response.getSummary())) {
-            response.setSummary(DEFAULT_PLAN_SUMMARY);
-        } else {
-            response.setSummary(response.getSummary().trim());
+        response.setSummary(
+                normalizeText(response.getSummary())
+        );
+
+        response.setBodyAnalysis(
+                normalizeText(response.getBodyAnalysis())
+        );
+
+        response.setWarnings(
+                normalizeWarnings(response.getWarnings())
+        );
+    }
+
+    private List<String> normalizeWarnings(
+            List<String> warnings
+    ) {
+        if (warnings == null) {
+            return null;
         }
 
-        if (response.getWarnings() == null
-                || response.getWarnings().stream().noneMatch(this::hasText)) {
-            response.setWarnings(List.of(DEFAULT_PLAN_WARNING));
-        }
+        return warnings.stream()
+                .filter(this::hasText)
+                .map(String::trim)
+                .toList();
     }
 
     private void normalizeBodyAnalysis(AiGeneratedBodyAnalysisResponse response) {

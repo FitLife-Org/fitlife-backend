@@ -22,10 +22,12 @@ import com.fitlife.member.entity.Member;
 import com.fitlife.member.enums.FitnessGoal;
 import com.fitlife.user.entity.User;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AiBodyAnalysisOrchestratorServiceImpl
@@ -148,14 +150,22 @@ public class AiBodyAnalysisOrchestratorServiceImpl
                 .build();
     }
 
-    private void safeMarkFailed(Long suggestionId, String errorCode) {
+    private void safeMarkFailed(
+            Long suggestionId,
+            String errorCode
+    ) {
         try {
             aiSuggestionPersistenceService.markFailed(
                     suggestionId,
                     errorCode,
                     "Không thể xử lý yêu cầu AI vào lúc này."
             );
-        } catch (Exception ignored) {
+        } catch (Exception persistenceException) {
+            log.error(
+                    "Không thể cập nhật AI suggestion {} sang FAILED",
+                    suggestionId,
+                    persistenceException
+            );
         }
     }
 

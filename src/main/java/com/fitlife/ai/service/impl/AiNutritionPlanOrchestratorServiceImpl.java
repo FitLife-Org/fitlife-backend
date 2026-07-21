@@ -11,7 +11,15 @@ import com.fitlife.ai.entity.AiSuggestion;
 import com.fitlife.ai.enums.AiSuggestionStatus;
 import com.fitlife.ai.enums.AiSuggestionType;
 import com.fitlife.ai.mapper.AiSuggestionMapper;
-import com.fitlife.ai.service.*;
+import com.fitlife.ai.service.AiNutritionPlanOrchestratorService;
+import com.fitlife.ai.service.AiPlanParserService;
+import com.fitlife.ai.service.AiPromptBuilderService;
+import com.fitlife.ai.service.AiProviderService;
+import com.fitlife.ai.service.AiResponseValidatorService;
+import com.fitlife.ai.service.AiSnapshotService;
+import com.fitlife.ai.service.AiSuggestionPersistenceService;
+import com.fitlife.ai.service.AiUsageService;
+import com.fitlife.ai.service.CurrentMemberService;
 import com.fitlife.bodymetric.entity.BodyMetric;
 import com.fitlife.bodymetric.repository.BodyMetricRepository;
 import com.fitlife.common.exception.AppException;
@@ -39,6 +47,9 @@ public class AiNutritionPlanOrchestratorServiceImpl
     private final AiSuggestionPersistenceService aiSuggestionPersistenceService;
     private final AiSuggestionMapper aiSuggestionMapper;
     private final ObjectMapper objectMapper;
+
+    private static final int MIN_MEALS_PER_DAY = 1;
+    private static final int MAX_MEALS_PER_DAY = 10;
 
     @Override
     public AiSuggestionResponse createNutritionPlan(

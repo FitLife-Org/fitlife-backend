@@ -62,8 +62,13 @@ public class AiPromptBuilderServiceImpl implements AiPromptBuilderService {
                 - warnings: at most 2 items.
 
                 STRICT TYPES:
-                - dayNo, sets, durationMinutes, restSeconds, targetCalories, calories: integer or null.
-                - proteinGrams, carbsGrams, fatGrams: number or null.
+                - dayNo: integer
+                - sets: integer or null
+                - durationMinutes: integer or null
+                - restSeconds: integer or null
+                - targetCalories: positive integer
+                - calories: non-negative integer
+                - proteinGrams, carbsGrams, fatGrams: non-negative numbers
                 - reps, foodItems, portionText: string or null.
                 - foodItems must not be an array.
 

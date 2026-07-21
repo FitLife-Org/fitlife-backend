@@ -41,6 +41,11 @@ public class AiWorkoutPlanOrchestratorServiceImpl
     private final AiSuggestionMapper aiSuggestionMapper;
     private final ObjectMapper objectMapper;
 
+    private static final int MIN_WORKOUT_DAYS = 1;
+    private static final int MAX_WORKOUT_DAYS = 7;
+    private static final int MIN_WORKOUT_DURATION = 15;
+    private static final int MAX_WORKOUT_DURATION = 180;
+
     @Override
     public AiSuggestionResponse createWorkoutPlan(
             AiWorkoutPlanRequest request
@@ -190,6 +195,20 @@ public class AiWorkoutPlanOrchestratorServiceImpl
                 || request.getActivityLevel() == null
                 || request.getWorkoutDaysPerWeek() == null
                 || request.getWorkoutDurationMinutes() == null) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        if (request.getWorkoutDaysPerWeek() < 1
+                || request.getWorkoutDaysPerWeek() > 7) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        if (request.getWorkoutDurationMinutes() < 15
+                || request.getWorkoutDurationMinutes() > 180) {
             throw new AppException(
                     ErrorCode.INVALID_REQUEST
             );

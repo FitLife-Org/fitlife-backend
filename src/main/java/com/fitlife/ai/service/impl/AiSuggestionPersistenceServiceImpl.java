@@ -7,6 +7,8 @@ import com.fitlife.ai.dto.response.AiGeneratedNutritionPlanResponse;
 import com.fitlife.ai.dto.response.AiGeneratedPlanResponse;
 import com.fitlife.ai.dto.response.AiGeneratedWorkoutPlanResponse;
 import com.fitlife.ai.entity.AiSuggestion;
+import com.fitlife.ai.enums.AiSuggestionStatus;
+import com.fitlife.ai.enums.AiSuggestionType;
 import com.fitlife.ai.repository.AiSuggestionRepository;
 import com.fitlife.ai.service.AiPlanParserService;
 import com.fitlife.ai.service.AiSuggestionPersistenceService;
@@ -21,6 +23,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AiSuggestionPersistenceServiceImpl
         implements AiSuggestionPersistenceService {
+
+    private static final String DEFAULT_FAILURE_CODE =
+            "AI_REQUEST_FAILED";
+
+    private static final String DEFAULT_FAILURE_MESSAGE =
+            "Không thể xử lý yêu cầu AI vào lúc này.";
 
     private final AiSuggestionRepository
             aiSuggestionRepository;
@@ -43,6 +51,20 @@ public class AiSuggestionPersistenceServiceImpl
             );
         }
 
+        if (suggestion.getStatus()
+                != AiSuggestionStatus.PENDING) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        if (suggestion.getMember() == null
+                || suggestion.getSuggestionType() == null) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
         return aiSuggestionRepository.saveAndFlush(
                 suggestion
         );
@@ -59,37 +81,26 @@ public class AiSuggestionPersistenceServiceImpl
             String warningMessage
     ) {
         AiSuggestion suggestion =
-                getSuggestionForUpdate(suggestionId);
+                getPendingSuggestion(
+                        suggestionId,
+                        AiSuggestionType.FULL_PLAN
+                );
 
         validateProviderResult(providerResult);
+        validateGeneratedResponse(generatedPlan);
 
-        if (generatedPlan == null) {
-            throw new AppException(
-                    ErrorCode.AI_RESPONSE_INVALID
-            );
-        }
-
-        applyProviderMetadata(
+        applySuccessData(
                 suggestion,
-                providerResult
+                providerResult,
+                generatedPlan,
+                generatedPlan.getSummary(),
+                warningMessage
         );
 
-        suggestion.setAiResponse(
-                toJson(generatedPlan)
-        );
-
-        suggestion.setSummary(
-                normalizeText(
-                        generatedPlan.getSummary()
-                )
-        );
-
-        suggestion.setWarningMessage(
-                normalizeText(warningMessage)
-        );
-
-        suggestion.markSuccess();
-
+        /*
+         * saveAndFlush vẫn nằm trong cùng REQUIRES_NEW transaction.
+         * Nếu lưu plan items lỗi, toàn bộ transaction sẽ rollback.
+         */
         AiSuggestion savedSuggestion =
                 aiSuggestionRepository.saveAndFlush(
                         suggestion
@@ -107,61 +118,6 @@ public class AiSuggestionPersistenceServiceImpl
     @Transactional(
             propagation = Propagation.REQUIRES_NEW
     )
-    public AiSuggestion markBodyAnalysisSuccess(
-            Long suggestionId,
-            AiProviderResult providerResult,
-            AiGeneratedBodyAnalysisResponse analysis,
-            String warningMessage
-    ) {
-        AiSuggestion suggestion =
-                getSuggestionForUpdate(suggestionId);
-
-        validateProviderResult(providerResult);
-
-        if (analysis == null) {
-            throw new AppException(
-                    ErrorCode.AI_RESPONSE_INVALID
-            );
-        }
-
-        applyProviderMetadata(
-                suggestion,
-                providerResult
-        );
-
-        suggestion.setAiResponse(
-                toJson(analysis)
-        );
-
-        suggestion.setSummary(
-                normalizeText(
-                        analysis.getSummary()
-                )
-        );
-
-        suggestion.setWarningMessage(
-                normalizeText(warningMessage)
-        );
-
-        suggestion.markSuccess();
-
-        AiSuggestion savedSuggestion =
-                aiSuggestionRepository.saveAndFlush(
-                        suggestion
-                );
-
-        aiPlanParserService.saveBodyAnalysisItems(
-                savedSuggestion,
-                analysis
-        );
-
-        return savedSuggestion;
-    }
-
-    @Override
-    @Transactional(
-            propagation = Propagation.REQUIRES_NEW
-    )
     public AiSuggestion markWorkoutPlanSuccess(
             Long suggestionId,
             AiProviderResult providerResult,
@@ -169,36 +125,21 @@ public class AiSuggestionPersistenceServiceImpl
             String warningMessage
     ) {
         AiSuggestion suggestion =
-                getSuggestionForUpdate(suggestionId);
+                getPendingSuggestion(
+                        suggestionId,
+                        AiSuggestionType.WORKOUT_PLAN
+                );
 
         validateProviderResult(providerResult);
+        validateGeneratedResponse(generated);
 
-        if (generated == null) {
-            throw new AppException(
-                    ErrorCode.AI_RESPONSE_INVALID
-            );
-        }
-
-        applyProviderMetadata(
+        applySuccessData(
                 suggestion,
-                providerResult
+                providerResult,
+                generated,
+                generated.getSummary(),
+                warningMessage
         );
-
-        suggestion.setAiResponse(
-                toJson(generated)
-        );
-
-        suggestion.setSummary(
-                normalizeText(
-                        generated.getSummary()
-                )
-        );
-
-        suggestion.setWarningMessage(
-                normalizeText(warningMessage)
-        );
-
-        suggestion.markSuccess();
 
         AiSuggestion savedSuggestion =
                 aiSuggestionRepository.saveAndFlush(
@@ -224,36 +165,21 @@ public class AiSuggestionPersistenceServiceImpl
             String warningMessage
     ) {
         AiSuggestion suggestion =
-                getSuggestionForUpdate(suggestionId);
+                getPendingSuggestion(
+                        suggestionId,
+                        AiSuggestionType.NUTRITION_PLAN
+                );
 
         validateProviderResult(providerResult);
+        validateGeneratedResponse(generated);
 
-        if (generated == null) {
-            throw new AppException(
-                    ErrorCode.AI_RESPONSE_INVALID
-            );
-        }
-
-        applyProviderMetadata(
+        applySuccessData(
                 suggestion,
-                providerResult
+                providerResult,
+                generated,
+                generated.getSummary(),
+                warningMessage
         );
-
-        suggestion.setAiResponse(
-                toJson(generated)
-        );
-
-        suggestion.setSummary(
-                normalizeText(
-                        generated.getSummary()
-                )
-        );
-
-        suggestion.setWarningMessage(
-                normalizeText(warningMessage)
-        );
-
-        suggestion.markSuccess();
 
         AiSuggestion savedSuggestion =
                 aiSuggestionRepository.saveAndFlush(
@@ -272,28 +198,122 @@ public class AiSuggestionPersistenceServiceImpl
     @Transactional(
             propagation = Propagation.REQUIRES_NEW
     )
+    public AiSuggestion markBodyAnalysisSuccess(
+            Long suggestionId,
+            AiProviderResult providerResult,
+            AiGeneratedBodyAnalysisResponse analysis,
+            String warningMessage
+    ) {
+        AiSuggestion suggestion =
+                getPendingSuggestion(
+                        suggestionId,
+                        AiSuggestionType.BODY_ANALYSIS
+                );
+
+        validateProviderResult(providerResult);
+        validateGeneratedResponse(analysis);
+
+        applySuccessData(
+                suggestion,
+                providerResult,
+                analysis,
+                analysis.getSummary(),
+                warningMessage
+        );
+
+        AiSuggestion savedSuggestion =
+                aiSuggestionRepository.saveAndFlush(
+                        suggestion
+                );
+
+        aiPlanParserService.saveBodyAnalysisItems(
+                savedSuggestion,
+                analysis
+        );
+
+        return savedSuggestion;
+    }
+
+    @Override
+    @Transactional(
+            propagation = Propagation.REQUIRES_NEW
+    )
     public AiSuggestion markFailed(
             Long suggestionId,
             String errorCode,
             String errorMessage
     ) {
         AiSuggestion suggestion =
-                getSuggestionForUpdate(suggestionId);
+                getSuggestionForUpdate(
+                        suggestionId
+                );
+
+        /*
+         * Không cho lỗi muộn ghi đè kết quả đã thành công.
+         */
+        if (suggestion.getStatus()
+                == AiSuggestionStatus.SUCCESS
+                || suggestion.getStatus()
+                == AiSuggestionStatus.APPLIED) {
+            return suggestion;
+        }
+
+        /*
+         * FAILED gọi lặp lại vẫn giữ nguyên bản ghi,
+         * tránh cập nhật completedAt/error nhiều lần.
+         */
+        if (suggestion.getStatus()
+                == AiSuggestionStatus.FAILED) {
+            return suggestion;
+        }
+
+        if (suggestion.getStatus()
+                != AiSuggestionStatus.PENDING) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
 
         suggestion.markFailed(
                 defaultText(
                         errorCode,
-                        "AI_REQUEST_FAILED"
+                        DEFAULT_FAILURE_CODE
                 ),
                 defaultText(
                         errorMessage,
-                        "Không thể xử lý yêu cầu AI vào lúc này."
+                        DEFAULT_FAILURE_MESSAGE
                 )
         );
 
         return aiSuggestionRepository.saveAndFlush(
                 suggestion
         );
+    }
+
+    private AiSuggestion getPendingSuggestion(
+            Long suggestionId,
+            AiSuggestionType expectedType
+    ) {
+        AiSuggestion suggestion =
+                getSuggestionForUpdate(
+                        suggestionId
+                );
+
+        if (suggestion.getStatus()
+                != AiSuggestionStatus.PENDING) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        if (suggestion.getSuggestionType()
+                != expectedType) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        return suggestion;
     }
 
     private AiSuggestion getSuggestionForUpdate(
@@ -313,6 +333,33 @@ public class AiSuggestionPersistenceServiceImpl
                                 ErrorCode.AI_SUGGESTION_NOT_FOUND
                         )
                 );
+    }
+
+    private void applySuccessData(
+            AiSuggestion suggestion,
+            AiProviderResult providerResult,
+            Object generatedResponse,
+            String summary,
+            String warningMessage
+    ) {
+        applyProviderMetadata(
+                suggestion,
+                providerResult
+        );
+
+        suggestion.setAiResponse(
+                toJson(generatedResponse)
+        );
+
+        suggestion.setSummary(
+                normalizeText(summary)
+        );
+
+        suggestion.setWarningMessage(
+                normalizeText(warningMessage)
+        );
+
+        suggestion.markSuccess();
     }
 
     private void applyProviderMetadata(
@@ -352,6 +399,16 @@ public class AiSuggestionPersistenceServiceImpl
         }
     }
 
+    private void validateGeneratedResponse(
+            Object generatedResponse
+    ) {
+        if (generatedResponse == null) {
+            throw new AppException(
+                    ErrorCode.AI_RESPONSE_INVALID
+            );
+        }
+    }
+
     private String toJson(
             Object value
     ) {
@@ -373,7 +430,8 @@ public class AiSuggestionPersistenceServiceImpl
             return null;
         }
 
-        String normalized = value.trim();
+        String normalized =
+                value.trim();
 
         return normalized.isEmpty()
                 ? null
