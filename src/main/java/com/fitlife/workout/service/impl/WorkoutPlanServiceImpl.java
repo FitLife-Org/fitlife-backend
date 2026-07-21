@@ -842,6 +842,20 @@ public class WorkoutPlanServiceImpl implements WorkoutPlanService {
     }
 
 
+    @Override
+    @Transactional(readOnly = true)
+    public List getAllWorkoutPlansForAdmin() {
+        List plans = workoutPlanRepository.findByIsDeletedFalseOrderByCreatedAtDesc();
+        List responses = new ArrayList<>();
+
+        if (plans != null) {
+            for (Object obj : plans) {
+                WorkoutPlan plan = (WorkoutPlan) obj;
+                responses.add(mapToWorkoutPlanResponse(plan));
+            }
+        }
+        return responses;
+    }
 
 
 

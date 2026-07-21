@@ -27,6 +27,7 @@ public interface WorkoutPlanService {
     WorkoutPlanResponse createWorkoutPlanForMember(Long memberId, WorkoutPlanCreateRequest request, String trainerUsername);
     List getMemberWorkoutPlansForTrainer(Long memberId, String trainerUsername);
     WorkoutPlanResponse patchWorkoutPlanForMember(Long memberId, Long id, WorkoutPlanUpdateRequest request, String trainerUsername);
+    List getAllWorkoutPlansForAdmin();
 
     void deleteWorkoutPlan(Long id);
 }

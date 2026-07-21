@@ -192,4 +192,11 @@ public class WorkoutPlanController {
         WorkoutPlanResponse response = workoutPlanService.patchWorkoutPlanForMember(memberId, id, request, trainerUsername);
         return ResponseEntity.ok(response);
     }
+
+
+    @GetMapping("/admin/workout-plans")
+    public ResponseEntity<List<WorkoutPlanResponse>> getAllWorkoutPlansForAdmin(Authentication authentication) {
+        List<WorkoutPlanResponse> responses = workoutPlanService.getAllWorkoutPlansForAdmin();
+        return ResponseEntity.ok(responses);
+    }
 }
