@@ -286,4 +286,30 @@ public class WorkoutPlanServiceImpl implements WorkoutPlanService {
                 .createdAt(plan.getCreatedAt())
                 .build();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WorkoutPlanDetailResponse getWorkoutPlanById(Long id, String currentUsername) {
+        Long memberId = 1L;
+        if (currentUsername != null && !currentUsername.equals("anonymous")) {
+            User user = userRepository.findByEmail(currentUsername).orElse(null);
+            if (user != null) {
+                memberId = user.getId();
+            }
+        }
+
+        Object optObj = workoutPlanRepository.findByIdAndMemberIdAndIsDeletedFalse(id, memberId);
+        if (optObj instanceof Optional) {
+            Optional<?> opt = (Optional<?>) optObj;
+            if (opt.isPresent()) {
+                WorkoutPlan plan = (WorkoutPlan) opt.get();
+                return getWorkoutPlanById(plan.getId());
+            }
+        }
+
+        throw new RuntimeException("Không tìm thấy giáo án hoặc bạn không có quyền truy cập giáo án này!");
+    }
+
+
+
 }

@@ -13,4 +13,11 @@ public interface WorkoutPlanRepository extends JpaRepository<WorkoutPlan, Long> 
 
     List<WorkoutPlan> findByMemberIdAndIsDeletedFalseOrderByCreatedAtDesc(Long memberId);
 
-    Optional findFirstByMemberIdAndStatusAndIsDeletedFalse(Long memberId, String status);}
+    Optional findFirstByMemberIdAndStatusAndIsDeletedFalse(Long memberId, String status);
+
+    Optional findByIdAndMemberIdAndIsDeletedFalse(Long id, Long memberId);
+
+
+
+
+}
