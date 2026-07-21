@@ -64,7 +64,8 @@ public class SecurityConfiguration {
                         // =====================================
                         .requestMatchers(
                                 "/error",
-                                "/test/**"
+                                "/test/**",
+                                "/nutrition-plans/**"
                         ).permitAll()
 
                         // =====================================
