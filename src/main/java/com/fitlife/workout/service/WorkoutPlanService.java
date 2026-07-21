@@ -20,7 +20,7 @@ public interface WorkoutPlanService {
     WorkoutPlanDetailResponse updateWorkoutPlanStructure(Long id, List daysRequest, String currentUsername);
     WorkoutPlanResponse activateWorkoutPlan(Long id, String currentUsername);
     WorkoutPlanResponse completeWorkoutPlan(Long id, String currentUsername);
-
+    WorkoutPlanResponse archiveWorkoutPlan(Long id, String currentUsername);
 
 
 

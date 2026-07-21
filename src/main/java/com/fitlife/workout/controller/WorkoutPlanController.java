@@ -120,6 +120,14 @@ public class WorkoutPlanController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/{id}/archive")
+    public ResponseEntity archiveWorkoutPlan(
+            @PathVariable("id") Long id,
+            Authentication authentication) {
 
+        String currentUsername = (authentication != null) ? authentication.getName() : "anonymous";
+        WorkoutPlanResponse response = workoutPlanService.archiveWorkoutPlan(id, currentUsername);
+        return ResponseEntity.ok(response);
+    }
 
 }
