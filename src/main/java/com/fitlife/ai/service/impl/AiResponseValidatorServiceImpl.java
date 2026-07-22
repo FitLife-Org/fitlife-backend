@@ -12,6 +12,7 @@ import com.fitlife.ai.dto.response.AiGeneratedWorkoutPlanResponse;
 import com.fitlife.ai.service.AiResponseValidatorService;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -19,6 +20,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+@Slf4j
 @Service
 public class AiResponseValidatorServiceImpl
         implements AiResponseValidatorService {
@@ -35,12 +37,22 @@ public class AiResponseValidatorServiceImpl
         validateSnapshot(snapshot);
 
         if (response == null) {
-            invalid();
+            invalid("Full plan response is null");
         }
 
-        validateRequiredText(response.getSummary());
-        validateRequiredText(response.getBodyAnalysis());
-        validateWarnings(response.getWarnings());
+        validateRequiredText(
+                response.getSummary(),
+                "summary"
+        );
+
+        validateRequiredText(
+                response.getBodyAnalysis(),
+                "bodyAnalysis"
+        );
+
+        validateWarnings(
+                response.getWarnings()
+        );
 
         validateWorkoutPlanContent(
                 response.getWorkoutPlan(),
@@ -67,29 +79,44 @@ public class AiResponseValidatorServiceImpl
         }
 
         if (response == null) {
-            invalid();
+            invalid(
+                    "Body analysis response is null"
+            );
         }
 
-        validateRequiredText(response.getSummary());
-        validateRequiredText(response.getBodyAnalysis());
-
-        validateOptionalText(
-                response.getBmiAssessment()
-        );
-
-        validateOptionalText(
-                response.getBodyFatAssessment()
-        );
-
-        validateOptionalText(
-                response.getMuscleAssessment()
+        validateRequiredText(
+                response.getSummary(),
+                "summary"
         );
 
         validateRequiredText(
-                response.getRecommendation()
+                response.getBodyAnalysis(),
+                "bodyAnalysis"
         );
 
-        validateWarnings(response.getWarnings());
+        validateOptionalText(
+                response.getBmiAssessment(),
+                "bmiAssessment"
+        );
+
+        validateOptionalText(
+                response.getBodyFatAssessment(),
+                "bodyFatAssessment"
+        );
+
+        validateOptionalText(
+                response.getMuscleAssessment(),
+                "muscleAssessment"
+        );
+
+        validateRequiredText(
+                response.getRecommendation(),
+                "recommendation"
+        );
+
+        validateWarnings(
+                response.getWarnings()
+        );
     }
 
     @Override
@@ -100,12 +127,24 @@ public class AiResponseValidatorServiceImpl
         validateSnapshot(snapshot);
 
         if (response == null) {
-            invalid();
+            invalid(
+                    "Workout plan response is null"
+            );
         }
 
-        validateRequiredText(response.getSummary());
-        validateRequiredText(response.getBodyAnalysis());
-        validateWarnings(response.getWarnings());
+        validateRequiredText(
+                response.getSummary(),
+                "summary"
+        );
+
+        validateRequiredText(
+                response.getBodyAnalysis(),
+                "bodyAnalysis"
+        );
+
+        validateWarnings(
+                response.getWarnings()
+        );
 
         validateWorkoutPlanContent(
                 response.getWorkoutPlan(),
@@ -121,12 +160,24 @@ public class AiResponseValidatorServiceImpl
         validateSnapshot(snapshot);
 
         if (response == null) {
-            invalid();
+            invalid(
+                    "Nutrition plan response is null"
+            );
         }
 
-        validateRequiredText(response.getSummary());
-        validateRequiredText(response.getBodyAnalysis());
-        validateWarnings(response.getWarnings());
+        validateRequiredText(
+                response.getSummary(),
+                "summary"
+        );
+
+        validateRequiredText(
+                response.getBodyAnalysis(),
+                "bodyAnalysis"
+        );
+
+        validateWarnings(
+                response.getWarnings()
+        );
 
         validateNutritionPlanContent(
                 response.getNutritionPlan(),
@@ -138,63 +189,141 @@ public class AiResponseValidatorServiceImpl
             List<AiGeneratedWorkoutDayResponse> workoutPlan,
             AiInputSnapshot snapshot
     ) {
-        Integer requestedDays = snapshot
-                .getRequest()
-                .getWorkoutDaysPerWeek();
+        Integer requestedDays =
+                snapshot.getRequest()
+                        .getWorkoutDaysPerWeek();
 
         if (requestedDays == null
                 || requestedDays < 1
                 || requestedDays > 7) {
-            invalid();
+            invalid(
+                    "workoutDaysPerWeek is invalid: "
+                            + requestedDays
+            );
         }
 
-        if (workoutPlan == null
-                || workoutPlan.size() != requestedDays) {
-            invalid();
+        if (workoutPlan == null) {
+            invalid(
+                    "workoutPlan is null"
+            );
+        }
+
+        if (workoutPlan.size() != requestedDays) {
+            invalid(
+                    "workoutPlan size is "
+                            + workoutPlan.size()
+                            + ", expected "
+                            + requestedDays
+            );
         }
 
         Set<Integer> dayNumbers =
                 new HashSet<>();
 
-        for (AiGeneratedWorkoutDayResponse day :
-                workoutPlan) {
-            if (day == null
-                    || day.getDayNo() == null
-                    || day.getDayNo() < 1
-                    || day.getDayNo() > requestedDays) {
-                invalid();
+        for (
+                int dayIndex = 0;
+                dayIndex < workoutPlan.size();
+                dayIndex++
+        ) {
+            AiGeneratedWorkoutDayResponse day =
+                    workoutPlan.get(dayIndex);
+
+            if (day == null) {
+                invalid(
+                        "workoutPlan["
+                                + dayIndex
+                                + "] is null"
+                );
             }
 
-            if (!dayNumbers.add(day.getDayNo())) {
-                invalid();
+            Integer dayNo =
+                    day.getDayNo();
+
+            if (dayNo == null
+                    || dayNo < 1
+                    || dayNo > requestedDays) {
+                invalid(
+                        "workoutPlan["
+                                + dayIndex
+                                + "].dayNo is invalid: "
+                                + dayNo
+                );
             }
 
-            validateRequiredText(day.getFocus());
+            if (!dayNumbers.add(dayNo)) {
+                invalid(
+                        "Duplicate workout dayNo: "
+                                + dayNo
+                );
+            }
+
+            validateRequiredText(
+                    day.getFocus(),
+                    "workoutPlan["
+                            + dayIndex
+                            + "].focus"
+            );
 
             List<AiGeneratedExerciseResponse> exercises =
                     day.getExercises();
 
-            if (exercises == null
-                    || exercises.size()
-                    != REQUIRED_EXERCISES_PER_DAY) {
-                invalid();
+            if (exercises == null) {
+                invalid(
+                        "workoutPlan["
+                                + dayIndex
+                                + "].exercises is null"
+                );
             }
 
-            for (AiGeneratedExerciseResponse exercise :
-                    exercises) {
-                validateExercise(exercise);
+            if (exercises.size()
+                    != REQUIRED_EXERCISES_PER_DAY) {
+                invalid(
+                        "workoutPlan["
+                                + dayIndex
+                                + "].exercises size is "
+                                + exercises.size()
+                                + ", expected "
+                                + REQUIRED_EXERCISES_PER_DAY
+                );
+            }
+
+            for (
+                    int exerciseIndex = 0;
+                    exerciseIndex < exercises.size();
+                    exerciseIndex++
+            ) {
+                validateExercise(
+                        exercises.get(exerciseIndex),
+                        dayIndex,
+                        exerciseIndex
+                );
             }
         }
     }
 
     private void validateExercise(
-            AiGeneratedExerciseResponse exercise
+            AiGeneratedExerciseResponse exercise,
+            int dayIndex,
+            int exerciseIndex
     ) {
+        String fieldPrefix =
+                "workoutPlan["
+                        + dayIndex
+                        + "].exercises["
+                        + exerciseIndex
+                        + "]";
+
         if (exercise == null) {
-            invalid();
+            invalid(
+                    fieldPrefix
+                            + " is null"
+            );
         }
 
-        validateRequiredText(exercise.getName());
+        validateRequiredText(
+                exercise.getName(),
+                fieldPrefix + ".name"
+        );
 
         Integer sets =
                 exercise.getSets();
@@ -204,23 +333,35 @@ public class AiResponseValidatorServiceImpl
 
         if (sets == null
                 && durationMinutes == null) {
-            invalid();
+            invalid(
+                    fieldPrefix
+                            + " must contain sets or durationMinutes"
+            );
         }
 
         if (sets != null
                 && (sets < 1 || sets > 100)) {
-            invalid();
+            invalid(
+                    fieldPrefix
+                            + ".sets is invalid: "
+                            + sets
+            );
         }
 
         if (durationMinutes != null
                 && (durationMinutes < 0
                 || durationMinutes > 600)) {
-            invalid();
+            invalid(
+                    fieldPrefix
+                            + ".durationMinutes is invalid: "
+                            + durationMinutes
+            );
         }
 
         if (sets != null) {
             validateRequiredText(
-                    exercise.getReps()
+                    exercise.getReps(),
+                    fieldPrefix + ".reps"
             );
         }
 
@@ -230,11 +371,16 @@ public class AiResponseValidatorServiceImpl
         if (restSeconds != null
                 && (restSeconds < 0
                 || restSeconds > 3600)) {
-            invalid();
+            invalid(
+                    fieldPrefix
+                            + ".restSeconds is invalid: "
+                            + restSeconds
+            );
         }
 
         validateOptionalText(
-                exercise.getNote()
+                exercise.getNote(),
+                fieldPrefix + ".note"
         );
     }
 
@@ -243,23 +389,29 @@ public class AiResponseValidatorServiceImpl
             AiInputSnapshot snapshot
     ) {
         if (nutrition == null) {
-            invalid();
+            invalid(
+                    "nutritionPlan is null"
+            );
         }
 
         validatePositiveInteger(
-                nutrition.getTargetCalories()
+                nutrition.getTargetCalories(),
+                "nutritionPlan.targetCalories"
         );
 
         validateRequiredNonNegativeDecimal(
-                nutrition.getProteinGrams()
+                nutrition.getProteinGrams(),
+                "nutritionPlan.proteinGrams"
         );
 
         validateRequiredNonNegativeDecimal(
-                nutrition.getCarbsGrams()
+                nutrition.getCarbsGrams(),
+                "nutritionPlan.carbsGrams"
         );
 
         validateRequiredNonNegativeDecimal(
-                nutrition.getFatGrams()
+                nutrition.getFatGrams(),
+                "nutritionPlan.fatGrams"
         );
 
         int expectedMeals =
@@ -268,63 +420,96 @@ public class AiResponseValidatorServiceImpl
         List<AiGeneratedMealResponse> meals =
                 nutrition.getMeals();
 
-        if (meals == null
-                || meals.size() != expectedMeals) {
-            invalid();
+        if (meals == null) {
+            invalid(
+                    "nutritionPlan.meals is null"
+            );
         }
 
-        for (AiGeneratedMealResponse meal :
-                meals) {
-            validateMeal(meal);
+        if (meals.size() != expectedMeals) {
+            invalid(
+                    "nutritionPlan.meals size is "
+                            + meals.size()
+                            + ", expected "
+                            + expectedMeals
+            );
+        }
+
+        for (
+                int mealIndex = 0;
+                mealIndex < meals.size();
+                mealIndex++
+        ) {
+            validateMeal(
+                    meals.get(mealIndex),
+                    mealIndex
+            );
         }
     }
 
     private void validateMeal(
-            AiGeneratedMealResponse meal
+            AiGeneratedMealResponse meal,
+            int mealIndex
     ) {
+        String fieldPrefix =
+                "nutritionPlan.meals["
+                        + mealIndex
+                        + "]";
+
         if (meal == null) {
-            invalid();
+            invalid(
+                    fieldPrefix
+                            + " is null"
+            );
         }
 
         validateRequiredText(
-                meal.getMealName()
+                meal.getMealName(),
+                fieldPrefix + ".mealName"
         );
 
         validateRequiredText(
-                meal.getFoodItems()
+                meal.getFoodItems(),
+                fieldPrefix + ".foodItems"
         );
 
         validateOptionalText(
-                meal.getPortionText()
+                meal.getPortionText(),
+                fieldPrefix + ".portionText"
         );
 
         validateOptionalText(
-                meal.getNote()
+                meal.getNote(),
+                fieldPrefix + ".note"
         );
 
         validateRequiredNonNegativeInteger(
-                meal.getCalories()
+                meal.getCalories(),
+                fieldPrefix + ".calories"
         );
 
         validateRequiredNonNegativeDecimal(
-                meal.getProteinGrams()
+                meal.getProteinGrams(),
+                fieldPrefix + ".proteinGrams"
         );
 
         validateRequiredNonNegativeDecimal(
-                meal.getCarbsGrams()
+                meal.getCarbsGrams(),
+                fieldPrefix + ".carbsGrams"
         );
 
         validateRequiredNonNegativeDecimal(
-                meal.getFatGrams()
+                meal.getFatGrams(),
+                fieldPrefix + ".fatGrams"
         );
     }
 
     private int resolveExpectedMeals(
             AiInputSnapshot snapshot
     ) {
-        Integer mealsPerDay = snapshot
-                .getRequest()
-                .getMealsPerDay();
+        Integer mealsPerDay =
+                snapshot.getRequest()
+                        .getMealsPerDay();
 
         if (mealsPerDay == null) {
             return DEFAULT_MEALS_PER_DAY;
@@ -332,7 +517,10 @@ public class AiResponseValidatorServiceImpl
 
         if (mealsPerDay < 1
                 || mealsPerDay > 10) {
-            invalid();
+            invalid(
+                    "mealsPerDay is invalid: "
+                            + mealsPerDay
+            );
         }
 
         return mealsPerDay;
@@ -341,22 +529,49 @@ public class AiResponseValidatorServiceImpl
     private void validateWarnings(
             List<String> warnings
     ) {
-        if (warnings == null
-                || warnings.size() > MAX_WARNINGS) {
-            invalid();
+        if (warnings == null) {
+            invalid(
+                    "warnings is null"
+            );
         }
 
-        for (String warning : warnings) {
-            validateRequiredText(warning);
+        if (warnings.size() > MAX_WARNINGS) {
+            invalid(
+                    "warnings size is "
+                            + warnings.size()
+                            + ", maximum is "
+                            + MAX_WARNINGS
+            );
+        }
+
+        for (
+                int index = 0;
+                index < warnings.size();
+                index++
+        ) {
+            validateRequiredText(
+                    warnings.get(index),
+                    "warnings[" + index + "]"
+            );
         }
     }
 
     private void validateSnapshot(
             AiInputSnapshot snapshot
     ) {
-        if (snapshot == null
-                || snapshot.getMember() == null
-                || snapshot.getRequest() == null) {
+        if (snapshot == null) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        if (snapshot.getMember() == null) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        if (snapshot.getRequest() == null) {
             throw new AppException(
                     ErrorCode.INVALID_REQUEST
             );
@@ -366,49 +581,102 @@ public class AiResponseValidatorServiceImpl
     private void validateRequiredText(
             String value
     ) {
+        validateRequiredText(
+                value,
+                "requiredText"
+        );
+    }
+
+    private void validateRequiredText(
+            String value,
+            String fieldName
+    ) {
         if (value == null
                 || value.isBlank()) {
-            invalid();
+            invalid(
+                    fieldName
+                            + " is required"
+            );
         }
     }
 
     private void validateOptionalText(
             String value
     ) {
+        validateOptionalText(
+                value,
+                "optionalText"
+        );
+    }
+
+    private void validateOptionalText(
+            String value,
+            String fieldName
+    ) {
         if (value != null
                 && value.isBlank()) {
-            invalid();
+            invalid(
+                    fieldName
+                            + " must be null or non-blank"
+            );
         }
     }
 
     private void validatePositiveInteger(
-            Integer value
+            Integer value,
+            String fieldName
     ) {
         if (value == null
                 || value <= 0) {
-            invalid();
+            invalid(
+                    fieldName
+                            + " must be a positive integer"
+            );
         }
     }
 
     private void validateRequiredNonNegativeInteger(
-            Integer value
+            Integer value,
+            String fieldName
     ) {
         if (value == null
                 || value < 0) {
-            invalid();
+            invalid(
+                    fieldName
+                            + " must be non-negative"
+            );
         }
     }
 
     private void validateRequiredNonNegativeDecimal(
-            BigDecimal value
+            BigDecimal value,
+            String fieldName
     ) {
         if (value == null
-                || value.compareTo(BigDecimal.ZERO) < 0) {
-            invalid();
+                || value.compareTo(
+                BigDecimal.ZERO
+        ) < 0) {
+            invalid(
+                    fieldName
+                            + " must be non-negative"
+            );
         }
     }
 
     private void invalid() {
+        invalid(
+                "Unknown AI response validation error"
+        );
+    }
+
+    private void invalid(
+            String reason
+    ) {
+        log.warn(
+                "AI response validation failed: {}",
+                reason
+        );
+
         throw new AppException(
                 ErrorCode.AI_RESPONSE_INVALID
         );

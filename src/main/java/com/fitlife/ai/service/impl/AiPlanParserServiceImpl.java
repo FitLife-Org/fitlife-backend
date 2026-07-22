@@ -327,21 +327,87 @@ public class AiPlanParserServiceImpl implements AiPlanParserService {
                 .toList();
     }
 
-    private void normalizeBodyAnalysis(AiGeneratedBodyAnalysisResponse response) {
+    private void normalizeBodyAnalysis(
+            AiGeneratedBodyAnalysisResponse response
+    ) {
         if (response == null) {
-            throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
+            throw new AppException(
+                    ErrorCode.AI_RESPONSE_INVALID
+            );
         }
 
-        if (!hasText(response.getSummary())) {
-            response.setSummary(DEFAULT_BODY_ANALYSIS_SUMMARY);
-        } else {
-            response.setSummary(response.getSummary().trim());
+        response.setSummary(
+                defaultIfBlank(
+                        response.getSummary(),
+                        DEFAULT_BODY_ANALYSIS_SUMMARY
+                )
+        );
+
+        response.setBodyAnalysis(
+                normalizeText(
+                        response.getBodyAnalysis()
+                )
+        );
+
+        response.setBmiAssessment(
+                normalizeText(
+                        response.getBmiAssessment()
+                )
+        );
+
+        response.setBodyFatAssessment(
+                normalizeText(
+                        response.getBodyFatAssessment()
+                )
+        );
+
+        response.setMuscleAssessment(
+                normalizeText(
+                        response.getMuscleAssessment()
+                )
+        );
+
+        response.setRecommendation(
+                normalizeText(
+                        response.getRecommendation()
+                )
+        );
+
+        List<String> normalizedWarnings =
+                normalizeWarnings(
+                        response.getWarnings()
+                );
+
+        if (normalizedWarnings == null
+                || normalizedWarnings.isEmpty()) {
+            normalizedWarnings =
+                    List.of(
+                            DEFAULT_BODY_ANALYSIS_WARNING
+                    );
         }
 
-        if (response.getWarnings() == null
-                || response.getWarnings().stream().noneMatch(this::hasText)) {
-            response.setWarnings(List.of(DEFAULT_BODY_ANALYSIS_WARNING));
-        }
+        /*
+         * Provider đôi khi trả nhiều warning hơn contract.
+         * Chỉ giữ tối đa hai warning hợp lệ.
+         */
+        response.setWarnings(
+                normalizedWarnings.stream()
+                        .distinct()
+                        .limit(2)
+                        .toList()
+        );
+    }
+
+    private String defaultIfBlank(
+            String value,
+            String defaultValue
+    ) {
+        String normalized =
+                normalizeText(value);
+
+        return normalized == null
+                ? defaultValue
+                : normalized;
     }
 
     private String cleanJson(String rawResponse) {

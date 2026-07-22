@@ -9,6 +9,7 @@ import com.fitlife.ai.entity.AiPlanItem;
 import com.fitlife.ai.entity.AiSuggestion;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
+import lombok.extern.slf4j.Slf4j;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
@@ -18,13 +19,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Mapper(
         componentModel = "spring",
         uses = {
                 AiPlanItemMapper.class,
                 AiFeedbackMapper.class
         },
-        unmappedTargetPolicy = ReportingPolicy.IGNORE
+        unmappedTargetPolicy =
+                ReportingPolicy.IGNORE
 )
 public abstract class AiSuggestionMapper {
 
@@ -88,20 +91,39 @@ public abstract class AiSuggestionMapper {
     );
 
     @Named("jsonToMap")
-    protected Map<String, Object> jsonToMap(String json) {
-        if (json == null || json.isBlank()) {
+    protected Map<String, Object> jsonToMap(
+            String json
+    ) {
+        if (json == null
+                || json.isBlank()) {
             return null;
+        }
+
+        if (objectMapper == null) {
+            throw new IllegalStateException(
+                    "ObjectMapper was not injected into AiSuggestionMapper"
+            );
         }
 
         try {
             return objectMapper.readValue(
                     json,
-                    new TypeReference<>() {
+                    new TypeReference<
+                            Map<String, Object>
+                            >() {
                     }
             );
         } catch (Exception exception) {
-            throw new AppException(
-                    ErrorCode.AI_RESPONSE_INVALID
+            log.error(
+                    "Cannot convert stored AI JSON to map. length={}, content={}",
+                    json.length(),
+                    json,
+                    exception
+            );
+
+            throw new IllegalStateException(
+                    "Cannot map AI JSON response",
+                    exception
             );
         }
     }
