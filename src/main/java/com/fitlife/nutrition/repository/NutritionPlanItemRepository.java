@@ -7,7 +7,15 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface NutritionPlanItemRepository extends JpaRepository<NutritionPlanItem, Long> {
-    
-    List<NutritionPlanItem> findByNutritionPlanIdOrderByCreatedAtAsc(Long nutritionPlanId);
+public interface NutritionPlanItemRepository
+        extends JpaRepository<NutritionPlanItem, Long> {
+
+    List<NutritionPlanItem>
+    findByNutritionPlanIdOrderBySortOrderAscIdAsc(
+            Long nutritionPlanId
+    );
+
+    void deleteByNutritionPlanId(
+            Long nutritionPlanId
+    );
 }

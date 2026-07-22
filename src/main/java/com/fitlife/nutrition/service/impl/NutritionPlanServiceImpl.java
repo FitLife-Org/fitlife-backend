@@ -65,7 +65,7 @@ public class NutritionPlanServiceImpl implements NutritionPlanService {
                         item.setNutritionPlan(plan);
                         return item;
                     }).collect(Collectors.toList());
-            plan.setItems(items);
+            items.forEach(plan::addItem);
         }
 
         NutritionPlan savedPlan = nutritionPlanRepository.save(plan);

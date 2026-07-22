@@ -581,6 +581,12 @@ public enum ErrorCode {
             HttpStatus.INTERNAL_SERVER_ERROR
     ),
 
+    AI_NUTRITION_PLAN_CREATION_FAILED(
+            12021,
+            "Unable to create nutrition plan from AI suggestion",
+            HttpStatus.INTERNAL_SERVER_ERROR
+    ),
+
     // =========================
     // Check-in errors: 13000 - 13999
     // =========================

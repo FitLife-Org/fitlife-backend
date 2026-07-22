@@ -7,4 +7,8 @@ public interface AiSuggestionApplyService {
     AiApplyPlanResponse applyWorkoutPlan(
             Long suggestionId
     );
+
+    AiApplyPlanResponse applyNutritionPlan(
+            Long suggestionId
+    );
 }

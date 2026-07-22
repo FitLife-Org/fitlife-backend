@@ -5,7 +5,11 @@ import com.fitlife.ai.dto.request.AiFeedbackRequest;
 import com.fitlife.ai.dto.request.AiFullPlanRequest;
 import com.fitlife.ai.dto.request.AiNutritionPlanRequest;
 import com.fitlife.ai.dto.request.AiWorkoutPlanRequest;
-import com.fitlife.ai.dto.response.*;
+import com.fitlife.ai.dto.response.AiApplyPlanResponse;
+import com.fitlife.ai.dto.response.AiFeedbackResponse;
+import com.fitlife.ai.dto.response.AiSuggestionDetailResponse;
+import com.fitlife.ai.dto.response.AiSuggestionResponse;
+import com.fitlife.ai.dto.response.AiUsageTodayResponse;
 import com.fitlife.ai.enums.AiSuggestionStatus;
 import com.fitlife.ai.enums.AiSuggestionType;
 import com.fitlife.ai.service.AiSuggestionApplyService;
@@ -151,12 +155,13 @@ public class AiSuggestionController {
                         "Get my AI suggestions successfully"
                 )
                 .data(
-                        aiSuggestionService.getMySuggestions(
-                                PageRequest.of(
-                                        page,
-                                        size
+                        aiSuggestionService
+                                .getMySuggestions(
+                                        PageRequest.of(
+                                                page,
+                                                size
+                                        )
                                 )
-                        )
                 )
                 .build();
     }
@@ -205,6 +210,23 @@ public class AiSuggestionController {
                 .build();
     }
 
+    @PostMapping("/{id}/apply-nutrition-plan")
+    public ApiResponse<AiApplyPlanResponse>
+    applyNutritionPlan(
+            @PathVariable Long id
+    ) {
+        return ApiResponse
+                .<AiApplyPlanResponse>builder()
+                .message(
+                        "AI nutrition plan applied successfully"
+                )
+                .data(
+                        aiSuggestionApplyService
+                                .applyNutritionPlan(id)
+                )
+                .build();
+    }
+
     @GetMapping("/{id}")
     public ApiResponse<AiSuggestionDetailResponse>
     getMySuggestionDetail(
@@ -236,10 +258,11 @@ public class AiSuggestionController {
                         "AI feedback submitted successfully"
                 )
                 .data(
-                        aiSuggestionService.submitFeedback(
-                                id,
-                                request
-                        )
+                        aiSuggestionService
+                                .submitFeedback(
+                                        id,
+                                        request
+                                )
                 )
                 .build();
     }

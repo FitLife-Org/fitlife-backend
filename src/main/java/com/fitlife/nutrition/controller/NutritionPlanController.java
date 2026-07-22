@@ -2,7 +2,6 @@ package com.fitlife.nutrition.controller;
 
 import com.fitlife.nutrition.dto.request.NutritionPlanRequest;
 import com.fitlife.nutrition.dto.response.NutritionPlanResponse;
-import com.fitlife.nutrition.service.AiNutritionPlanPersistenceService;
 import com.fitlife.nutrition.service.NutritionPlanService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -22,7 +21,6 @@ import org.springframework.web.bind.annotation.*;
 public class NutritionPlanController {
 
     private final NutritionPlanService nutritionPlanService;
-    private final AiNutritionPlanPersistenceService aiNutritionPlanPersistenceService;
 
     @Operation(summary = "Get a nutrition plan by ID")
     @GetMapping("/{id}")
@@ -82,14 +80,6 @@ public class NutritionPlanController {
             @RequestParam Long memberId) {
         nutritionPlanService.deleteNutritionPlan(id, memberId);
         return ResponseEntity.noContent().build();
-    }
-
-    @Operation(summary = "Persist AI Suggestion to a new Nutrition Plan")
-    @PostMapping("/from-ai-suggestion/{suggestionId}")
-    public ResponseEntity<NutritionPlanResponse> persistAiSuggestion(
-            @PathVariable Long suggestionId,
-            @RequestParam Long memberId) {
-        return ResponseEntity.ok(aiNutritionPlanPersistenceService.persistAiSuggestion(suggestionId, memberId));
     }
 
     @Operation(summary = "Get current active nutrition plan for a member")
