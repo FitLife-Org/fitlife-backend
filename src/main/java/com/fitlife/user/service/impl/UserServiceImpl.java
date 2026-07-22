@@ -1,14 +1,21 @@
 package com.fitlife.user.service.impl;
 
-import com.fitlife.common.response.PageResponse;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
+import com.fitlife.common.response.PageResponse;
 import com.fitlife.security.CustomUserDetails;
+import com.fitlife.user.dto.request.AdminCreateInternalUserRequest;
 import com.fitlife.user.dto.request.AdminUpdateUserRequest;
+import com.fitlife.user.dto.request.AdminUpdateUserRolesRequest;
+import com.fitlife.user.dto.request.AdminUpdateUserStatusRequest;
 import com.fitlife.user.dto.request.AdminUserSearchRequest;
-import com.fitlife.user.dto.response.AdminUserResponse;
+import com.fitlife.user.dto.request.ChangePasswordRequest;
 import com.fitlife.user.dto.response.AdminUserDetailResponse;
+import com.fitlife.user.dto.response.AdminUserResponse;
+import com.fitlife.user.dto.response.UserProfileResponse;
+import com.fitlife.user.entity.Role;
 import com.fitlife.user.entity.User;
+import com.fitlife.user.enums.AuthProvider;
 import com.fitlife.user.enums.UserStatus;
 import com.fitlife.user.mapper.UserMapper;
 import com.fitlife.user.repository.RoleRepository;
@@ -23,30 +30,36 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import com.fitlife.user.dto.request.AdminCreateInternalUserRequest;
-import com.fitlife.user.entity.Role;
-import com.fitlife.user.enums.AuthProvider;
-import com.fitlife.user.dto.request.AdminUpdateUserStatusRequest;
-
-import java.util.Set;
-
-import java.util.List;
-
-import com.fitlife.user.dto.request.AdminUpdateUserRolesRequest;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
-
-import com.fitlife.user.dto.request.ChangePasswordRequest;
-import com.fitlife.user.dto.response.UserProfileResponse;
 
 @Service
 @RequiredArgsConstructor
-public class UserServiceImpl implements UserService {
+public class UserServiceImpl
+        implements UserService {
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 10;
     private static final int MAX_SIZE = 100;
+
+    private static final Set<String>
+            ALLOWED_INTERNAL_ROLES = Set.of(
+            "ROLE_ADMIN",
+            "ROLE_STAFF",
+            "ROLE_TRAINER"
+    );
+
+    private static final Set<String>
+            ALLOWED_USER_ROLES = Set.of(
+            "ROLE_ADMIN",
+            "ROLE_STAFF",
+            "ROLE_TRAINER",
+            "ROLE_MEMBER"
+    );
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
@@ -54,346 +67,817 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
 
     @Override
+    @Transactional(readOnly = true)
     public UserProfileResponse getCurrentUser() {
-        User currentUser = getCurrentAuthenticatedUser();
-        return userMapper.toUserProfileResponse(currentUser);
-    }
+        User currentUser =
+                getCurrentAuthenticatedUser();
 
-    @Override
-    public PageResponse<AdminUserResponse> getAdminUsers(AdminUserSearchRequest request) {
-        int page = normalizePage(request.getPage());
-        int size = normalizeSize(request.getSize());
-
-        UserStatus status = parseUserStatus(request.getStatus());
-
-        Pageable pageable = PageRequest.of(
-                page,
-                size,
-                Sort.by(Sort.Direction.DESC, "createdAt")
+        return userMapper.toUserProfileResponse(
+                currentUser
         );
-
-        Page<User> userPage = userRepository.searchAdminUsers(
-                normalizeKeyword(request.getKeyword()),
-                normalizeRoleCode(request.getRoleCode()),
-                status,
-                pageable
-        );
-
-        return PageResponse.from(userPage, userMapper::toAdminUserResponse);
     }
 
     @Override
-    public AdminUserDetailResponse getAdminUserDetail(Long id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-
-        return userMapper.toAdminUserDetailResponse(user);
-    }
-
-    @Override
-    public AdminUserDetailResponse createInternalUser(AdminCreateInternalUserRequest request) {
-        validateCreateInternalUserRequest(request);
-
-        String roleCode = normalizeRoleCode(request.getRoleCode());
-
-        if (!isAllowedInternalRole(roleCode)) {
-            throw new AppException(ErrorCode.INVALID_REQUEST);
+    @Transactional(readOnly = true)
+    public PageResponse<AdminUserResponse>
+    getAdminUsers(
+            AdminUserSearchRequest request
+    ) {
+        if (request == null) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
         }
 
-        Role role = roleRepository.findByCode(roleCode)
-                .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
+        int page =
+                normalizePage(
+                        request.getPage()
+                );
 
-        UserStatus status = parseUserStatusWithDefault(request.getStatus());
+        int size =
+                normalizeSize(
+                        request.getSize()
+                );
 
-        User user = User.builder()
-                .username(request.getUsername().trim())
-                .email(request.getEmail().trim().toLowerCase())
-                .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .fullName(request.getFullName().trim())
-                .phone(request.getPhone().trim())
-                .status(status)
-                .authProvider(AuthProvider.LOCAL)
-                .emailVerified(true)
-                .isDeleted(false)
-                .roles(Set.of(role))
-                .build();
+        UserStatus status =
+                parseUserStatus(
+                        request.getStatus()
+                );
 
-        User savedUser = userRepository.save(user);
+        Pageable pageable =
+                PageRequest.of(
+                        page,
+                        size,
+                        Sort.by(
+                                Sort.Direction.DESC,
+                                "createdAt"
+                        )
+                );
 
-        return userMapper.toAdminUserDetailResponse(savedUser);
+        Page<User> userPage =
+                userRepository.searchAdminUsers(
+                        normalizeKeyword(
+                                request.getKeyword()
+                        ),
+                        normalizeRoleCode(
+                                request.getRoleCode()
+                        ),
+                        status,
+                        pageable
+                );
+
+        return PageResponse.from(
+                userPage,
+                userMapper::toAdminUserResponse
+        );
     }
 
     @Override
-    public AdminUserDetailResponse updateUser(Long id, AdminUpdateUserRequest request) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+    @Transactional(readOnly = true)
+    public AdminUserDetailResponse
+    getAdminUserDetail(
+            Long id
+    ) {
+        User user =
+                getUserById(id);
 
-        updateUsernameIfPresent(user, request.getUsername());
-        updateEmailIfPresent(user, request.getEmail());
-        updateFullNameIfPresent(user, request.getFullName());
-        updatePhoneIfPresent(user, request.getPhone());
-        updateStatusIfPresent(user, request.getStatus());
-
-        User savedUser = userRepository.save(user);
-
-        return userMapper.toAdminUserDetailResponse(savedUser);
+        return userMapper
+                .toAdminUserDetailResponse(
+                        user
+                );
     }
 
     @Override
-    public AdminUserDetailResponse updateUserStatus(Long id, AdminUpdateUserStatusRequest request) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+    @Transactional
+    public AdminUserDetailResponse
+    createInternalUser(
+            AdminCreateInternalUserRequest request
+    ) {
+        validateCreateRequest(request);
 
-        User currentUser = getCurrentAuthenticatedUser();
+        String roleCode =
+                normalizeRequiredRoleCode(
+                        request.getRoleCode()
+                );
 
-        if (currentUser.getId().equals(user.getId())) {
-            throw new AppException(ErrorCode.INVALID_REQUEST);
+        if (!ALLOWED_INTERNAL_ROLES
+                .contains(roleCode)) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
         }
 
-        UserStatus newStatus = parseUserStatus(request.getStatus());
+        Role role =
+                roleRepository.findByCode(roleCode)
+                        .orElseThrow(() ->
+                                new AppException(
+                                        ErrorCode.ROLE_NOT_FOUND
+                                )
+                        );
+
+        UserStatus status =
+                parseUserStatusWithDefault(
+                        request.getStatus()
+                );
+
+        User user =
+                User.builder()
+                        .username(
+                                normalizeRequiredText(
+                                        request.getUsername()
+                                )
+                        )
+                        .email(
+                                normalizeEmail(
+                                        request.getEmail()
+                                )
+                        )
+                        .passwordHash(
+                                passwordEncoder.encode(
+                                        request.getPassword()
+                                )
+                        )
+                        .fullName(
+                                normalizeRequiredText(
+                                        request.getFullName()
+                                )
+                        )
+                        .phone(
+                                normalizeRequiredText(
+                                        request.getPhone()
+                                )
+                        )
+                        .status(status)
+                        .authProvider(
+                                AuthProvider.LOCAL
+                        )
+                        .emailVerified(true)
+                        .isDeleted(false)
+                        .roles(
+                                new HashSet<>(
+                                        Set.of(role)
+                                )
+                        )
+                        .build();
+
+        User savedUser =
+                userRepository.save(user);
+
+        return userMapper
+                .toAdminUserDetailResponse(
+                        savedUser
+                );
+    }
+
+    @Override
+    @Transactional
+    public AdminUserDetailResponse updateUser(
+            Long id,
+            AdminUpdateUserRequest request
+    ) {
+        if (request == null) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        User user =
+                getUserById(id);
+
+        validateSelfStatusUpdate(
+                user,
+                request.getStatus()
+        );
+
+        updateUsernameIfPresent(
+                user,
+                request.getUsername()
+        );
+
+        updateEmailIfPresent(
+                user,
+                request.getEmail()
+        );
+
+        updateFullNameIfPresent(
+                user,
+                request.getFullName()
+        );
+
+        updatePhoneIfPresent(
+                user,
+                request.getPhone()
+        );
+
+        updateStatusIfPresent(
+                user,
+                request.getStatus()
+        );
+
+        User savedUser =
+                userRepository.save(user);
+
+        return userMapper
+                .toAdminUserDetailResponse(
+                        savedUser
+                );
+    }
+
+    @Override
+    @Transactional
+    public AdminUserDetailResponse updateUserStatus(
+            Long id,
+            AdminUpdateUserStatusRequest request
+    ) {
+        if (request == null) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        User user =
+                getUserById(id);
+
+        validateNotCurrentUser(user);
+
+        UserStatus newStatus =
+                parseRequiredUserStatus(
+                        request.getStatus()
+                );
 
         user.setStatus(newStatus);
 
-        User savedUser = userRepository.save(user);
+        User savedUser =
+                userRepository.save(user);
 
-        return userMapper.toAdminUserDetailResponse(savedUser);
+        return userMapper
+                .toAdminUserDetailResponse(
+                        savedUser
+                );
     }
 
     @Override
-    public AdminUserDetailResponse updateUserRoles(Long id, AdminUpdateUserRolesRequest request) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-
-        User currentUser = getCurrentAuthenticatedUser();
-
-        if (currentUser.getId().equals(user.getId())) {
-            throw new AppException(ErrorCode.INVALID_REQUEST);
+    @Transactional
+    public AdminUserDetailResponse updateUserRoles(
+            Long id,
+            AdminUpdateUserRolesRequest request
+    ) {
+        if (request == null) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
         }
 
-        Set<String> normalizedRoleCodes = normalizeRoleCodes(request.getRoleCodes());
+        User user =
+                getUserById(id);
 
-        validateRoleCodesAllowed(normalizedRoleCodes);
+        validateNotCurrentUser(user);
 
-        List<Role> roles = roleRepository.findByCodeIn(normalizedRoleCodes);
+        Set<String> normalizedRoleCodes =
+                normalizeRoleCodes(
+                        request.getRoleCodes()
+                );
 
-        if (roles.size() != normalizedRoleCodes.size()) {
-            throw new AppException(ErrorCode.ROLE_NOT_FOUND);
+        validateRoleCodesAllowed(
+                normalizedRoleCodes
+        );
+
+        List<Role> roles =
+                roleRepository.findByCodeIn(
+                        normalizedRoleCodes
+                );
+
+        if (roles.size()
+                != normalizedRoleCodes.size()) {
+            throw new AppException(
+                    ErrorCode.ROLE_NOT_FOUND
+            );
         }
 
-        user.setRoles(new HashSet<>(roles));
+        user.setRoles(
+                new HashSet<>(roles)
+        );
 
-        User savedUser = userRepository.save(user);
+        User savedUser =
+                userRepository.save(user);
 
-        return userMapper.toAdminUserDetailResponse(savedUser);
+        return userMapper
+                .toAdminUserDetailResponse(
+                        savedUser
+                );
     }
 
     @Override
-    public void changePassword(ChangePasswordRequest request) {
-        User currentUser = getCurrentAuthenticatedUser();
-
-        if (!passwordEncoder.matches(request.getCurrentPassword(), currentUser.getPasswordHash())) {
-            throw new AppException(ErrorCode.CURRENT_PASSWORD_INCORRECT);
+    @Transactional
+    public void changePassword(
+            ChangePasswordRequest request
+    ) {
+        if (request == null) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
         }
 
-        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
-            throw new AppException(ErrorCode.PASSWORD_CONFIRM_NOT_MATCH);
-        }
+        User currentUser =
+                getCurrentAuthenticatedUser();
 
-        if (passwordEncoder.matches(request.getNewPassword(), currentUser.getPasswordHash())) {
-            throw new AppException(ErrorCode.NEW_PASSWORD_SAME_AS_OLD);
-        }
+        validateCurrentPassword(
+                request.getCurrentPassword(),
+                currentUser
+        );
 
-        currentUser.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        validatePasswordConfirmation(
+                request.getNewPassword(),
+                request.getConfirmPassword()
+        );
+
+        validateNewPasswordDifferent(
+                request.getNewPassword(),
+                currentUser
+        );
+
+        currentUser.setPasswordHash(
+                passwordEncoder.encode(
+                        request.getNewPassword()
+                )
+        );
 
         userRepository.save(currentUser);
     }
 
     private User getCurrentAuthenticatedUser() {
-        Authentication authentication = SecurityContextHolder
-                .getContext()
-                .getAuthentication();
+        Authentication authentication =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
 
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        if (authentication == null
+                || !authentication
+                .isAuthenticated()) {
+            throw new AppException(
+                    ErrorCode.UNAUTHENTICATED
+            );
         }
 
-        Object principal = authentication.getPrincipal();
+        Object principal =
+                authentication.getPrincipal();
 
-        if (principal instanceof CustomUserDetails customUserDetails) {
-            Long userId = customUserDetails.getId();
-
-            return userRepository.findById(userId)
-                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        if (!(principal instanceof
+                CustomUserDetails customUserDetails)) {
+            throw new AppException(
+                    ErrorCode.UNAUTHENTICATED
+            );
         }
 
-        throw new AppException(ErrorCode.UNAUTHENTICATED);
+        Long userId =
+                customUserDetails.getId();
+
+        return getUserById(userId);
     }
 
-    private int normalizePage(int page) {
-        return Math.max(page, DEFAULT_PAGE);
+    private User getUserById(
+            Long id
+    ) {
+        if (id == null || id <= 0) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        return userRepository.findById(id)
+                .orElseThrow(() ->
+                        new AppException(
+                                ErrorCode.USER_NOT_FOUND
+                        )
+                );
     }
 
-    private int normalizeSize(int size) {
-        if (size <= 0) {
-            return DEFAULT_SIZE;
+    private void validateCreateRequest(
+            AdminCreateInternalUserRequest request
+    ) {
+        if (request == null) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
         }
 
-        return Math.min(size, MAX_SIZE);
-    }
+        String username =
+                normalizeRequiredText(
+                        request.getUsername()
+                );
 
-    private String normalizeKeyword(String keyword) {
-        if (keyword == null || keyword.isBlank()) {
-            return null;
+        String email =
+                normalizeEmail(
+                        request.getEmail()
+                );
+
+        String phone =
+                normalizeRequiredText(
+                        request.getPhone()
+                );
+
+        if (userRepository
+                .existsByUsername(username)) {
+            throw new AppException(
+                    ErrorCode.USERNAME_ALREADY_EXISTS
+            );
         }
 
-        return keyword.trim();
-    }
-
-    private String normalizeRoleCode(String roleCode) {
-        if (roleCode == null || roleCode.isBlank()) {
-            return null;
+        if (userRepository
+                .existsByEmail(email)) {
+            throw new AppException(
+                    ErrorCode.EMAIL_ALREADY_EXISTS
+            );
         }
 
-        return roleCode.trim().toUpperCase();
-    }
-
-    private UserStatus parseUserStatus(String status) {
-        if (status == null || status.isBlank()) {
-            return null;
-        }
-
-        try {
-            return UserStatus.valueOf(status.trim().toUpperCase());
-        } catch (IllegalArgumentException exception) {
-            throw new AppException(ErrorCode.INVALID_REQUEST);
-        }
-    }
-
-    private void validateCreateInternalUserRequest(AdminCreateInternalUserRequest request) {
-        String username = request.getUsername().trim();
-        String email = request.getEmail().trim().toLowerCase();
-        String phone = request.getPhone().trim();
-
-        if (userRepository.existsByUsername(username)) {
-            throw new AppException(ErrorCode.USERNAME_ALREADY_EXISTS);
-        }
-
-        if (userRepository.existsByEmail(email)) {
-            throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS);
-        }
-
-        if (userRepository.existsByPhone(phone)) {
-            throw new AppException(ErrorCode.PHONE_ALREADY_EXISTS);
+        if (userRepository
+                .existsByPhone(phone)) {
+            throw new AppException(
+                    ErrorCode.PHONE_ALREADY_EXISTS
+            );
         }
     }
 
-    private boolean isAllowedInternalRole(String roleCode) {
-        return Set.of("ROLE_ADMIN", "ROLE_STAFF", "ROLE_TRAINER").contains(roleCode);
-    }
-
-    private UserStatus parseUserStatusWithDefault(String status) {
-        if (status == null || status.isBlank()) {
-            return UserStatus.ACTIVE;
-        }
-
-        return parseUserStatus(status);
-    }
-
-    private void updateUsernameIfPresent(User user, String username) {
-        if (username == null || username.isBlank()) {
+    private void validateSelfStatusUpdate(
+            User targetUser,
+            String status
+    ) {
+        if (status == null
+                || status.isBlank()) {
             return;
         }
 
-        String normalizedUsername = username.trim();
+        User currentUser =
+                getCurrentAuthenticatedUser();
 
-        if (normalizedUsername.equals(user.getUsername())) {
-            return;
+        if (currentUser.getId()
+                .equals(targetUser.getId())) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
         }
-
-        if (userRepository.existsByUsername(normalizedUsername)) {
-            throw new AppException(ErrorCode.USERNAME_ALREADY_EXISTS);
-        }
-
-        user.setUsername(normalizedUsername);
     }
 
-    private void updateEmailIfPresent(User user, String email) {
-        if (email == null || email.isBlank()) {
+    private void validateNotCurrentUser(
+            User targetUser
+    ) {
+        User currentUser =
+                getCurrentAuthenticatedUser();
+
+        if (currentUser.getId()
+                .equals(targetUser.getId())) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+    }
+
+    private void validateCurrentPassword(
+            String currentPassword,
+            User currentUser
+    ) {
+        if (!passwordEncoder.matches(
+                currentPassword,
+                currentUser.getPasswordHash()
+        )) {
+            throw new AppException(
+                    ErrorCode
+                            .CURRENT_PASSWORD_INCORRECT
+            );
+        }
+    }
+
+    private void validatePasswordConfirmation(
+            String newPassword,
+            String confirmPassword
+    ) {
+        if (newPassword == null
+                || !newPassword.equals(
+                confirmPassword
+        )) {
+            throw new AppException(
+                    ErrorCode
+                            .PASSWORD_CONFIRM_NOT_MATCH
+            );
+        }
+    }
+
+    private void validateNewPasswordDifferent(
+            String newPassword,
+            User currentUser
+    ) {
+        if (passwordEncoder.matches(
+                newPassword,
+                currentUser.getPasswordHash()
+        )) {
+            throw new AppException(
+                    ErrorCode
+                            .NEW_PASSWORD_SAME_AS_OLD
+            );
+        }
+    }
+
+    private void updateUsernameIfPresent(
+            User user,
+            String username
+    ) {
+        String normalizedUsername =
+                normalizeOptionalText(username);
+
+        if (normalizedUsername == null
+                || normalizedUsername.equals(
+                user.getUsername()
+        )) {
             return;
         }
 
-        String normalizedEmail = email.trim().toLowerCase();
+        if (userRepository.existsByUsername(
+                normalizedUsername
+        )) {
+            throw new AppException(
+                    ErrorCode.USERNAME_ALREADY_EXISTS
+            );
+        }
 
-        if (normalizedEmail.equals(user.getEmail())) {
+        user.setUsername(
+                normalizedUsername
+        );
+    }
+
+    private void updateEmailIfPresent(
+            User user,
+            String email
+    ) {
+        String normalizedEmail =
+                normalizeOptionalEmail(email);
+
+        if (normalizedEmail == null
+                || normalizedEmail.equals(
+                user.getEmail()
+        )) {
             return;
         }
 
-        if (userRepository.existsByEmail(normalizedEmail)) {
-            throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS);
+        if (userRepository.existsByEmail(
+                normalizedEmail
+        )) {
+            throw new AppException(
+                    ErrorCode.EMAIL_ALREADY_EXISTS
+            );
         }
 
         user.setEmail(normalizedEmail);
     }
 
-    private void updateFullNameIfPresent(User user, String fullName) {
-        if (fullName == null || fullName.isBlank()) {
+    private void updateFullNameIfPresent(
+            User user,
+            String fullName
+    ) {
+        String normalizedFullName =
+                normalizeOptionalText(fullName);
+
+        if (normalizedFullName == null) {
             return;
         }
 
-        user.setFullName(fullName.trim());
+        user.setFullName(
+                normalizedFullName
+        );
     }
 
-    private void updatePhoneIfPresent(User user, String phone) {
-        if (phone == null || phone.isBlank()) {
+    private void updatePhoneIfPresent(
+            User user,
+            String phone
+    ) {
+        String normalizedPhone =
+                normalizeOptionalText(phone);
+
+        if (normalizedPhone == null
+                || normalizedPhone.equals(
+                user.getPhone()
+        )) {
             return;
         }
 
-        String normalizedPhone = phone.trim();
-
-        if (normalizedPhone.equals(user.getPhone())) {
-            return;
-        }
-
-        if (userRepository.existsByPhone(normalizedPhone)) {
-            throw new AppException(ErrorCode.PHONE_ALREADY_EXISTS);
+        if (userRepository.existsByPhone(
+                normalizedPhone
+        )) {
+            throw new AppException(
+                    ErrorCode.PHONE_ALREADY_EXISTS
+            );
         }
 
         user.setPhone(normalizedPhone);
     }
 
-    private void updateStatusIfPresent(User user, String status) {
-        if (status == null || status.isBlank()) {
+    private void updateStatusIfPresent(
+            User user,
+            String status
+    ) {
+        if (status == null
+                || status.isBlank()) {
             return;
         }
 
-        UserStatus userStatus = parseUserStatus(status);
-        user.setStatus(userStatus);
+        user.setStatus(
+                parseRequiredUserStatus(status)
+        );
     }
 
-    private Set<String> normalizeRoleCodes(Set<String> roleCodes) {
-        if (roleCodes == null || roleCodes.isEmpty()) {
-            throw new AppException(ErrorCode.INVALID_REQUEST);
+    private Set<String> normalizeRoleCodes(
+            Set<String> roleCodes
+    ) {
+        if (roleCodes == null
+                || roleCodes.isEmpty()) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
         }
 
-        return roleCodes.stream()
-                .filter(roleCode -> roleCode != null && !roleCode.isBlank())
-                .map(roleCode -> roleCode.trim().toUpperCase())
-                .collect(Collectors.toSet());
+        Set<String> normalized =
+                roleCodes.stream()
+                        .filter(roleCode ->
+                                roleCode != null
+                                        && !roleCode.isBlank()
+                        )
+                        .map(roleCode ->
+                                roleCode.trim()
+                                        .toUpperCase()
+                        )
+                        .collect(
+                                Collectors.toSet()
+                        );
+
+        if (normalized.isEmpty()) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        return normalized;
     }
 
-    private void validateRoleCodesAllowed(Set<String> roleCodes) {
-        Set<String> allowedRoles = Set.of(
-                "ROLE_ADMIN",
-                "ROLE_STAFF",
-                "ROLE_TRAINER",
-                "ROLE_MEMBER"
-        );
-
-        boolean hasInvalidRole = roleCodes.stream()
-                .anyMatch(roleCode -> !allowedRoles.contains(roleCode));
+    private void validateRoleCodesAllowed(
+            Set<String> roleCodes
+    ) {
+        boolean hasInvalidRole =
+                roleCodes.stream()
+                        .anyMatch(roleCode ->
+                                !ALLOWED_USER_ROLES
+                                        .contains(roleCode)
+                        );
 
         if (hasInvalidRole) {
-            throw new AppException(ErrorCode.INVALID_REQUEST);
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
         }
+    }
+
+    private UserStatus parseUserStatus(
+            String status
+    ) {
+        if (status == null
+                || status.isBlank()) {
+            return null;
+        }
+
+        return parseRequiredUserStatus(
+                status
+        );
+    }
+
+    private UserStatus parseUserStatusWithDefault(
+            String status
+    ) {
+        if (status == null
+                || status.isBlank()) {
+            return UserStatus.ACTIVE;
+        }
+
+        return parseRequiredUserStatus(
+                status
+        );
+    }
+
+    private UserStatus parseRequiredUserStatus(
+            String status
+    ) {
+        if (status == null
+                || status.isBlank()) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        try {
+            return UserStatus.valueOf(
+                    status.trim()
+                            .toUpperCase()
+            );
+        } catch (IllegalArgumentException exception) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+    }
+
+    private String normalizeRoleCode(
+            String roleCode
+    ) {
+        if (roleCode == null
+                || roleCode.isBlank()) {
+            return null;
+        }
+
+        return roleCode.trim()
+                .toUpperCase();
+    }
+
+    private String normalizeRequiredRoleCode(
+            String roleCode
+    ) {
+        String normalized =
+                normalizeRoleCode(roleCode);
+
+        if (normalized == null) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        return normalized;
+    }
+
+    private String normalizeKeyword(
+            String keyword
+    ) {
+        return normalizeOptionalText(
+                keyword
+        );
+    }
+
+    private String normalizeRequiredText(
+            String value
+    ) {
+        if (value == null
+                || value.isBlank()) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        return value.trim();
+    }
+
+    private String normalizeOptionalText(
+            String value
+    ) {
+        if (value == null
+                || value.isBlank()) {
+            return null;
+        }
+
+        return value.trim();
+    }
+
+    private String normalizeEmail(
+            String email
+    ) {
+        return normalizeRequiredText(email)
+                .toLowerCase();
+    }
+
+    private String normalizeOptionalEmail(
+            String email
+    ) {
+        String normalized =
+                normalizeOptionalText(email);
+
+        return normalized == null
+                ? null
+                : normalized.toLowerCase();
+    }
+
+    private int normalizePage(
+            int page
+    ) {
+        return Math.max(
+                page,
+                DEFAULT_PAGE
+        );
+    }
+
+    private int normalizeSize(
+            int size
+    ) {
+        if (size <= 0) {
+            return DEFAULT_SIZE;
+        }
+
+        return Math.min(
+                size,
+                MAX_SIZE
+        );
     }
 }
