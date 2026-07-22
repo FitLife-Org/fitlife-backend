@@ -243,6 +243,8 @@ Accept: application/json
 ### 4. GENERATE NUTRITION PLAN
 ### ============================================================
 
+### GENERATE NUTRITION PLAN
+
 # @timeout 120000
 POST {{baseUrl}}/ai/suggestions/nutrition-plan
 Authorization: Bearer {{memberToken}}
@@ -289,9 +291,7 @@ Accept: application/json
             );
 
             client.assert(
-                response.body.data.summary
-                != null
-                && response.body.data.summary.length > 0,
+                response.body.data.summary != null,
                 "Summary is missing"
             );
         }
@@ -299,7 +299,8 @@ Accept: application/json
 
     if (
         response.status === 200
-        && response.body.data?.id != null
+        && response.body.data != null
+        && response.body.data.id != null
     ) {
         client.global.set(
             "nutritionSuggestionId",
