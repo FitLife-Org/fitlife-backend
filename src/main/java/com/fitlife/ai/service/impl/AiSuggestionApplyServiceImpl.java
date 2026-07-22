@@ -13,6 +13,8 @@ import com.fitlife.ai.service.CurrentMemberService;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.member.entity.Member;
+import com.fitlife.nutrition.entity.NutritionPlan;
+import com.fitlife.nutrition.service.AiNutritionPlanCreationService;
 import com.fitlife.workout.entity.WorkoutPlan;
 import com.fitlife.workout.service.AiWorkoutPlanCreationService;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,22 @@ import java.util.List;
 public class AiSuggestionApplyServiceImpl
         implements AiSuggestionApplyService {
 
+    private static final List<AiPlanItemType>
+            WORKOUT_ITEM_TYPES = List.of(
+            AiPlanItemType.WORKOUT_DAY,
+            AiPlanItemType.EXERCISE,
+            AiPlanItemType.WARNING,
+            AiPlanItemType.NOTE
+    );
+
+    private static final List<AiPlanItemType>
+            NUTRITION_ITEM_TYPES = List.of(
+            AiPlanItemType.NUTRITION,
+            AiPlanItemType.MEAL,
+            AiPlanItemType.WARNING,
+            AiPlanItemType.NOTE
+    );
+
     private final AiSuggestionRepository
             aiSuggestionRepository;
 
@@ -38,6 +56,9 @@ public class AiSuggestionApplyServiceImpl
     private final AiWorkoutPlanCreationService
             aiWorkoutPlanCreationService;
 
+    private final AiNutritionPlanCreationService
+            aiNutritionPlanCreationService;
+
     @Override
     @Transactional
     public AiApplyPlanResponse applyWorkoutPlan(
@@ -46,50 +67,28 @@ public class AiSuggestionApplyServiceImpl
         validateSuggestionId(suggestionId);
 
         Member currentMember =
-                currentMemberService
-                        .getCurrentMember();
+                getCurrentMember();
 
         AiSuggestion suggestion =
-                aiSuggestionRepository
-                        .findOwnedByIdForUpdate(
-                                suggestionId,
-                                currentMember.getId()
-                        )
-                        .orElseThrow(() ->
-                                new AppException(
-                                        ErrorCode
-                                                .AI_SUGGESTION_NOT_FOUND
-                                )
-                        );
+                getOwnedSuggestionForUpdate(
+                        suggestionId,
+                        currentMember.getId()
+                );
 
         validateSuccessful(suggestion);
         validateWorkoutApplicable(suggestion);
-        validateNotAlreadyApplied(suggestion);
+        validateWorkoutNotApplied(suggestion);
 
         List<AiPlanItem> items =
-                aiPlanItemRepository
-                        .findByAiSuggestionIdAndItemTypeInOrderBySortOrderAscIdAsc(
-                                suggestion.getId(),
-                                List.of(
-                                        AiPlanItemType.WORKOUT_DAY,
-                                        AiPlanItemType.EXERCISE,
-                                        AiPlanItemType.WARNING,
-                                        AiPlanItemType.NOTE
-                                )
-                        );
+                getPlanItems(
+                        suggestion.getId(),
+                        WORKOUT_ITEM_TYPES
+                );
 
-        boolean hasExercise =
-                items.stream()
-                        .anyMatch(item ->
-                                item.getItemType()
-                                        == AiPlanItemType.EXERCISE
-                        );
-
-        if (!hasExercise) {
-            throw new AppException(
-                    ErrorCode.AI_SUGGESTION_ITEMS_NOT_FOUND
-            );
-        }
+        validateItemExists(
+                items,
+                AiPlanItemType.EXERCISE
+        );
 
         WorkoutPlan workoutPlan =
                 aiWorkoutPlanCreationService
@@ -102,7 +101,8 @@ public class AiSuggestionApplyServiceImpl
         if (workoutPlan == null
                 || workoutPlan.getId() == null) {
             throw new AppException(
-                    ErrorCode.AI_WORKOUT_PLAN_CREATION_FAILED
+                    ErrorCode
+                            .AI_WORKOUT_PLAN_CREATION_FAILED
             );
         }
 
@@ -118,27 +118,152 @@ public class AiSuggestionApplyServiceImpl
                 suggestion
         );
 
-        return AiApplyPlanResponse.builder()
-                .suggestionId(
-                        suggestion.getId()
+        return buildApplyResponse(
+                suggestion,
+                workoutPlan.getId(),
+                suggestion.getAppliedNutritionPlanId(),
+                "AI workout plan applied successfully"
+        );
+    }
+
+    @Override
+    @Transactional
+    public AiApplyPlanResponse applyNutritionPlan(
+            Long suggestionId
+    ) {
+        validateSuggestionId(suggestionId);
+
+        Member currentMember =
+                getCurrentMember();
+
+        AiSuggestion suggestion =
+                getOwnedSuggestionForUpdate(
+                        suggestionId,
+                        currentMember.getId()
+                );
+
+        validateSuccessful(suggestion);
+        validateNutritionApplicable(suggestion);
+        validateNutritionNotApplied(suggestion);
+
+        List<AiPlanItem> items =
+                getPlanItems(
+                        suggestion.getId(),
+                        NUTRITION_ITEM_TYPES
+                );
+
+        validateItemExists(
+                items,
+                AiPlanItemType.MEAL
+        );
+
+        NutritionPlan nutritionPlan =
+                aiNutritionPlanCreationService
+                        .createFromAiSuggestion(
+                                suggestion,
+                                currentMember,
+                                items
+                        );
+
+        if (nutritionPlan == null
+                || nutritionPlan.getId() == null) {
+            throw new AppException(
+                    ErrorCode
+                            .AI_NUTRITION_PLAN_CREATION_FAILED
+            );
+        }
+
+        suggestion.setAppliedNutritionPlanId(
+                nutritionPlan.getId()
+        );
+
+        updateSuggestionStatusAfterApply(
+                suggestion
+        );
+
+        aiSuggestionRepository.saveAndFlush(
+                suggestion
+        );
+
+        return buildApplyResponse(
+                suggestion,
+                suggestion.getAppliedWorkoutPlanId(),
+                nutritionPlan.getId(),
+                "AI nutrition plan applied successfully"
+        );
+    }
+
+    private Member getCurrentMember() {
+        Member currentMember =
+                currentMemberService
+                        .getCurrentMember();
+
+        if (currentMember == null
+                || currentMember.getId() == null) {
+            throw new AppException(
+                    ErrorCode.MEMBER_NOT_FOUND
+            );
+        }
+
+        return currentMember;
+    }
+
+    private AiSuggestion getOwnedSuggestionForUpdate(
+            Long suggestionId,
+            Long memberId
+    ) {
+        return aiSuggestionRepository
+                .findOwnedByIdForUpdate(
+                        suggestionId,
+                        memberId
                 )
-                .workoutPlanId(
-                        workoutPlan.getId()
-                )
-                .nutritionPlanId(
-                        suggestion
-                                .getAppliedNutritionPlanId()
-                )
-                .workoutApplied(true)
-                .nutritionApplied(
-                        suggestion
-                                .getAppliedNutritionPlanId()
-                                != null
-                )
-                .message(
-                        "AI workout plan applied successfully"
-                )
-                .build();
+                .orElseThrow(() ->
+                        new AppException(
+                                ErrorCode
+                                        .AI_SUGGESTION_NOT_FOUND
+                        )
+                );
+    }
+
+    private List<AiPlanItem> getPlanItems(
+            Long suggestionId,
+            List<AiPlanItemType> itemTypes
+    ) {
+        List<AiPlanItem> items =
+                aiPlanItemRepository
+                        .findByAiSuggestionIdAndItemTypeInOrderBySortOrderAscIdAsc(
+                                suggestionId,
+                                itemTypes
+                        );
+
+        if (items == null || items.isEmpty()) {
+            throw new AppException(
+                    ErrorCode
+                            .AI_SUGGESTION_ITEMS_NOT_FOUND
+            );
+        }
+
+        return items;
+    }
+
+    private void validateItemExists(
+            List<AiPlanItem> items,
+            AiPlanItemType requiredType
+    ) {
+        boolean exists =
+                items.stream()
+                        .filter(item -> item != null)
+                        .anyMatch(item ->
+                                item.getItemType()
+                                        == requiredType
+                        );
+
+        if (!exists) {
+            throw new AppException(
+                    ErrorCode
+                            .AI_SUGGESTION_ITEMS_NOT_FOUND
+            );
+        }
     }
 
     private void validateSuggestionId(
@@ -158,7 +283,8 @@ public class AiSuggestionApplyServiceImpl
         if (suggestion.getStatus()
                 != AiSuggestionStatus.SUCCESS) {
             throw new AppException(
-                    ErrorCode.AI_SUGGESTION_NOT_SUCCESS
+                    ErrorCode
+                            .AI_SUGGESTION_NOT_SUCCESS
             );
         }
     }
@@ -170,21 +296,53 @@ public class AiSuggestionApplyServiceImpl
                 suggestion.getSuggestionType();
 
         if (type != AiSuggestionType.FULL_PLAN
-                && type != AiSuggestionType.WORKOUT_PLAN) {
+                && type
+                != AiSuggestionType.WORKOUT_PLAN) {
             throw new AppException(
-                    ErrorCode.AI_SUGGESTION_NOT_APPLICABLE
+                    ErrorCode
+                            .AI_SUGGESTION_NOT_APPLICABLE
             );
         }
     }
 
-    private void validateNotAlreadyApplied(
+    private void validateNutritionApplicable(
+            AiSuggestion suggestion
+    ) {
+        AiSuggestionType type =
+                suggestion.getSuggestionType();
+
+        if (type != AiSuggestionType.FULL_PLAN
+                && type
+                != AiSuggestionType.NUTRITION_PLAN) {
+            throw new AppException(
+                    ErrorCode
+                            .AI_SUGGESTION_NOT_APPLICABLE
+            );
+        }
+    }
+
+    private void validateWorkoutNotApplied(
             AiSuggestion suggestion
     ) {
         if (suggestion
                 .getAppliedWorkoutPlanId()
                 != null) {
             throw new AppException(
-                    ErrorCode.AI_SUGGESTION_ALREADY_APPLIED
+                    ErrorCode
+                            .AI_SUGGESTION_ALREADY_APPLIED
+            );
+        }
+    }
+
+    private void validateNutritionNotApplied(
+            AiSuggestion suggestion
+    ) {
+        if (suggestion
+                .getAppliedNutritionPlanId()
+                != null) {
+            throw new AppException(
+                    ErrorCode
+                            .AI_SUGGESTION_ALREADY_APPLIED
             );
         }
     }
@@ -192,16 +350,30 @@ public class AiSuggestionApplyServiceImpl
     private void updateSuggestionStatusAfterApply(
             AiSuggestion suggestion
     ) {
-        if (suggestion.getSuggestionType()
-                == AiSuggestionType.WORKOUT_PLAN) {
+        AiSuggestionType type =
+                suggestion.getSuggestionType();
+
+        if (type == AiSuggestionType.WORKOUT_PLAN
+                && suggestion
+                .getAppliedWorkoutPlanId()
+                != null) {
             suggestion.setStatus(
                     AiSuggestionStatus.APPLIED
             );
             return;
         }
 
-        if (suggestion.getSuggestionType()
-                == AiSuggestionType.FULL_PLAN
+        if (type == AiSuggestionType.NUTRITION_PLAN
+                && suggestion
+                .getAppliedNutritionPlanId()
+                != null) {
+            suggestion.setStatus(
+                    AiSuggestionStatus.APPLIED
+            );
+            return;
+        }
+
+        if (type == AiSuggestionType.FULL_PLAN
                 && suggestion
                 .getAppliedWorkoutPlanId()
                 != null
@@ -212,5 +384,31 @@ public class AiSuggestionApplyServiceImpl
                     AiSuggestionStatus.APPLIED
             );
         }
+    }
+
+    private AiApplyPlanResponse buildApplyResponse(
+            AiSuggestion suggestion,
+            Long workoutPlanId,
+            Long nutritionPlanId,
+            String message
+    ) {
+        return AiApplyPlanResponse.builder()
+                .suggestionId(
+                        suggestion.getId()
+                )
+                .workoutPlanId(
+                        workoutPlanId
+                )
+                .nutritionPlanId(
+                        nutritionPlanId
+                )
+                .workoutApplied(
+                        workoutPlanId != null
+                )
+                .nutritionApplied(
+                        nutritionPlanId != null
+                )
+                .message(message)
+                .build();
     }
 }

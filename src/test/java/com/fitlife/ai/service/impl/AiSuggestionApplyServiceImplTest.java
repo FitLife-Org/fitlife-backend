@@ -19,12 +19,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import com.fitlife.nutrition.entity.NutritionPlan;
+
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.eq;
+import com.fitlife.nutrition.service.AiNutritionPlanCreationService;
 
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -51,6 +55,10 @@ class AiSuggestionApplyServiceImplTest {
     private AiWorkoutPlanCreationService
             aiWorkoutPlanCreationService;
 
+    @Mock
+    private AiNutritionPlanCreationService
+            aiNutritionPlanCreationService;
+
     private AiSuggestionApplyServiceImpl service;
 
     @BeforeEach
@@ -60,7 +68,8 @@ class AiSuggestionApplyServiceImplTest {
                         aiSuggestionRepository,
                         aiPlanItemRepository,
                         currentMemberService,
-                        aiWorkoutPlanCreationService
+                        aiWorkoutPlanCreationService,
+                        aiNutritionPlanCreationService
                 );
     }
 
@@ -337,5 +346,93 @@ class AiSuggestionApplyServiceImplTest {
                 .goal("GAIN_MUSCLE")
                 .deleted(false)
                 .build();
+    }
+
+    @Test
+    void applyNutritionPlan_shouldCreatePlan() {
+        Member member = createMember();
+
+        AiSuggestion suggestion =
+                createSuggestion(
+                        AiSuggestionType.NUTRITION_PLAN
+                );
+
+        AiPlanItem meal =
+                AiPlanItem.builder()
+                        .id(101L)
+                        .aiSuggestion(suggestion)
+                        .itemType(
+                                AiPlanItemType.MEAL
+                        )
+                        .mealName("Bữa sáng")
+                        .title("Trứng và yến mạch")
+                        .portionText("2 trứng và 80g yến mạch")
+                        .calories(500)
+                        .sortOrder(1)
+                        .build();
+
+        NutritionPlan nutritionPlan =
+                NutritionPlan.builder()
+                        .id(300L)
+                        .member(member)
+                        .aiSuggestion(suggestion)
+                        .build();
+
+        when(currentMemberService
+                .getCurrentMember())
+                .thenReturn(member);
+
+        when(aiSuggestionRepository
+                .findOwnedByIdForUpdate(
+                        10L,
+                        1L
+                ))
+                .thenReturn(
+                        Optional.of(suggestion)
+                );
+
+        when(aiPlanItemRepository
+                .findByAiSuggestionIdAndItemTypeInOrderBySortOrderAscIdAsc(
+                        eq(10L),
+                        anyCollection()
+                ))
+                .thenReturn(List.of(meal));
+
+        when(aiNutritionPlanCreationService
+                .createFromAiSuggestion(
+                        suggestion,
+                        member,
+                        List.of(meal)
+                ))
+                .thenReturn(nutritionPlan);
+
+        when(aiSuggestionRepository
+                .saveAndFlush(suggestion))
+                .thenReturn(suggestion);
+
+        AiApplyPlanResponse response =
+                service.applyNutritionPlan(10L);
+
+        assertEquals(
+                300L,
+                response.getNutritionPlanId()
+        );
+
+        assertTrue(
+                response.isNutritionApplied()
+        );
+
+        assertEquals(
+                300L,
+                suggestion.getAppliedNutritionPlanId()
+        );
+
+        assertEquals(
+                AiSuggestionStatus.APPLIED,
+                suggestion.getStatus()
+        );
+
+        verify(aiSuggestionRepository)
+                .saveAndFlush(suggestion);
     }
 }
