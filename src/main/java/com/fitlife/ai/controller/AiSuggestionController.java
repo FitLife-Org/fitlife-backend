@@ -5,12 +5,10 @@ import com.fitlife.ai.dto.request.AiFeedbackRequest;
 import com.fitlife.ai.dto.request.AiFullPlanRequest;
 import com.fitlife.ai.dto.request.AiNutritionPlanRequest;
 import com.fitlife.ai.dto.request.AiWorkoutPlanRequest;
-import com.fitlife.ai.dto.response.AiFeedbackResponse;
-import com.fitlife.ai.dto.response.AiSuggestionDetailResponse;
-import com.fitlife.ai.dto.response.AiSuggestionResponse;
-import com.fitlife.ai.dto.response.AiUsageTodayResponse;
+import com.fitlife.ai.dto.response.*;
 import com.fitlife.ai.enums.AiSuggestionStatus;
 import com.fitlife.ai.enums.AiSuggestionType;
+import com.fitlife.ai.service.AiSuggestionApplyService;
 import com.fitlife.ai.service.AiSuggestionService;
 import com.fitlife.ai.service.AiUsageService;
 import com.fitlife.ai.service.CurrentMemberService;
@@ -36,6 +34,9 @@ public class AiSuggestionController {
 
     private final AiSuggestionService
             aiSuggestionService;
+
+    private final AiSuggestionApplyService
+            aiSuggestionApplyService;
 
     private final AiUsageService
             aiUsageService;
@@ -183,6 +184,23 @@ public class AiSuggestionController {
                                         status,
                                         pageable
                                 )
+                )
+                .build();
+    }
+
+    @PostMapping("/{id}/apply-workout-plan")
+    public ApiResponse<AiApplyPlanResponse>
+    applyWorkoutPlan(
+            @PathVariable Long id
+    ) {
+        return ApiResponse
+                .<AiApplyPlanResponse>builder()
+                .message(
+                        "AI workout plan applied successfully"
+                )
+                .data(
+                        aiSuggestionApplyService
+                                .applyWorkoutPlan(id)
                 )
                 .build();
     }

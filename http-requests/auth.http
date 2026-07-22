@@ -93,7 +93,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "identifier": "member04",
+  "identifier": "member01",
   "password": "123456"
 }
 

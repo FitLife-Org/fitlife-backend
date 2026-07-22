@@ -8,17 +8,46 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface WorkoutPlanRepository extends JpaRepository<WorkoutPlan, Long> {
-    List<WorkoutPlan> findByMemberIdAndIsDeletedFalse(Long memberId);
+public interface WorkoutPlanRepository
+        extends JpaRepository<WorkoutPlan, Long> {
 
-    List<WorkoutPlan> findByMemberIdAndIsDeletedFalseOrderByCreatedAtDesc(Long memberId);
+    List<WorkoutPlan>
+    findByMemberIdAndIsDeletedFalse(
+            Long memberId
+    );
 
-    Optional findFirstByMemberIdAndStatusAndIsDeletedFalse(Long memberId, String status);
+    List<WorkoutPlan>
+    findByMemberIdAndIsDeletedFalseOrderByCreatedAtDesc(
+            Long memberId
+    );
 
-    Optional findByIdAndMemberIdAndIsDeletedFalse(Long id, Long memberId);
+    Optional<WorkoutPlan>
+    findFirstByMemberIdAndStatusAndIsDeletedFalse(
+            Long memberId,
+            String status
+    );
 
-    List findByMemberIdAndStatusAndIsDeletedFalse(Long memberId, String status);
+    Optional<WorkoutPlan>
+    findByIdAndMemberIdAndIsDeletedFalse(
+            Long id,
+            Long memberId
+    );
 
-    List findByIsDeletedFalseOrderByCreatedAtDesc();
+    List<WorkoutPlan>
+    findByMemberIdAndStatusAndIsDeletedFalse(
+            Long memberId,
+            String status
+    );
 
+    List<WorkoutPlan>
+    findByIsDeletedFalseOrderByCreatedAtDesc();
+
+    boolean existsBySourceAiSuggestionIdAndIsDeletedFalse(
+            Long sourceAiSuggestionId
+    );
+
+    Optional<WorkoutPlan>
+    findBySourceAiSuggestionIdAndIsDeletedFalse(
+            Long sourceAiSuggestionId
+    );
 }

@@ -551,6 +551,36 @@ public enum ErrorCode {
             HttpStatus.SERVICE_UNAVAILABLE
     ),
 
+    AI_SUGGESTION_NOT_SUCCESS(
+            12016,
+            "Only successful AI suggestions can be applied",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    AI_SUGGESTION_NOT_APPLICABLE(
+            12017,
+            "AI suggestion cannot be applied to this plan type",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    AI_SUGGESTION_ALREADY_APPLIED(
+            12018,
+            "AI suggestion has already been applied",
+            HttpStatus.CONFLICT
+    ),
+
+    AI_SUGGESTION_ITEMS_NOT_FOUND(
+            12019,
+            "AI suggestion plan items not found",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    AI_WORKOUT_PLAN_CREATION_FAILED(
+            12020,
+            "Unable to create workout plan from AI suggestion",
+            HttpStatus.INTERNAL_SERVER_ERROR
+    ),
+
     // =========================
     // Check-in errors: 13000 - 13999
     // =========================
