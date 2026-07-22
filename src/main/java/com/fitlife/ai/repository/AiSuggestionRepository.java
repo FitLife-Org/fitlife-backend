@@ -79,6 +79,20 @@ public interface AiSuggestionRepository extends JpaRepository<AiSuggestion, Long
             Pageable pageable
     );
 
+    @Query("""
+        SELECT COUNT(s)
+        FROM AiSuggestion s
+        WHERE s.member.id = :memberId
+          AND s.requestedAt >= :from
+          AND s.requestedAt < :to
+          AND s.deleted = false
+        """)
+    long countTodayUsage(
+            @Param("memberId") Long memberId,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to
+    );
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
         select suggestion

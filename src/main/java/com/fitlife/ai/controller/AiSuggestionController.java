@@ -1,19 +1,33 @@
 package com.fitlife.ai.controller;
 
-import com.fitlife.ai.dto.request.*;
+import com.fitlife.ai.dto.request.AiBodyAnalysisRequest;
+import com.fitlife.ai.dto.request.AiFeedbackRequest;
+import com.fitlife.ai.dto.request.AiFullPlanRequest;
+import com.fitlife.ai.dto.request.AiNutritionPlanRequest;
+import com.fitlife.ai.dto.request.AiWorkoutPlanRequest;
 import com.fitlife.ai.dto.response.AiFeedbackResponse;
 import com.fitlife.ai.dto.response.AiSuggestionDetailResponse;
 import com.fitlife.ai.dto.response.AiSuggestionResponse;
+import com.fitlife.ai.dto.response.AiUsageTodayResponse;
 import com.fitlife.ai.enums.AiSuggestionStatus;
 import com.fitlife.ai.enums.AiSuggestionType;
 import com.fitlife.ai.service.AiSuggestionService;
+import com.fitlife.ai.service.AiUsageService;
+import com.fitlife.ai.service.CurrentMemberService;
 import com.fitlife.common.response.ApiResponse;
 import com.fitlife.common.response.PageResponse;
+import com.fitlife.member.entity.Member;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
@@ -22,6 +36,12 @@ public class AiSuggestionController {
 
     private final AiSuggestionService
             aiSuggestionService;
+
+    private final AiUsageService
+            aiUsageService;
+
+    private final CurrentMemberService
+            currentMemberService;
 
     @PostMapping("/full-plan")
     public ApiResponse<AiSuggestionResponse>
@@ -60,11 +80,13 @@ public class AiSuggestionController {
     }
 
     @PostMapping("/nutrition-plan")
-    public ApiResponse<AiSuggestionResponse> createNutritionPlan(
+    public ApiResponse<AiSuggestionResponse>
+    createNutritionPlan(
             @Valid @RequestBody
             AiNutritionPlanRequest request
     ) {
-        return ApiResponse.<AiSuggestionResponse>builder()
+        return ApiResponse
+                .<AiSuggestionResponse>builder()
                 .message(
                         "AI nutrition plan created successfully"
                 )
@@ -93,6 +115,26 @@ public class AiSuggestionController {
                 .build();
     }
 
+    @GetMapping("/usage/today")
+    public ApiResponse<AiUsageTodayResponse>
+    getTodayUsage() {
+        Member currentMember =
+                currentMemberService
+                        .getCurrentMember();
+
+        return ApiResponse
+                .<AiUsageTodayResponse>builder()
+                .message(
+                        "Get AI usage today successfully"
+                )
+                .data(
+                        aiUsageService.getTodayUsage(
+                                currentMember.getId()
+                        )
+                )
+                .build();
+    }
+
     @GetMapping("/my")
     public ApiResponse<PageResponse<AiSuggestionResponse>>
     getMySuggestions(
@@ -109,7 +151,10 @@ public class AiSuggestionController {
                 )
                 .data(
                         aiSuggestionService.getMySuggestions(
-                                PageRequest.of(page, size)
+                                PageRequest.of(
+                                        page,
+                                        size
+                                )
                         )
                 )
                 .build();
