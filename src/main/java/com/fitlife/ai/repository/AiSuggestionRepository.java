@@ -19,6 +19,17 @@ import java.util.Optional;
 public interface AiSuggestionRepository
         extends JpaRepository<AiSuggestion, Long> {
 
+    @EntityGraph(
+            attributePaths = {
+                    "member",
+                    "member.user"
+            }
+    )
+    Optional<AiSuggestion>
+    findResponseById(
+            Long id
+    );
+
     Page<AiSuggestion>
     findByMemberIdAndDeletedFalseOrderByCreatedAtDesc(
             Long memberId,

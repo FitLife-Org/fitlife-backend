@@ -12,7 +12,6 @@ import com.fitlife.ai.entity.AiSuggestion;
 import com.fitlife.ai.enums.AiSuggestionStatus;
 import com.fitlife.ai.enums.AiSuggestionType;
 import com.fitlife.ai.knowledge.enums.AiKnowledgeCategory;
-import com.fitlife.ai.mapper.AiSuggestionMapper;
 import com.fitlife.ai.retrieval.dto.AiKnowledgeRetrievalRequest;
 import com.fitlife.ai.retrieval.service.AiKnowledgeRetrievalService;
 import com.fitlife.ai.service.*;
@@ -23,29 +22,52 @@ import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.member.entity.Member;
 import com.fitlife.user.entity.User;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AiWorkoutPlanOrchestratorServiceImpl
         implements AiWorkoutPlanOrchestratorService {
 
-    private final CurrentMemberService currentMemberService;
-    private final AiUsageService aiUsageService;
-    private final BodyMetricRepository bodyMetricRepository;
-    private final AiSnapshotService aiSnapshotService;
-    private final AiPromptBuilderService aiPromptBuilderService;
-    private final AiProviderService aiProviderService;
-    private final AiPlanParserService aiPlanParserService;
-    private final AiResponseValidatorService aiResponseValidatorService;
+    private final CurrentMemberService
+            currentMemberService;
+
+    private final AiUsageService
+            aiUsageService;
+
+    private final BodyMetricRepository
+            bodyMetricRepository;
+
+    private final AiSnapshotService
+            aiSnapshotService;
+
+    private final AiPromptBuilderService
+            aiPromptBuilderService;
+
+    private final AiProviderService
+            aiProviderService;
+
+    private final AiPlanParserService
+            aiPlanParserService;
+
+    private final AiResponseValidatorService
+            aiResponseValidatorService;
+
     private final AiSuggestionPersistenceService
             aiSuggestionPersistenceService;
-    private final AiSuggestionMapper aiSuggestionMapper;
+
+    private final AiSuggestionResponseService
+            aiSuggestionResponseService;
+
     private final AiKnowledgeRetrievalService
             aiKnowledgeRetrievalService;
-    private final ObjectMapper objectMapper;
+
+    private final ObjectMapper
+            objectMapper;
 
     private static final int MIN_WORKOUT_DAYS = 1;
     private static final int MAX_WORKOUT_DAYS = 7;
@@ -105,48 +127,126 @@ public class AiWorkoutPlanOrchestratorServiceImpl
                         )
                 );
 
+        AiProviderResult providerResult;
+        AiGeneratedWorkoutPlanResponse generated;
+
         try {
-            AiProviderResult providerResult =
+            /*
+             * Giai đoạn 1:
+             * gọi AI, parse và validate.
+             *
+             * Chỉ các lỗi trong giai đoạn này mới được
+             * đánh dấu suggestion FAILED.
+             */
+            providerResult =
                     aiProviderService.generate(
                             promptResult.getPrompt()
                     );
 
-            AiGeneratedWorkoutPlanResponse generated =
+            generated =
                     aiPlanParserService.parseWorkoutPlan(
                             providerResult.getRawResponse()
                     );
 
-            aiResponseValidatorService.validateWorkoutPlan(
-                    generated,
-                    snapshot
-            );
+            aiResponseValidatorService
+                    .validateWorkoutPlan(
+                            generated,
+                            snapshot
+                    );
 
-            String finalWarning = mergeWarnings(
-                    pending.getWarningMessage(),
-                    joinWarnings(generated.getWarnings())
-            );
-
-            AiSuggestion success =
-                    aiSuggestionPersistenceService
-                            .markWorkoutPlanSuccess(
-                                    pending.getId(),
-                                    providerResult,
-                                    generated,
-                                    finalWarning
-                            );
-
-            return aiSuggestionMapper.toResponse(success);
         } catch (AppException exception) {
             safeMarkFailed(
                     pending.getId(),
                     resolveFailureCode(exception)
             );
+
             throw exception;
+
         } catch (Exception exception) {
+            log.error(
+                    "Unexpected workout AI generation error. "
+                            + "suggestionId={}, type={}, message={}",
+                    pending.getId(),
+                    exception.getClass().getName(),
+                    exception.getMessage(),
+                    exception
+            );
+
             safeMarkFailed(
                     pending.getId(),
                     "AI_RESPONSE_INVALID"
             );
+
+            throw new AppException(
+                    ErrorCode.AI_RESPONSE_INVALID
+            );
+        }
+
+        String finalWarning =
+                mergeWarnings(
+                        pending.getWarningMessage(),
+                        joinWarnings(
+                                generated.getWarnings()
+                        )
+                );
+
+        try {
+            /*
+             * Giai đoạn 2:
+             * lưu SUCCESS và các plan items.
+             */
+            aiSuggestionPersistenceService
+                    .markWorkoutPlanSuccess(
+                            pending.getId(),
+                            providerResult,
+                            generated,
+                            finalWarning
+                    );
+
+            /*
+             * Tải lại suggestion đầy đủ và map response
+             * trong transaction read-only riêng.
+             */
+            return aiSuggestionResponseService
+                    .getSummaryResponse(
+                            pending.getId()
+                    );
+
+        } catch (AppException exception) {
+            /*
+             * Không gọi safeMarkFailed tại đây.
+             *
+             * markWorkoutPlanSuccess có thể đã hoàn tất.
+             * Không được biến SUCCESS thành FAILED chỉ vì
+             * bước tạo API response gặp lỗi.
+             */
+            log.error(
+                    "Workout plan persistence or response error. "
+                            + "suggestionId={}, errorCode={}, message={}",
+                    pending.getId(),
+                    exception.getErrorCode(),
+                    exception.getMessage(),
+                    exception
+            );
+
+            throw exception;
+
+        } catch (Exception exception) {
+            log.error(
+                    "Workout plan was generated but response mapping failed. "
+                            + "suggestionId={}, type={}, message={}",
+                    pending.getId(),
+                    exception.getClass().getName(),
+                    exception.getMessage(),
+                    exception
+            );
+
+            /*
+             * Tạm dùng AI_RESPONSE_INVALID nếu ErrorCode
+             * chưa có INTERNAL_SERVER_ERROR.
+             *
+             * Quan trọng: không mark FAILED nữa.
+             */
             throw new AppException(
                     ErrorCode.AI_RESPONSE_INVALID
             );

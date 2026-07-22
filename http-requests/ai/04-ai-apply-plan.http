@@ -1,77 +1,339 @@
-### ============================================================
-### AI - APPLY WORKOUT PLAN
-### ============================================================
+# ============================================================
+# AI APPLY TEST
+# Điều kiện:
+# - memberToken đã tồn tại
+# - workoutSuggestionId là WORKOUT_PLAN, status SUCCESS
+# - nutritionSuggestionId là NUTRITION_PLAN, status SUCCESS
+# ============================================================
 
-POST {{baseUrl}}/ai/suggestions/{{workoutSuggestionId}}/apply-workout-plan
+
+### 1. VERIFY WORKOUT SUGGESTION BEFORE APPLY
+
+GET {{baseUrl}}/ai/suggestions/{{workoutSuggestionId}}
 Authorization: Bearer {{memberToken}}
 Accept: application/json
 
 > {%
-    client.test("Apply workout plan successfully", function () {
-        client.assert(
-            response.status === 200,
-            "Expected HTTP 200"
-        );
+    client.test(
+        "Workout suggestion is ready to apply",
+        function () {
+            client.assert(
+                response.status === 200,
+                "Expected HTTP 200"
+            );
 
-        client.assert(
-            response.body.data != null,
-            "Apply response data is missing"
-        );
+            client.assert(
+                response.body.data != null,
+                "Suggestion data is missing"
+            );
 
-        client.assert(
-            response.body.data.workoutPlanId != null,
-            "workoutPlanId is missing"
-        );
-    });
+            client.assert(
+                response.body.data.suggestionType
+                === "WORKOUT_PLAN",
+                "Expected WORKOUT_PLAN"
+            );
 
-    client.global.set(
-        "workoutPlanId",
-        response.body.data.workoutPlanId
+            client.assert(
+                response.body.data.status
+                === "SUCCESS",
+                "Workout suggestion must be SUCCESS"
+            );
+
+            client.assert(
+                response.body.data.appliedWorkoutPlanId
+                == null,
+                "Workout suggestion was already applied"
+            );
+
+            client.assert(
+                Array.isArray(
+                    response.body.data.items
+                ),
+                "Workout items must be an array"
+            );
+
+            client.assert(
+                response.body.data.items.length > 0,
+                "Workout items must not be empty"
+            );
+        }
     );
 %}
 
-### Duplicate apply - expected conflict
+
+### 2. APPLY WORKOUT PLAN
+
 POST {{baseUrl}}/ai/suggestions/{{workoutSuggestionId}}/apply-workout-plan
 Authorization: Bearer {{memberToken}}
 Accept: application/json
 
 > {%
-    client.test("Duplicate workout apply is rejected", function () {
-        client.assert(
-            response.status === 409,
-            "Expected HTTP 409"
-        );
+    client.test(
+        "Apply workout plan successfully",
+        function () {
+            client.assert(
+                response.status === 200,
+                "Expected HTTP 200"
+            );
 
-        client.assert(
-            response.body.code === 12018,
-            "Expected AI_SUGGESTION_ALREADY_APPLIED"
+            client.assert(
+                response.body.data != null,
+                "Apply response data is missing"
+            );
+
+            client.assert(
+                response.body.data.workoutPlanId != null,
+                "workoutPlanId is missing"
+            );
+        }
+    );
+
+    if (
+        response.status === 200
+        && response.body.data != null
+        && response.body.data.workoutPlanId != null
+    ) {
+        client.global.set(
+            "workoutPlanId",
+            response.body.data.workoutPlanId
         );
-    });
+    }
 %}
 
-### ============================================================
-### AI - APPLY NUTRITION PLAN
-### ============================================================
+
+### 3. VERIFY WORKOUT SUGGESTION AFTER APPLY
+
+GET {{baseUrl}}/ai/suggestions/{{workoutSuggestionId}}
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+> {%
+    client.test(
+        "Workout suggestion is marked as applied",
+        function () {
+            client.assert(
+                response.status === 200,
+                "Expected HTTP 200"
+            );
+
+            client.assert(
+                response.body.data != null,
+                "Suggestion data is missing"
+            );
+
+            client.assert(
+                response.body.data.status
+                === "APPLIED",
+                "Expected APPLIED status"
+            );
+
+            client.assert(
+                response.body.data.appliedWorkoutPlanId
+                != null,
+                "appliedWorkoutPlanId is missing"
+            );
+
+            client.assert(
+                String(
+                    response.body.data.appliedWorkoutPlanId
+                )
+                === String(
+                    client.global.get(
+                        "workoutPlanId"
+                    )
+                ),
+                "Applied workout plan ID does not match"
+            );
+        }
+    );
+%}
+
+
+### 4. DUPLICATE WORKOUT APPLY
+
+POST {{baseUrl}}/ai/suggestions/{{workoutSuggestionId}}/apply-workout-plan
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+> {%
+    client.test(
+        "Duplicate workout apply is rejected",
+        function () {
+            client.assert(
+                response.status === 409,
+                "Expected HTTP 409"
+            );
+
+            client.assert(
+                response.body.code === 12018,
+                "Expected AI_SUGGESTION_ALREADY_APPLIED"
+            );
+        }
+    );
+%}
+
+
+### 5. VERIFY NUTRITION SUGGESTION BEFORE APPLY
+
+GET {{baseUrl}}/ai/suggestions/{{nutritionSuggestionId}}
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+> {%
+    client.test(
+        "Nutrition suggestion is ready to apply",
+        function () {
+            client.assert(
+                response.status === 200,
+                "Expected HTTP 200"
+            );
+
+            client.assert(
+                response.body.data != null,
+                "Suggestion data is missing"
+            );
+
+            client.assert(
+                response.body.data.suggestionType
+                === "NUTRITION_PLAN",
+                "Expected NUTRITION_PLAN"
+            );
+
+            client.assert(
+                response.body.data.status
+                === "SUCCESS",
+                "Nutrition suggestion must be SUCCESS"
+            );
+
+            client.assert(
+                response.body.data.appliedNutritionPlanId
+                == null,
+                "Nutrition suggestion was already applied"
+            );
+
+            client.assert(
+                Array.isArray(
+                    response.body.data.items
+                ),
+                "Nutrition items must be an array"
+            );
+
+            client.assert(
+                response.body.data.items.length > 0,
+                "Nutrition items must not be empty"
+            );
+        }
+    );
+%}
+
+
+### 6. APPLY NUTRITION PLAN
 
 POST {{baseUrl}}/ai/suggestions/{{nutritionSuggestionId}}/apply-nutrition-plan
 Authorization: Bearer {{memberToken}}
 Accept: application/json
 
 > {%
-    client.test("Apply nutrition plan successfully", function () {
-        client.assert(
-            response.status === 200,
-            "Expected HTTP 200"
-        );
+    client.test(
+        "Apply nutrition plan successfully",
+        function () {
+            client.assert(
+                response.status === 200,
+                "Expected HTTP 200"
+            );
 
-        client.assert(
-            response.body.data.nutritionPlanId != null,
-            "nutritionPlanId is missing"
-        );
-    });
+            client.assert(
+                response.body.data != null,
+                "Apply response data is missing"
+            );
 
-    client.global.set(
-        "nutritionPlanId",
-        response.body.data.nutritionPlanId
+            client.assert(
+                response.body.data.nutritionPlanId != null,
+                "nutritionPlanId is missing"
+            );
+        }
+    );
+
+    if (
+        response.status === 200
+        && response.body.data != null
+        && response.body.data.nutritionPlanId != null
+    ) {
+        client.global.set(
+            "nutritionPlanId",
+            response.body.data.nutritionPlanId
+        );
+    }
+%}
+
+
+### 7. VERIFY NUTRITION SUGGESTION AFTER APPLY
+
+GET {{baseUrl}}/ai/suggestions/{{nutritionSuggestionId}}
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+> {%
+    client.test(
+        "Nutrition suggestion is marked as applied",
+        function () {
+            client.assert(
+                response.status === 200,
+                "Expected HTTP 200"
+            );
+
+            client.assert(
+                response.body.data != null,
+                "Suggestion data is missing"
+            );
+
+            client.assert(
+                response.body.data.status
+                === "APPLIED",
+                "Expected APPLIED status"
+            );
+
+            client.assert(
+                response.body.data.appliedNutritionPlanId
+                != null,
+                "appliedNutritionPlanId is missing"
+            );
+
+            client.assert(
+                String(
+                    response.body.data.appliedNutritionPlanId
+                )
+                === String(
+                    client.global.get(
+                        "nutritionPlanId"
+                    )
+                ),
+                "Applied nutrition plan ID does not match"
+            );
+        }
+    );
+%}
+
+
+### 8. DUPLICATE NUTRITION APPLY
+
+POST {{baseUrl}}/ai/suggestions/{{nutritionSuggestionId}}/apply-nutrition-plan
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+> {%
+    client.test(
+        "Duplicate nutrition apply is rejected",
+        function () {
+            client.assert(
+                response.status === 409,
+                "Expected HTTP 409"
+            );
+
+            client.assert(
+                response.body.code === 12018,
+                "Expected AI_SUGGESTION_ALREADY_APPLIED"
+            );
+        }
     );
 %}

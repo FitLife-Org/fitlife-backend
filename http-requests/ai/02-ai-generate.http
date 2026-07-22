@@ -114,49 +114,129 @@ Accept: application/json
 }
 
 > {%
-    client.test("Generate workout plan successfully", function () {
-        client.assert(
-            response.status === 200,
-            "Expected HTTP 200"
-        );
+    client.test(
+        "Generate workout plan successfully",
+        function () {
+            client.assert(
+                response.status === 200,
+                "Expected HTTP 200"
+            );
 
-        client.assert(
-            response.body.data != null,
-            "Response data is missing"
-        );
+            client.assert(
+                response.body.data != null,
+                "Response data is missing"
+            );
 
-        client.assert(
-            response.body.data.id != null,
-            "Suggestion ID is missing"
-        );
+            client.assert(
+                response.body.data.id != null,
+                "Suggestion ID is missing"
+            );
 
-        client.assert(
-            response.body.data.suggestionType
-            === "WORKOUT_PLAN",
-            "Expected WORKOUT_PLAN"
-        );
+            client.assert(
+                response.body.data.suggestionType
+                === "WORKOUT_PLAN",
+                "Expected WORKOUT_PLAN"
+            );
 
-        client.assert(
-            response.body.data.status
-            === "SUCCESS",
-            "Expected SUCCESS"
-        );
+            client.assert(
+                response.body.data.status
+                === "SUCCESS",
+                "Expected SUCCESS"
+            );
 
-        client.assert(
-            Array.isArray(
-                response.body.data.items
-            ),
-            "items must be an array"
-        );
-    });
+            client.assert(
+                response.body.data.provider
+                === "GEMINI",
+                "Expected GEMINI provider"
+            );
 
-    if (response.status === 200
-        && response.body.data?.id != null) {
+            client.assert(
+                response.body.data.modelName
+                != null,
+                "Model name is missing"
+            );
+
+            client.assert(
+                response.body.data.summary
+                != null
+                && response.body.data.summary.length > 0,
+                "Summary is missing"
+            );
+        }
+    );
+
+    if (
+        response.status === 200
+        && response.body.data?.id != null
+    ) {
         client.global.set(
             "workoutSuggestionId",
             response.body.data.id
         );
     }
+%}
+
+### ============================================================
+### 3.1. WORKOUT PLAN DETAIL
+### ============================================================
+
+GET {{baseUrl}}/ai/suggestions/{{workoutSuggestionId}}
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+> {%
+    client.test(
+        "Get workout plan detail successfully",
+        function () {
+            client.assert(
+                response.status === 200,
+                "Expected HTTP 200"
+            );
+
+            client.assert(
+                response.body.data != null,
+                "Response data is missing"
+            );
+
+            client.assert(
+                response.body.data.id
+                == client.global.get(
+                    "workoutSuggestionId"
+                ),
+                "Suggestion ID does not match"
+            );
+
+            client.assert(
+                response.body.data.suggestionType
+                === "WORKOUT_PLAN",
+                "Expected WORKOUT_PLAN"
+            );
+
+            client.assert(
+                response.body.data.status
+                === "SUCCESS",
+                "Expected SUCCESS"
+            );
+
+            client.assert(
+                response.body.data.aiResponse
+                != null,
+                "AI response is missing"
+            );
+
+            client.assert(
+                Array.isArray(
+                    response.body.data.items
+                ),
+                "items must be an array"
+            );
+
+            client.assert(
+                response.body.data.items.length > 0,
+                "Workout items must not be empty"
+            );
+        }
+    );
 %}
 
 ### ============================================================
@@ -178,49 +258,104 @@ Accept: application/json
 }
 
 > {%
-    client.test("Generate nutrition plan successfully", function () {
-        client.assert(
-            response.status === 200,
-            "Expected HTTP 200"
-        );
+    client.test(
+        "Generate nutrition plan successfully",
+        function () {
+            client.assert(
+                response.status === 200,
+                "Expected HTTP 200"
+            );
 
-        client.assert(
-            response.body.data != null,
-            "Response data is missing"
-        );
+            client.assert(
+                response.body.data != null,
+                "Response data is missing"
+            );
 
-        client.assert(
-            response.body.data.id != null,
-            "Suggestion ID is missing"
-        );
+            client.assert(
+                response.body.data.id != null,
+                "Suggestion ID is missing"
+            );
 
-        client.assert(
-            response.body.data.suggestionType
-            === "NUTRITION_PLAN",
-            "Expected NUTRITION_PLAN"
-        );
+            client.assert(
+                response.body.data.suggestionType
+                === "NUTRITION_PLAN",
+                "Expected NUTRITION_PLAN"
+            );
 
-        client.assert(
-            response.body.data.status
-            === "SUCCESS",
-            "Expected SUCCESS"
-        );
+            client.assert(
+                response.body.data.status
+                === "SUCCESS",
+                "Expected SUCCESS"
+            );
 
-        client.assert(
-            Array.isArray(
-                response.body.data.items
-            ),
-            "items must be an array"
-        );
-    });
+            client.assert(
+                response.body.data.summary
+                != null
+                && response.body.data.summary.length > 0,
+                "Summary is missing"
+            );
+        }
+    );
 
-    if (response.status === 200
-        && response.body.data?.id != null) {
+    if (
+        response.status === 200
+        && response.body.data?.id != null
+    ) {
         client.global.set(
             "nutritionSuggestionId",
             response.body.data.id
         );
     }
+%}
+
+### ============================================================
+### 4.1. NUTRITION PLAN DETAIL
+### ============================================================
+
+GET {{baseUrl}}/ai/suggestions/{{nutritionSuggestionId}}
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+> {%
+    client.test(
+        "Get nutrition plan detail successfully",
+        function () {
+            client.assert(
+                response.status === 200,
+                "Expected HTTP 200"
+            );
+
+            client.assert(
+                response.body.data.suggestionType
+                === "NUTRITION_PLAN",
+                "Expected NUTRITION_PLAN"
+            );
+
+            client.assert(
+                response.body.data.status
+                === "SUCCESS",
+                "Expected SUCCESS"
+            );
+
+            client.assert(
+                response.body.data.aiResponse
+                != null,
+                "AI response is missing"
+            );
+
+            client.assert(
+                Array.isArray(
+                    response.body.data.items
+                ),
+                "items must be an array"
+            );
+
+            client.assert(
+                response.body.data.items.length > 0,
+                "Nutrition items must not be empty"
+            );
+        }
+    );
 %}
 
 ### ============================================================
@@ -245,47 +380,101 @@ Accept: application/json
 }
 
 > {%
-    client.test("Generate full plan successfully", function () {
-        client.assert(
-            response.status === 200,
-            "Expected HTTP 200"
-        );
+    client.test(
+        "Generate full plan successfully",
+        function () {
+            client.assert(
+                response.status === 200,
+                "Expected HTTP 200"
+            );
 
-        client.assert(
-            response.body.data != null,
-            "Response data is missing"
-        );
+            client.assert(
+                response.body.data != null,
+                "Response data is missing"
+            );
 
-        client.assert(
-            response.body.data.id != null,
-            "Suggestion ID is missing"
-        );
+            client.assert(
+                response.body.data.id != null,
+                "Suggestion ID is missing"
+            );
 
-        client.assert(
-            response.body.data.suggestionType
-            === "FULL_PLAN",
-            "Expected FULL_PLAN"
-        );
+            client.assert(
+                response.body.data.suggestionType
+                === "FULL_PLAN",
+                "Expected FULL_PLAN"
+            );
 
-        client.assert(
-            response.body.data.status
-            === "SUCCESS",
-            "Expected SUCCESS"
-        );
+            client.assert(
+                response.body.data.status
+                === "SUCCESS",
+                "Expected SUCCESS"
+            );
 
-        client.assert(
-            Array.isArray(
-                response.body.data.items
-            ),
-            "items must be an array"
-        );
-    });
+            client.assert(
+                response.body.data.summary
+                != null,
+                "Summary is missing"
+            );
+        }
+    );
 
-    if (response.status === 200
-        && response.body.data?.id != null) {
+    if (
+        response.status === 200
+        && response.body.data?.id != null
+    ) {
         client.global.set(
             "fullPlanSuggestionId",
             response.body.data.id
         );
     }
+%}
+
+### ============================================================
+### 5.1. FULL PLAN DETAIL
+### ============================================================
+
+GET {{baseUrl}}/ai/suggestions/{{fullPlanSuggestionId}}
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+> {%
+    client.test(
+        "Get full plan detail successfully",
+        function () {
+            client.assert(
+                response.status === 200,
+                "Expected HTTP 200"
+            );
+
+            client.assert(
+                response.body.data.suggestionType
+                === "FULL_PLAN",
+                "Expected FULL_PLAN"
+            );
+
+            client.assert(
+                response.body.data.status
+                === "SUCCESS",
+                "Expected SUCCESS"
+            );
+
+            client.assert(
+                response.body.data.aiResponse
+                != null,
+                "AI response is missing"
+            );
+
+            client.assert(
+                Array.isArray(
+                    response.body.data.items
+                ),
+                "items must be an array"
+            );
+
+            client.assert(
+                response.body.data.items.length > 0,
+                "Full plan items must not be empty"
+            );
+        }
+    );
 %}
