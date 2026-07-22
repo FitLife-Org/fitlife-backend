@@ -1,6 +1,7 @@
 package com.fitlife.ai.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fitlife.ai.dto.internal.AiContextSnapshot;
 import com.fitlife.ai.dto.internal.AiInputSnapshot;
 import com.fitlife.ai.dto.internal.AiPromptResult;
 import com.fitlife.ai.dto.internal.AiProviderResult;
@@ -11,6 +12,8 @@ import com.fitlife.ai.entity.AiSuggestion;
 import com.fitlife.ai.enums.AiSuggestionStatus;
 import com.fitlife.ai.enums.AiSuggestionType;
 import com.fitlife.ai.mapper.AiSuggestionMapper;
+import com.fitlife.ai.retrieval.dto.AiKnowledgeRetrievalRequest;
+import com.fitlife.ai.retrieval.service.AiKnowledgeRetrievalService;
 import com.fitlife.ai.service.AiFullPlanOrchestratorService;
 import com.fitlife.ai.service.AiPlanParserService;
 import com.fitlife.ai.service.AiPromptBuilderService;
@@ -47,6 +50,9 @@ public class AiFullPlanOrchestratorServiceImpl
     private final AiSuggestionPersistenceService
             aiSuggestionPersistenceService;
     private final AiSuggestionMapper aiSuggestionMapper;
+
+    private final AiKnowledgeRetrievalService
+            aiKnowledgeRetrievalService;
     private final ObjectMapper objectMapper;
 
     private static final int MIN_WORKOUT_DAYS = 1;
@@ -79,14 +85,22 @@ public class AiFullPlanOrchestratorServiceImpl
                         request
                 );
 
-        /*
-         * Build prompt trước khi tạo PENDING để promptVersion
-         * được lưu ngay trong transaction createPending().
-         */
+
+        AiContextSnapshot contextSnapshot =
+                aiKnowledgeRetrievalService
+                        .retrieveContextSafely(
+                                buildFullPlanRetrievalRequest(
+                                        inputSnapshot,
+                                        request
+                                )
+                        );
+
         AiPromptResult promptResult =
-                aiPromptBuilderService.buildFullPlanPrompt(
-                        inputSnapshot
-                );
+                aiPromptBuilderService
+                        .buildFullPlanPrompt(
+                                inputSnapshot,
+                                contextSnapshot
+                        );
 
         AiSuggestion pendingSuggestion =
                 buildPendingSuggestion(
@@ -123,6 +137,49 @@ public class AiFullPlanOrchestratorServiceImpl
                     ErrorCode.AI_RESPONSE_INVALID
             );
         }
+    }
+
+    private AiKnowledgeRetrievalRequest
+    buildFullPlanRetrievalRequest(
+            AiInputSnapshot snapshot,
+            AiFullPlanRequest request
+    ) {
+        return AiKnowledgeRetrievalRequest.builder()
+                .query(
+                        """
+                        Xây dựng full plan gồm phân tích cơ thể,
+                        lịch tập, dinh dưỡng và cảnh báo an toàn.
+    
+                        Goal: %s
+                        Experience level: %s
+                        Activity level: %s
+                        Workout days per week: %s
+                        Workout duration minutes: %s
+    
+                        Full input snapshot:
+                        %s
+                        """.formatted(
+                                request.getGoal(),
+                                request.getExperienceLevel(),
+                                request.getActivityLevel(),
+                                request.getWorkoutDaysPerWeek(),
+                                request.getWorkoutDurationMinutes(),
+                                toJson(snapshot)
+                        ).trim()
+                )
+                .category(null)
+                .goal(request.getGoal().name())
+                .experienceLevel(
+                        request.getExperienceLevel().name()
+                )
+                .language(
+                        resolveLanguage(
+                                request.getPreferredLanguage()
+                        )
+                )
+                .limit(10)
+                .scoreThreshold(0.3)
+                .build();
     }
 
     private AiSuggestionResponse executeProviderFlow(

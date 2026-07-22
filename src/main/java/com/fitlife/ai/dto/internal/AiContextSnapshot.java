@@ -8,14 +8,6 @@ import lombok.Setter;
 
 import java.util.List;
 
-/**
- * Snapshot của kết quả retrieval từ Qdrant.
- *
- * Được dùng để:
- * - đưa context vào Prompt Builder;
- * - lưu lại knowledge AI đã sử dụng;
- * - xác định có sử dụng fallback hay không.
- */
 @Getter
 @Setter
 @Builder
@@ -23,31 +15,15 @@ import java.util.List;
 @AllArgsConstructor
 public class AiContextSnapshot {
 
-    /**
-     * Tên collection Qdrant đã search.
-     */
     private String collection;
 
-    /**
-     * Số lượng kết quả yêu cầu.
-     */
     private Integer topK;
 
-    /**
-     * true nếu retrieval lỗi hoặc không khả dụng
-     * và hệ thống tiếp tục sinh AI response không có RAG context.
-     */
     @Builder.Default
     private Boolean fallback = false;
 
-    /**
-     * Lý do fallback.
-     */
     private String fallbackReason;
 
-    /**
-     * Các knowledge được retrieve.
-     */
     @Builder.Default
     private List<AiContextChunkSnapshot> chunks = List.of();
 

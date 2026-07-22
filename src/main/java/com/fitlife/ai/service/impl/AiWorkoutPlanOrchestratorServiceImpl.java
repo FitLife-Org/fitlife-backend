@@ -1,6 +1,7 @@
 package com.fitlife.ai.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fitlife.ai.dto.internal.AiContextSnapshot;
 import com.fitlife.ai.dto.internal.AiInputSnapshot;
 import com.fitlife.ai.dto.internal.AiPromptResult;
 import com.fitlife.ai.dto.internal.AiProviderResult;
@@ -10,7 +11,9 @@ import com.fitlife.ai.dto.response.AiSuggestionResponse;
 import com.fitlife.ai.entity.AiSuggestion;
 import com.fitlife.ai.enums.AiSuggestionStatus;
 import com.fitlife.ai.enums.AiSuggestionType;
+import com.fitlife.ai.knowledge.enums.AiKnowledgeCategory;
 import com.fitlife.ai.mapper.AiSuggestionMapper;
+import com.fitlife.ai.retrieval.dto.AiKnowledgeRetrievalRequest;
 import com.fitlife.ai.retrieval.service.AiKnowledgeRetrievalService;
 import com.fitlife.ai.service.*;
 import com.fitlife.bodymetric.entity.BodyMetric;
@@ -40,6 +43,8 @@ public class AiWorkoutPlanOrchestratorServiceImpl
     private final AiSuggestionPersistenceService
             aiSuggestionPersistenceService;
     private final AiSuggestionMapper aiSuggestionMapper;
+    private final AiKnowledgeRetrievalService
+            aiKnowledgeRetrievalService;
     private final ObjectMapper objectMapper;
 
     private static final int MIN_WORKOUT_DAYS = 1;
@@ -73,9 +78,21 @@ public class AiWorkoutPlanOrchestratorServiceImpl
                         request
                 );
 
+        AiContextSnapshot contextSnapshot =
+                aiKnowledgeRetrievalService
+                        .retrieveContextSafely(
+                                buildWorkoutRetrievalRequest(
+                                        snapshot,
+                                        request
+                                )
+                        );
+
         AiPromptResult promptResult =
                 aiPromptBuilderService
-                        .buildWorkoutPlanPrompt(snapshot);
+                        .buildWorkoutPlanPrompt(
+                                snapshot,
+                                contextSnapshot
+                        );
 
         AiSuggestion pending =
                 aiSuggestionPersistenceService.createPending(
@@ -134,6 +151,49 @@ public class AiWorkoutPlanOrchestratorServiceImpl
                     ErrorCode.AI_RESPONSE_INVALID
             );
         }
+    }
+
+    private AiKnowledgeRetrievalRequest
+    buildWorkoutRetrievalRequest(
+            AiInputSnapshot snapshot,
+            AiWorkoutPlanRequest request
+    ) {
+        return AiKnowledgeRetrievalRequest.builder()
+                .query(
+                        """
+                        Xây dựng lịch tập luyện phù hợp.
+    
+                        Goal: %s
+                        Experience level: %s
+                        Activity level: %s
+                        Workout days per week: %s
+                        Workout duration minutes: %s
+                        Health note and body metric:
+                        %s
+                        """.formatted(
+                                request.getGoal(),
+                                request.getExperienceLevel(),
+                                request.getActivityLevel(),
+                                request.getWorkoutDaysPerWeek(),
+                                request.getWorkoutDurationMinutes(),
+                                toJson(snapshot)
+                        ).trim()
+                )
+                .category(
+                        AiKnowledgeCategory.WORKOUT
+                )
+                .goal(request.getGoal().name())
+                .experienceLevel(
+                        request.getExperienceLevel().name()
+                )
+                .language(
+                        resolveLanguage(
+                                request.getPreferredLanguage()
+                        )
+                )
+                .limit(5)
+                .scoreThreshold(0.3)
+                .build();
     }
 
     private AiSuggestion buildPendingSuggestion(

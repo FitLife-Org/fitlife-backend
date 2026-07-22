@@ -9,6 +9,10 @@ import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import com.fitlife.ai.dto.internal.AiContextChunkSnapshot;
+import com.fitlife.ai.dto.internal.AiContextSnapshot;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -18,10 +22,15 @@ public class AiPromptBuilderServiceImpl implements AiPromptBuilderService {
     private final ObjectMapper objectMapper;
 
     @Override
-    public AiPromptResult buildFullPlanPrompt(AiInputSnapshot snapshot) {
+    public AiPromptResult buildFullPlanPrompt(
+            AiInputSnapshot snapshot,
+            AiContextSnapshot context
+    ) {
         validateSnapshot(snapshot);
         String inputJson = toJson(snapshot);
         String outputLanguage = resolveOutputLanguage(snapshot);
+        String knowledgeContext =
+                formatKnowledgeContext(context);
 
         String prompt = """
                 You are a fitness AI assistant for FitLife.
@@ -78,6 +87,9 @@ public class AiPromptBuilderServiceImpl implements AiPromptBuilderService {
                 - Do not recommend unsafe rapid weight loss or extreme calorie restriction.
                 - Advise consulting a trainer or doctor when healthNote indicates concern.
                 - State that the plan is for reference.
+                
+                FITLIFE RAG CONTEXT:
+                %s
 
                 INPUT SNAPSHOT:
                 %s
@@ -123,78 +135,101 @@ public class AiPromptBuilderServiceImpl implements AiPromptBuilderService {
                   },
                   "warnings": ["string"]
                 }
-                """.formatted(AiPromptVersion.FULL_PLAN_V1.getCode(), outputLanguage, inputJson);
+               """.formatted(
+                AiPromptVersion.FULL_PLAN_V2_RAG.getCode(),
+                outputLanguage,
+                knowledgeContext,
+                inputJson
+        );
 
         return AiPromptResult.builder()
-                .version(AiPromptVersion.FULL_PLAN_V1)
+                .version(
+                        AiPromptVersion.FULL_PLAN_V2_RAG
+                )
                 .prompt(prompt)
+                .contextSnapshot(context)
                 .build();
     }
 
     @Override
-    public AiPromptResult buildBodyAnalysisPrompt(AiInputSnapshot snapshot) {
+    public AiPromptResult buildBodyAnalysisPrompt(
+            AiInputSnapshot snapshot,
+            AiContextSnapshot context
+    ) {
         validateSnapshot(snapshot);
+
         if (snapshot.getLatestBodyMetric() == null) {
-            throw new AppException(ErrorCode.BODY_METRIC_NOT_FOUND);
+            throw new AppException(
+                    ErrorCode.BODY_METRIC_NOT_FOUND
+            );
         }
 
         String inputJson = toJson(snapshot);
-        String outputLanguage = resolveOutputLanguage(snapshot);
+        String outputLanguage =
+                resolveOutputLanguage(snapshot);
+
+        String knowledgeContext =
+                formatKnowledgeContext(context);
 
         String prompt = """
-                You are a fitness AI assistant for FitLife.
+            You are a fitness AI assistant for FitLife.
 
-                PROMPT CONTRACT:
-                - Contract version: %s
-                - Suggestion type: BODY_ANALYSIS
-                - Output language: %s
-                - Return only one valid JSON object.
-                - Do not use markdown or code fences.
-                - Do not write text before or after JSON.
-                - Keep JSON keys exactly as defined below.
-                - Do not add unknown top-level fields.
-                - Do not use snake_case.
+            PROMPT CONTRACT:
+            - Contract version: %s
+            - Suggestion type: BODY_ANALYSIS
+            - Output language: %s
+            - Return only one valid JSON object.
+            - Do not use markdown or code fences.
+            - Do not write text before or after JSON.
+            - Keep JSON keys exactly as defined below.
+            - Do not add unknown top-level fields.
+            - Do not use snake_case.
 
-                ANALYSIS RULES:
-                - Analyze latestBodyMetric only.
-                - Explain BMI, body fat and muscle mass only when present.
-                - Never invent missing values.
-                - Mention missing relevant metrics in warnings.
-                - Relate recommendations to member.fitnessGoal when present.
-                - Keep recommendations practical, safe and non-medical.
+            ANALYSIS RULES:
+            - Analyze latestBodyMetric only.
+            - Explain BMI, body fat and muscle mass only when present.
+            - Never invent missing values.
+            - Mention missing relevant metrics in warnings.
+            - Relate recommendations to member.fitnessGoal when present.
+            - Keep recommendations practical, safe and non-medical.
+            - Use the FitLife knowledge context when relevant.
 
-                COMPACT RULES:
-                - summary: at most 40 words.
-                - bodyAnalysis: at most 80 words.
-                - bmiAssessment, bodyFatAssessment, muscleAssessment: at most 40 words each.
-                - recommendation: at most 80 words.
-                - warnings: at most 2 items.
+            SAFETY RULES:
+            - Do not diagnose diseases or prescribe treatment.
+            - Do not claim medical certainty.
+            - Do not infer missing medical information.
+            - If healthNote is present, advise consulting a trainer or doctor.
+            - State that the analysis is for reference.
 
-                SAFETY RULES:
-                - Do not diagnose diseases or prescribe treatment.
-                - Do not claim medical certainty.
-                - Do not infer missing medical information.
-                - If healthNote is present, advise consulting a trainer or doctor.
-                - State that the analysis is for reference.
+            RAG CONTEXT:
+            %s
 
-                INPUT SNAPSHOT:
-                %s
+            INPUT SNAPSHOT:
+            %s
 
-                OUTPUT JSON CONTRACT:
-                {
-                  "summary": "string",
-                  "bodyAnalysis": "string",
-                  "bmiAssessment": "string",
-                  "bodyFatAssessment": "string",
-                  "muscleAssessment": "string",
-                  "recommendation": "string",
-                  "warnings": ["string"]
-                }
-                """.formatted(AiPromptVersion.BODY_ANALYSIS_V1.getCode(), outputLanguage, inputJson);
+            OUTPUT JSON CONTRACT:
+            {
+              "summary": "string",
+              "bodyAnalysis": "string",
+              "bmiAssessment": "string",
+              "bodyFatAssessment": "string",
+              "muscleAssessment": "string",
+              "recommendation": "string",
+              "warnings": ["string"]
+            }
+            """.formatted(
+                AiPromptVersion.BODY_ANALYSIS_V2_RAG.getCode(),
+                outputLanguage,
+                knowledgeContext,
+                inputJson
+        );
 
         return AiPromptResult.builder()
-                .version(AiPromptVersion.BODY_ANALYSIS_V1)
+                .version(
+                        AiPromptVersion.BODY_ANALYSIS_V2_RAG
+                )
                 .prompt(prompt)
+                .contextSnapshot(context)
                 .build();
     }
 
@@ -217,13 +252,18 @@ public class AiPromptBuilderServiceImpl implements AiPromptBuilderService {
 
     @Override
     public AiPromptResult buildWorkoutPlanPrompt(
-            AiInputSnapshot snapshot
+            AiInputSnapshot snapshot,
+            AiContextSnapshot context
     ) {
         validateSnapshot(snapshot);
 
         String inputJson = toJson(snapshot);
+
         String outputLanguage =
                 resolveOutputLanguage(snapshot);
+
+        String knowledgeContext =
+                formatKnowledgeContext(context);
 
         String prompt = """
             You are a fitness AI assistant for FitLife.
@@ -256,6 +296,7 @@ public class AiPromptBuilderServiceImpl implements AiPromptBuilderService {
             - For BEGINNER, prioritize safe and simple movements.
             - If latestBodyMetric is null, add a warning.
             - If healthNote exists, add a safety warning.
+            - Use the FitLife knowledge context when relevant.
 
             STRICT TYPE RULES:
             - summary: string
@@ -274,6 +315,9 @@ public class AiPromptBuilderServiceImpl implements AiPromptBuilderService {
             - Do not claim medical certainty.
             - Do not recommend unsafe training volume.
             - State that the plan is for reference.
+
+            RAG CONTEXT:
+            %s
 
             INPUT SNAPSHOT:
             %s
@@ -299,28 +343,28 @@ public class AiPromptBuilderServiceImpl implements AiPromptBuilderService {
                   ]
                 }
               ],
-              "warnings": [
-                "string"
-              ]
+              "warnings": ["string"]
             }
             """.formatted(
-                AiPromptVersion.WORKOUT_PLAN_V1
-                        .getCode(),
+                AiPromptVersion.WORKOUT_PLAN_V2_RAG.getCode(),
                 outputLanguage,
+                knowledgeContext,
                 inputJson
         );
 
         return AiPromptResult.builder()
                 .version(
-                        AiPromptVersion.WORKOUT_PLAN_V1
+                        AiPromptVersion.WORKOUT_PLAN_V2_RAG
                 )
                 .prompt(prompt)
+                .contextSnapshot(context)
                 .build();
     }
 
     @Override
     public AiPromptResult buildNutritionPlanPrompt(
-            AiInputSnapshot snapshot
+            AiInputSnapshot snapshot,
+            AiContextSnapshot context
     ) {
         validateSnapshot(snapshot);
 
@@ -328,6 +372,9 @@ public class AiPromptBuilderServiceImpl implements AiPromptBuilderService {
 
         String outputLanguage =
                 resolveOutputLanguage(snapshot);
+
+        String knowledgeContext =
+                formatKnowledgeContext(context);
 
         String prompt = """
             You are a fitness AI assistant for FitLife.
@@ -345,13 +392,6 @@ public class AiPromptBuilderServiceImpl implements AiPromptBuilderService {
             - Do not add unknown top-level fields.
             - Do not use snake_case.
 
-            LANGUAGE RULES:
-            - Understand Vietnamese and English input.
-            - User-facing JSON string values must use the requested output language.
-            - JSON keys remain in English.
-            - Supported output languages are vi and en.
-            - Use Vietnamese when the requested language is unsupported.
-
             NUTRITION RULES:
             - nutritionPlan must not be null.
             - nutritionPlan.meals must contain exactly request.mealsPerDay items.
@@ -363,40 +403,7 @@ public class AiPromptBuilderServiceImpl implements AiPromptBuilderService {
             - Avoid unrealistic or extreme dietary recommendations.
             - Avoid recommending supplements as mandatory.
             - Do not create workoutPlan.
-
-            ENERGY AND MACRO RULES:
-            - targetCalories must be a positive integer.
-            - proteinGrams must be a non-negative number.
-            - carbsGrams must be a non-negative number.
-            - fatGrams must be a non-negative number.
-            - Meal calories and macros must be non-negative.
-            - The sum of meal calories should be reasonably close to targetCalories.
-            - The sum of meal macros should be reasonably consistent with the daily macros.
-            - Do not include units inside numeric fields.
-
-            COMPACT RULES:
-            - summary: at most 50 words.
-            - bodyAnalysis: at most 80 words.
-            - meal note: at most 20 words.
-            - warnings: at most 2 items.
-            - foodItems should be concise and readable.
-            - portionText should describe practical serving sizes.
-
-            STRICT TYPE RULES:
-            - summary: string
-            - bodyAnalysis: string
-            - nutritionPlan: object
-            - warnings: array of strings
-            - targetCalories: integer
-            - calories: integer
-            - proteinGrams: number
-            - carbsGrams: number
-            - fatGrams: number
-            - meals: array
-            - mealName: string
-            - foodItems: string, not array
-            - portionText: string or null
-            - note: string or null
+            - Use the FitLife knowledge context when relevant.
 
             SAFETY RULES:
             - Do not diagnose diseases.
@@ -405,8 +412,10 @@ public class AiPromptBuilderServiceImpl implements AiPromptBuilderService {
             - Do not recommend starvation diets.
             - Do not recommend unsafe rapid weight loss.
             - Do not recommend extreme calorie restriction.
-            - If healthNote indicates a health concern, advise consulting a doctor or nutrition professional.
-            - State that the plan is for reference and may need adjustment.
+            - State that the plan is for reference.
+
+            RAG CONTEXT:
+            %s
 
             INPUT SNAPSHOT:
             %s
@@ -433,22 +442,21 @@ public class AiPromptBuilderServiceImpl implements AiPromptBuilderService {
                   }
                 ]
               },
-              "warnings": [
-                "string"
-              ]
+              "warnings": ["string"]
             }
             """.formatted(
-                AiPromptVersion.NUTRITION_PLAN_V1
-                        .getCode(),
+                AiPromptVersion.NUTRITION_PLAN_V2_RAG.getCode(),
                 outputLanguage,
+                knowledgeContext,
                 inputJson
         );
 
         return AiPromptResult.builder()
                 .version(
-                        AiPromptVersion.NUTRITION_PLAN_V1
+                        AiPromptVersion.NUTRITION_PLAN_V2_RAG
                 )
                 .prompt(prompt)
+                .contextSnapshot(context)
                 .build();
     }
 
@@ -456,5 +464,104 @@ public class AiPromptBuilderServiceImpl implements AiPromptBuilderService {
         if (snapshot == null || snapshot.getMember() == null || snapshot.getRequest() == null) {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
+    }
+
+    private String formatKnowledgeContext(
+            AiContextSnapshot context
+    ) {
+        if (context == null || context.isEmpty()) {
+            return """
+                FITLIFE KNOWLEDGE CONTEXT:
+                - No relevant FitLife knowledge was retrieved.
+                - Continue with conservative general fitness guidance.
+                - Do not invent medical facts.
+                - Prioritize user safety.
+                """.trim();
+        }
+
+        StringBuilder builder = new StringBuilder();
+
+        builder.append("""
+            FITLIFE KNOWLEDGE CONTEXT:
+            - Use the following retrieved knowledge as supporting context.
+            - Do not copy it mechanically.
+            - Do not mention Qdrant, embedding, vector search or RAG.
+            - Do not contradict safety rules.
+            - User-specific health information has higher priority.
+
+            """);
+
+        List<AiContextChunkSnapshot> chunks =
+                context.getChunks();
+
+        for (int index = 0; index < chunks.size(); index++) {
+            AiContextChunkSnapshot chunk =
+                    chunks.get(index);
+
+            builder.append(
+                    formatKnowledgeChunk(
+                            index + 1,
+                            chunk
+                    )
+            );
+
+            if (index < chunks.size() - 1) {
+                builder.append("\n\n");
+            }
+        }
+
+        if (Boolean.TRUE.equals(context.getFallback())) {
+            builder.append("\n\n");
+            builder.append(
+                    "Retrieval fallback was used. "
+                            + "Apply conservative defaults."
+            );
+        }
+
+        return builder.toString().trim();
+    }
+
+    private String formatKnowledgeChunk(
+            int index,
+            AiContextChunkSnapshot chunk
+    ) {
+        if (chunk == null) {
+            return "";
+        }
+
+        return """
+            [KNOWLEDGE %d]
+            Code: %s
+            Title: %s
+            Category: %s
+            Goal: %s
+            Experience level: %s
+            Language: %s
+            Relevance score: %s
+            Content:
+            %s
+            """.formatted(
+                index,
+                safe(chunk.getCode()),
+                safe(chunk.getTitle()),
+                safe(chunk.getCategory()),
+                safe(chunk.getGoal()),
+                safe(chunk.getExperienceLevel()),
+                safe(chunk.getLanguage()),
+                formatScore(chunk.getScore()),
+                safe(chunk.getContent())
+        ).trim();
+    }
+
+    private String safe(Object value) {
+        return value == null
+                ? ""
+                : value.toString().trim();
+    }
+
+    private String formatScore(Double score) {
+        return score == null
+                ? "N/A"
+                : String.format("%.4f", score);
     }
 }
