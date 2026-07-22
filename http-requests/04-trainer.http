@@ -1,0 +1,137 @@
+### ============================================================
+### TRAINER PROFILE
+### Cần chạy Create Trainer user trong 02-admin-user.http trước
+### ============================================================
+
+
+### 0. Login Admin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "identifier": "{{seedAdminUsername}}",
+  "password": "{{seedAdminPassword}}"
+}
+
+> {%
+    if (response.status === 200 && response.body.data) {
+        client.global.set("adminToken", response.body.data.accessToken);
+    }
+%}
+
+
+### 1. Create Trainer profile for created Trainer user
+POST {{baseUrl}}/admin/trainers
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "userId": {{createdTrainerUserId}},
+  "trainerCode": "TRN-{{runId}}",
+  "specialization": "Strength Training, Fat Loss",
+  "experienceYears": 3,
+  "certifications": "ACE Personal Trainer, Nutrition Basic",
+  "bio": "Huấn luyện viên chuyên hỗ trợ giảm mỡ và tăng cơ.",
+  "status": "ACTIVE"
+}
+
+> {%
+    client.test("Create Trainer profile succeeds", function () {
+        client.assert(
+            response.status === 200 || response.status === 201,
+            "Expected HTTP 200 or 201"
+        );
+
+        client.assert(response.body.data.id, "Trainer profile ID is missing");
+    });
+
+    if (
+        (response.status === 200 || response.status === 201) &&
+        response.body.data
+    ) {
+        client.global.set(
+            "createdTrainerId",
+            response.body.data.id
+        );
+    }
+%}
+
+
+### 2. Duplicate Trainer profile for same user
+POST {{baseUrl}}/admin/trainers
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "userId": {{createdTrainerUserId}},
+  "trainerCode": "TRN-DUP-{{runId}}",
+  "specialization": "General Fitness",
+  "experienceYears": 1,
+  "status": "ACTIVE"
+}
+
+> {%
+    client.test("Duplicate Trainer profile is rejected", function () {
+        client.assert(
+            response.status === 400 || response.status === 409,
+            "Expected HTTP 400 or 409"
+        );
+    });
+%}
+
+
+### 3. Duplicate Trainer code with another user
+### Cần tạo thêm một TRAINER user trước khi chạy case này.
+### Không dùng hard-coded user ID.
+
+
+### 4. List trainers as authenticated user
+GET {{baseUrl}}/trainers?page=0&size=10
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+> {%
+    client.test("Trainer list succeeds", function () {
+        client.assert(response.status === 200, "Expected HTTP 200");
+    });
+%}
+
+
+### 5. Admin Trainer endpoint without token
+POST {{baseUrl}}/admin/trainers
+Content-Type: application/json
+
+{
+  "userId": {{createdTrainerUserId}},
+  "trainerCode": "TRN-NO-TOKEN",
+  "specialization": "General",
+  "experienceYears": 1,
+  "status": "ACTIVE"
+}
+
+> {%
+    client.test("Create Trainer without token returns 401", function () {
+        client.assert(response.status === 401, "Expected HTTP 401");
+    });
+%}
+
+
+### 6. Member cannot create Trainer
+POST {{baseUrl}}/admin/trainers
+Authorization: Bearer {{memberToken}}
+Content-Type: application/json
+
+{
+  "userId": {{createdTrainerUserId}},
+  "trainerCode": "TRN-MEMBER-FORBIDDEN",
+  "specialization": "General",
+  "experienceYears": 1,
+  "status": "ACTIVE"
+}
+
+> {%
+    client.test("Member cannot create Trainer", function () {
+        client.assert(response.status === 403, "Expected HTTP 403");
+    });
+%}

@@ -1,0 +1,381 @@
+### ============================================================
+### ADMIN USER MANAGEMENT
+### Cần chạy Login Admin trước
+### ============================================================
+
+@staffUsername = staff_{{runId}}
+@staffEmail = staff_{{runId}}@fitlife.local
+@staffPhone = 0901234501
+
+@trainerUsername = trainer_{{runId}}
+@trainerEmail = trainer_{{runId}}@fitlife.local
+@trainerPhone = 0901234502
+
+
+### 0. Login admin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "identifier": "{{seedAdminUsername}}",
+  "password": "{{seedAdminPassword}}"
+}
+
+> {%
+    client.test("Admin login succeeds", function () {
+        client.assert(response.status === 200, "Expected HTTP 200");
+    });
+
+    if (response.status === 200 && response.body.data) {
+        client.global.set("adminToken", response.body.data.accessToken);
+    }
+%}
+
+
+### 1. Admin profile
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+> {%
+    client.test("Get admin profile succeeds", function () {
+        client.assert(response.status === 200, "Expected HTTP 200");
+    });
+%}
+
+
+### 2. List users
+GET {{baseUrl}}/admin/users?page=0&size=10
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+> {%
+    client.test("Admin can list users", function () {
+        client.assert(response.status === 200, "Expected HTTP 200");
+        client.assert(response.body.data.content, "Page content is missing");
+    });
+%}
+
+
+### 3. Search users
+GET {{baseUrl}}/admin/users?page=0&size=10&keyword=member
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+
+### 4. Filter role
+GET {{baseUrl}}/admin/users?page=0&size=10&roleCode=ROLE_MEMBER
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+
+### 5. Filter status
+GET {{baseUrl}}/admin/users?page=0&size=10&status=ACTIVE
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+
+### 6. Invalid status
+GET {{baseUrl}}/admin/users?status=ABC
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+> {%
+    client.test("Invalid enum returns 400", function () {
+        client.assert(response.status === 400, "Expected HTTP 400");
+    });
+%}
+
+
+### 7. Create Staff
+POST {{baseUrl}}/admin/users
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "username": "{{staffUsername}}",
+  "email": "{{staffEmail}}",
+  "password": "12345678",
+  "fullName": "FitLife Test Staff",
+  "phone": "{{staffPhone}}",
+  "roleCode": "ROLE_STAFF",
+  "status": "ACTIVE"
+}
+
+> {%
+    client.test("Create Staff succeeds", function () {
+        client.assert(
+            response.status === 200 || response.status === 201,
+            "Expected HTTP 200 or 201"
+        );
+
+        client.assert(response.body.data.id, "Created Staff user ID is missing");
+    });
+
+    if (
+        (response.status === 200 || response.status === 201) &&
+        response.body.data
+    ) {
+        client.global.set(
+            "createdStaffUserId",
+            response.body.data.id
+        );
+    }
+%}
+
+
+### 8. Create Trainer user
+POST {{baseUrl}}/admin/users
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "username": "{{trainerUsername}}",
+  "email": "{{trainerEmail}}",
+  "password": "12345678",
+  "fullName": "FitLife Test Trainer",
+  "phone": "{{trainerPhone}}",
+  "roleCode": "ROLE_TRAINER",
+  "status": "ACTIVE"
+}
+
+> {%
+    client.test("Create Trainer user succeeds", function () {
+        client.assert(
+            response.status === 200 || response.status === 201,
+            "Expected HTTP 200 or 201"
+        );
+
+        client.assert(response.body.data.id, "Created Trainer user ID is missing");
+    });
+
+    if (
+        (response.status === 200 || response.status === 201) &&
+        response.body.data
+    ) {
+        client.global.set(
+            "createdTrainerUserId",
+            response.body.data.id
+        );
+    }
+%}
+
+
+### 9. Internal MEMBER role should be rejected
+POST {{baseUrl}}/admin/users
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "username": "internal_member_{{runId}}",
+  "email": "internal_member_{{runId}}@fitlife.local",
+  "password": "12345678",
+  "fullName": "Internal Member Invalid",
+  "phone": "0901234599",
+  "roleCode": "ROLE_MEMBER",
+  "status": "ACTIVE"
+}
+
+> {%
+    client.test("Internal MEMBER creation is rejected", function () {
+        client.assert(response.status === 400, "Expected HTTP 400");
+    });
+%}
+
+
+### 10. Duplicate Staff email
+POST {{baseUrl}}/admin/users
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "username": "duplicate_staff_{{runId}}",
+  "email": "{{staffEmail}}",
+  "password": "12345678",
+  "fullName": "Duplicate Staff",
+  "phone": "0901234598",
+  "roleCode": "ROLE_STAFF",
+  "status": "ACTIVE"
+}
+
+> {%
+    client.test("Duplicate email is rejected", function () {
+        client.assert(
+            response.status === 400 || response.status === 409,
+            "Expected HTTP 400 or 409"
+        );
+    });
+%}
+
+
+### 11. Get created Staff detail
+GET {{baseUrl}}/admin/users/{{createdStaffUserId}}
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+> {%
+    client.test("Get created Staff succeeds", function () {
+        client.assert(response.status === 200, "Expected HTTP 200");
+    });
+%}
+
+
+### 12. Get user not found
+GET {{baseUrl}}/admin/users/99999999
+Authorization: Bearer {{adminToken}}
+
+> {%
+    client.test("Missing user returns 404", function () {
+        client.assert(response.status === 404, "Expected HTTP 404");
+    });
+%}
+
+
+### 13. Invalid ID type
+GET {{baseUrl}}/admin/users/abc
+Authorization: Bearer {{adminToken}}
+
+> {%
+    client.test("Invalid path ID returns 400", function () {
+        client.assert(response.status === 400, "Expected HTTP 400");
+    });
+%}
+
+
+### 14. Update created Staff
+PUT {{baseUrl}}/admin/users/{{createdStaffUserId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "fullName": "FitLife Test Staff Updated",
+  "phone": "0901234511"
+}
+
+> {%
+    client.test("Update Staff succeeds", function () {
+        client.assert(response.status === 200, "Expected HTTP 200");
+    });
+%}
+
+
+### 15. Update duplicate email
+PUT {{baseUrl}}/admin/users/{{createdStaffUserId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "email": "admin@fitlife.local"
+}
+
+> {%
+    client.test("Duplicate update email is rejected", function () {
+        client.assert(
+            response.status === 400 || response.status === 409,
+            "Expected HTTP 400 or 409"
+        );
+    });
+%}
+
+
+### 16. Lock created Staff
+PATCH {{baseUrl}}/admin/users/{{createdStaffUserId}}/status
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "status": "LOCKED"
+}
+
+> {%
+    client.test("Lock Staff succeeds", function () {
+        client.assert(response.status === 200, "Expected HTTP 200");
+    });
+%}
+
+
+### 17. Locked Staff cannot login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "identifier": "{{staffUsername}}",
+  "password": "12345678"
+}
+
+> {%
+    client.test("Locked Staff cannot login", function () {
+        client.assert(
+            response.status === 401 || response.status === 403,
+            "Expected HTTP 401 or 403"
+        );
+    });
+%}
+
+
+### 18. Activate Staff again
+PATCH {{baseUrl}}/admin/users/{{createdStaffUserId}}/status
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "status": "ACTIVE"
+}
+
+
+### 19. Invalid status
+PATCH {{baseUrl}}/admin/users/{{createdStaffUserId}}/status
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "status": "ABC"
+}
+
+> {%
+    client.test("Invalid status is rejected", function () {
+        client.assert(response.status === 400, "Expected HTTP 400");
+    });
+%}
+
+
+### 20. Update roles with invalid role
+PATCH {{baseUrl}}/admin/users/{{createdStaffUserId}}/roles
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "roleCodes": [
+    "ROLE_UNKNOWN"
+  ]
+}
+
+> {%
+    client.test("Invalid role is rejected", function () {
+        client.assert(response.status === 400, "Expected HTTP 400");
+    });
+%}
+
+
+### 21. Member cannot access admin API
+### Chạy member login trong auth file trước
+GET {{baseUrl}}/admin/users
+Authorization: Bearer {{memberToken}}
+
+> {%
+    client.test("Member receives 403 on Admin API", function () {
+        client.assert(response.status === 403, "Expected HTTP 403");
+    });
+%}
+
+
+### 22. Admin API without token
+GET {{baseUrl}}/admin/users
+
+> {%
+    client.test("Admin API without token returns 401", function () {
+        client.assert(response.status === 401, "Expected HTTP 401");
+    });
+%}

@@ -24,8 +24,17 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfiguration {
 
-    private final JwtAuthenticationFilter jwtAuthFilter;
-    private final AuthenticationProvider authenticationProvider;
+    private final JwtAuthenticationFilter
+            jwtAuthFilter;
+
+    private final AuthenticationProvider
+            authenticationProvider;
+
+    private final RestAuthenticationEntryPoint
+            authenticationEntryPoint;
+
+    private final RestAccessDeniedHandler
+            accessDeniedHandler;
 
     @Bean
     public SecurityFilterChain securityFilterChain(
@@ -46,11 +55,19 @@ public class SecurityConfiguration {
                         )
                 )
 
+                .exceptionHandling(exception ->
+                        exception
+                                .authenticationEntryPoint(
+                                        authenticationEntryPoint
+                                )
+                                .accessDeniedHandler(
+                                        accessDeniedHandler
+                                )
+                )
+
                 .authorizeHttpRequests(auth -> auth
 
-                        // =====================================
                         // Swagger / OpenAPI
-                        // =====================================
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
@@ -59,24 +76,26 @@ public class SecurityConfiguration {
                                 "/webjars/**"
                         ).permitAll()
 
-                        // =====================================
-                        // Common public endpoints
-                        // =====================================
+                        // Common public
                         .requestMatchers(
-                                "/error",
+                                "/error"
+                        ).permitAll()
+
+                        /*
+                         * Chỉ permit /test/** ở local/dev.
+                         * Không nên public khi deploy thật.
+                         */
+                        .requestMatchers(
                                 "/test/**"
                         ).permitAll()
 
-                        // =====================================
-                        // Public Auth APIs
-                        // =====================================
+                        // Auth public
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/auth/register",
                                 "/auth/login",
                                 "/auth/google-login",
                                 "/auth/refresh-token",
-                                "/auth/logout",
                                 "/auth/resend-verification-email",
                                 "/auth/forgot-password",
                                 "/auth/reset-password"
@@ -88,88 +107,120 @@ public class SecurityConfiguration {
                         ).permitAll()
 
                         /*
-                         * Logout all phải có access token.
+                         * Logout nên có token để xác định
+                         * phiên đăng nhập hiện tại.
                          */
                         .requestMatchers(
                                 HttpMethod.POST,
+                                "/auth/logout",
                                 "/auth/logout-all"
                         ).authenticated()
 
-                        // =====================================
                         // VNPay callback
-                        // =====================================
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/payments/vnpay/return",
                                 "/payments/vnpay/ipn"
                         ).permitAll()
 
-                        // =====================================
-                        // Public Gym Package APIs
-                        // =====================================
+                        // Public packages
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/gym-packages/**",
                                 "/package-durations/**"
                         ).permitAll()
 
-                        // =====================================
                         // CORS preflight
-                        // =====================================
                         .requestMatchers(
                                 HttpMethod.OPTIONS,
                                 "/**"
                         ).permitAll()
 
-                        // =====================================
-                        // Admin / Staff payment
-                        // =====================================
+                        // Admin / Staff operations
                         .requestMatchers(
-                                "/admin/payments/**"
-                        ).hasAnyRole(
-                                "ADMIN",
-                                "STAFF"
-                        )
-
-                        // =====================================
-                        // Admin / Staff equipment
-                        // =====================================
-                        .requestMatchers(
+                                "/admin/payments/**",
                                 "/admin/equipment/**"
                         ).hasAnyRole(
                                 "ADMIN",
                                 "STAFF"
                         )
 
-                        // =====================================
-                        // Member payment
-                        // =====================================
                         .requestMatchers(
-                                HttpMethod.POST,
-                                "/payments/vnpay/create-url"
+                                "/check-ins/**"
+                        ).hasAnyRole(
+                                "ADMIN",
+                                "STAFF"
+                        )
+
+                        // Trainer APIs
+                        .requestMatchers(
+                                "/trainer/**"
+                        ).hasRole("TRAINER")
+
+                        // Member self-service check-in
+                        .requestMatchers(
+                                "/member/check-ins/**",
+                                "/member/check-outs/**"
                         ).hasRole("MEMBER")
 
-                        .requestMatchers(
-                                "/payments/**"
-                        ).hasRole("MEMBER")
-
-                        // =====================================
-                        // Member AI APIs
-                        // =====================================
+                        // Member AI
                         .requestMatchers(
                                 "/ai/suggestions/**"
                         ).hasRole("MEMBER")
 
-                        // =====================================
-                        // Admin APIs
-                        // =====================================
+                        // AI knowledge administration
+                        .requestMatchers(
+                                "/admin/ai/knowledge/**"
+                        ).hasRole("ADMIN")
+
+                        // Member payments
+                        .requestMatchers(
+                                "/payments/**"
+                        ).hasRole("MEMBER")
+
+                        // Member subscriptions/invoices
+                        .requestMatchers(
+                                "/subscriptions/**",
+                                "/invoices/**"
+                        ).hasRole("MEMBER")
+
+                        // Member health and plans
+                        .requestMatchers(
+                                "/body-metrics/me/**",
+                                "/members/me/**"
+                        ).hasRole("MEMBER")
+
+                        /*
+                         * Workout/Nutrition hiện có một số API
+                         * dùng chung hoặc còn nhận memberId.
+                         * Tạm giới hạn authenticated và dùng
+                         * @PreAuthorize tại controller/service.
+                         *
+                         * Sau khi refactor self-service, nên đổi
+                         * toàn bộ member route sang hasRole MEMBER.
+                         */
+                        .requestMatchers(
+                                "/workout-plans/**",
+                                "/nutrition-plans/**"
+                        ).authenticated()
+
+                        // Admin APIs còn lại
                         .requestMatchers(
                                 "/admin/**"
                         ).hasRole("ADMIN")
 
-                        // =====================================
-                        // Other APIs
-                        // =====================================
+                        // User profile chung
+                        .requestMatchers(
+                                "/users/me/**"
+                        ).authenticated()
+
+                        // Equipment public list
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/equipment/**"
+                        ).authenticated()
+
+                        // Default deny-by-authentication
                         .anyRequest()
                         .authenticated()
                 )
@@ -227,7 +278,6 @@ public class SecurityConfiguration {
         );
 
         configuration.setAllowCredentials(true);
-
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source =

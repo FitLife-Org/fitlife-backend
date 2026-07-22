@@ -20,17 +20,19 @@ import lombok.Setter;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ApiResponse<T> {
 
+    @Builder.Default
     @Schema(
-            description = "Mã trạng thái nội bộ của API",
+            description = "Mã kết quả nội bộ của API",
             example = "200"
     )
-    private int code;
+    private int code = 200;
 
+    @Builder.Default
     @Schema(
             description = "Thông điệp mô tả kết quả xử lý",
             example = "Success"
     )
-    private String message;
+    private String message = "Success";
 
     @Schema(
             description = "Dữ liệu trả về theo từng endpoint",
@@ -38,7 +40,9 @@ public class ApiResponse<T> {
     )
     private T data;
 
-    public static <T> ApiResponse<T> success(T data) {
+    public static <T> ApiResponse<T> success(
+            T data
+    ) {
         return ApiResponse.<T>builder()
                 .code(200)
                 .message("Success")
@@ -46,7 +50,10 @@ public class ApiResponse<T> {
                 .build();
     }
 
-    public static <T> ApiResponse<T> success(String message, T data) {
+    public static <T> ApiResponse<T> success(
+            String message,
+            T data
+    ) {
         return ApiResponse.<T>builder()
                 .code(200)
                 .message(message)
@@ -54,14 +61,18 @@ public class ApiResponse<T> {
                 .build();
     }
 
-    public static <T> ApiResponse<T> success(String message) {
+    public static <T> ApiResponse<T> success(
+            String message
+    ) {
         return ApiResponse.<T>builder()
                 .code(200)
                 .message(message)
                 .build();
     }
 
-    public static <T> ApiResponse<T> created(T data) {
+    public static <T> ApiResponse<T> created(
+            T data
+    ) {
         return ApiResponse.<T>builder()
                 .code(201)
                 .message("Created successfully")
@@ -69,7 +80,10 @@ public class ApiResponse<T> {
                 .build();
     }
 
-    public static <T> ApiResponse<T> created(String message, T data) {
+    public static <T> ApiResponse<T> created(
+            String message,
+            T data
+    ) {
         return ApiResponse.<T>builder()
                 .code(201)
                 .message(message)
@@ -77,14 +91,21 @@ public class ApiResponse<T> {
                 .build();
     }
 
-    public static <T> ApiResponse<T> error(int code, String message) {
+    public static <T> ApiResponse<T> error(
+            int code,
+            String message
+    ) {
         return ApiResponse.<T>builder()
                 .code(code)
                 .message(message)
                 .build();
     }
 
-    public static <T> ApiResponse<T> error(int code, String message, T data) {
+    public static <T> ApiResponse<T> error(
+            int code,
+            String message,
+            T data
+    ) {
         return ApiResponse.<T>builder()
                 .code(code)
                 .message(message)

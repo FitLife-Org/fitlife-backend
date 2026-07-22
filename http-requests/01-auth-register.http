@@ -1,0 +1,171 @@
+### ============================================================
+### AUTH REGISTER TEST
+### Đổi bộ authRegister* trong environment trước khi chạy lại
+### ============================================================
+
+
+### 1. Register success
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "username": "{{authRegisterUsername}}",
+  "email": "{{authRegisterEmail}}",
+  "password": "12345678",
+  "fullName": "Auth Test Member",
+  "phone": "{{authRegisterPhone}}"
+}
+
+> {%
+    client.test("Register succeeds", function () {
+        client.assert(
+            response.status === 200 || response.status === 201,
+            "Expected HTTP 200 or 201"
+        );
+    });
+%}
+
+
+### 2. Duplicate username
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "username": "{{authRegisterUsername}}",
+  "email": "{{authDuplicateUsernameEmail}}",
+  "password": "12345678",
+  "fullName": "Duplicate Username",
+  "phone": "{{authDuplicateUsernamePhone}}"
+}
+
+> {%
+    client.test("Duplicate username is rejected", function () {
+        client.assert(
+            response.status === 400 || response.status === 409,
+            "Expected HTTP 400 or 409"
+        );
+    });
+%}
+
+
+### 3. Duplicate email
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "username": "{{authDuplicateEmailUsername}}",
+  "email": "{{authRegisterEmail}}",
+  "password": "12345678",
+  "fullName": "Duplicate Email",
+  "phone": "{{authDuplicateEmailPhone}}"
+}
+
+> {%
+    client.test("Duplicate email is rejected", function () {
+        client.assert(
+            response.status === 400 || response.status === 409,
+            "Expected HTTP 400 or 409"
+        );
+    });
+%}
+
+
+### 4. Duplicate phone
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "username": "{{authDuplicatePhoneUsername}}",
+  "email": "{{authDuplicatePhoneEmail}}",
+  "password": "12345678",
+  "fullName": "Duplicate Phone",
+  "phone": "{{authRegisterPhone}}"
+}
+
+> {%
+    client.test("Duplicate phone is rejected", function () {
+        client.assert(
+            response.status === 400 || response.status === 409,
+            "Expected HTTP 400 or 409"
+        );
+    });
+%}
+
+
+### 5. Validation errors
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "username": "",
+  "email": "invalid-email",
+  "password": "123",
+  "fullName": "",
+  "phone": ""
+}
+
+> {%
+    client.test("Invalid register request returns 400", function () {
+        client.assert(response.status === 400, "Expected HTTP 400");
+        client.assert(response.body.data, "Missing field validation errors");
+    });
+%}
+
+
+### 6. Login before verification
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "identifier": "{{authRegisterUsername}}",
+  "password": "12345678"
+}
+
+> {%
+    client.test("Unverified account cannot login", function () {
+        client.assert(
+            response.status === 400 ||
+            response.status === 401 ||
+            response.status === 403,
+            "Expected rejected login"
+        );
+    });
+%}
+
+
+### 7. Resend verification
+POST {{baseUrl}}/auth/resend-verification-email
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "{{authRegisterEmail}}"
+}
+
+> {%
+    client.test("Resend verification succeeds", function () {
+        client.assert(response.status === 200, "Expected HTTP 200");
+    });
+%}
+
+
+### 8. Unknown email resend
+POST {{baseUrl}}/auth/resend-verification-email
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "{{authUnknownEmail}}"
+}
+
+> {%
+    client.test("Unknown email response does not enumerate account", function () {
+        client.assert(response.status === 200, "Expected HTTP 200");
+    });
+%}

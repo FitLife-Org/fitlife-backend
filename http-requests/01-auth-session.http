@@ -1,0 +1,152 @@
+### ============================================================
+### AUTH SESSION TEST
+### Có thể Run All độc lập
+### ============================================================
+
+
+### 1. Login for logout
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "identifier": "{{seedMemberUsername}}",
+  "password": "{{seedMemberPassword}}"
+}
+
+> {%
+    if (response.status === 200 && response.body.data) {
+        client.global.set(
+            "logoutAccessToken",
+            response.body.data.accessToken
+        );
+
+        client.global.set(
+            "logoutRefreshToken",
+            response.body.data.refreshToken
+        );
+    }
+%}
+
+
+### 2. Logout current device
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{logoutAccessToken}}
+Content-Type: application/json
+
+{
+  "refreshToken": "{{logoutRefreshToken}}"
+}
+
+> {%
+    client.test("Logout succeeds", function () {
+        client.assert(response.status === 200, "Expected HTTP 200");
+    });
+%}
+
+
+### 3. Revoked refresh token
+POST {{baseUrl}}/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "{{logoutRefreshToken}}"
+}
+
+> {%
+    client.test("Revoked refresh token is rejected", function () {
+        client.assert(
+            response.status === 400 || response.status === 401,
+            "Expected HTTP 400 or 401"
+        );
+    });
+%}
+
+
+### 4. Login device one
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "identifier": "{{seedMemberUsername}}",
+  "password": "{{seedMemberPassword}}"
+}
+
+> {%
+    if (response.status === 200 && response.body.data) {
+        client.global.set(
+            "deviceOneAccessToken",
+            response.body.data.accessToken
+        );
+
+        client.global.set(
+            "deviceOneRefreshToken",
+            response.body.data.refreshToken
+        );
+    }
+%}
+
+
+### 5. Login device two
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "identifier": "{{seedMemberUsername}}",
+  "password": "{{seedMemberPassword}}"
+}
+
+> {%
+    if (response.status === 200 && response.body.data) {
+        client.global.set(
+            "deviceTwoRefreshToken",
+            response.body.data.refreshToken
+        );
+    }
+%}
+
+
+### 6. Logout all devices
+POST {{baseUrl}}/auth/logout-all
+Authorization: Bearer {{deviceOneAccessToken}}
+
+> {%
+    client.test("Logout all succeeds", function () {
+        client.assert(response.status === 200, "Expected HTTP 200");
+    });
+%}
+
+
+### 7. Device one refresh revoked
+POST {{baseUrl}}/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "{{deviceOneRefreshToken}}"
+}
+
+> {%
+    client.test("Device one token is revoked", function () {
+        client.assert(
+            response.status === 400 || response.status === 401,
+            "Expected HTTP 400 or 401"
+        );
+    });
+%}
+
+
+### 8. Device two refresh revoked
+POST {{baseUrl}}/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "{{deviceTwoRefreshToken}}"
+}
+
+> {%
+    client.test("Device two token is revoked", function () {
+        client.assert(
+            response.status === 400 || response.status === 401,
+            "Expected HTTP 400 or 401"
+        );
+    });
+%}

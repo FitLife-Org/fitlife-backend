@@ -1,0 +1,430 @@
+### =========================================================
+### FITLIFE AI E2E FLOW
+### Login → Usage → Generate → Detail
+### → Apply Workout → Apply Nutrition → Verify
+### =========================================================
+
+@baseUrl = {{baseUrl}}
+@memberToken = {{memberToken}}
+@adminToken = {{adminToken}}
+
+@suggestionId = 1
+@workoutPlanId = 1
+@nutritionPlanId = 1
+
+
+### =========================================================
+### 1. LOGIN MEMBER
+### =========================================================
+
+# @name loginMember
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "emailOrUsername": "{{memberUsername}}",
+  "password": "{{memberPassword}}"
+}
+
+> {%
+    client.test("Member login returns 200", function () {
+        client.assert(response.status === 200, "Expected HTTP 200");
+    });
+
+    client.test("Member login returns access token", function () {
+        client.assert(
+            response.body.data !== null,
+            "Response data must not be null"
+        );
+    });
+
+    const data = response.body.data;
+
+    const token =
+        data.accessToken
+        || data.token
+        || data.access_token;
+
+    client.assert(token, "Access token not found");
+
+    client.global.set("memberToken", token);
+%}
+
+
+### =========================================================
+### 2. CHECK AI USAGE BEFORE GENERATE
+### =========================================================
+
+# @name usageBefore
+GET {{baseUrl}}/ai/suggestions/usage/today
+Authorization: Bearer {{memberToken}}
+
+> {%
+    client.test("Usage API returns 200", function () {
+        client.assert(response.status === 200, "Expected HTTP 200");
+    });
+
+    client.test("Usage fields are valid", function () {
+        const usage = response.body.data;
+
+        client.assert(usage.dailyLimit === 5, "dailyLimit must equal 5");
+        client.assert(usage.used >= 0, "used must not be negative");
+        client.assert(usage.remaining >= 0, "remaining must not be negative");
+        client.assert(
+            usage.remaining === Math.max(0, usage.dailyLimit - usage.used),
+            "remaining calculation is invalid"
+        );
+    });
+
+    client.global.set(
+        "usageBefore",
+        response.body.data.used
+    );
+%}
+
+
+### =========================================================
+### 3. GENERATE FULL PLAN
+### Điều chỉnh field theo AiFullPlanRequest thật
+### =========================================================
+
+# @name generateFullPlan
+POST {{baseUrl}}/ai/suggestions/full-plan
+Authorization: Bearer {{memberToken}}
+Content-Type: application/json
+
+{
+  "goal": "GAIN_MUSCLE",
+  "experienceLevel": "BEGINNER",
+  "activityLevel": "MODERATE",
+  "workoutDaysPerWeek": 4,
+  "workoutDurationMinutes": 60,
+  "mealsPerDay": 3,
+  "preferredLanguage": "vi",
+  "userNote": "Ưu tiên lịch tập an toàn và thực đơn phù hợp ngân sách."
+}
+
+> {%
+    client.test("Generate full plan returns success", function () {
+        client.assert(
+            response.status === 200 || response.status === 201,
+            "Expected HTTP 200 or 201"
+        );
+    });
+
+    const suggestion = response.body.data;
+
+    client.test("Suggestion has ID", function () {
+        client.assert(suggestion.id, "Suggestion ID is missing");
+    });
+
+    client.test("Suggestion type is FULL_PLAN", function () {
+        client.assert(
+            suggestion.suggestionType === "FULL_PLAN",
+            "Expected FULL_PLAN"
+        );
+    });
+
+    client.global.set(
+        "suggestionId",
+        suggestion.id
+    );
+%}
+
+
+### =========================================================
+### 4. CHECK USAGE AFTER GENERATE
+### =========================================================
+
+# @name usageAfterGenerate
+GET {{baseUrl}}/ai/suggestions/usage/today
+Authorization: Bearer {{memberToken}}
+
+> {%
+    client.test("Usage increases after AI request", function () {
+        const before = Number(
+            client.global.get("usageBefore")
+        );
+
+        const after = response.body.data.used;
+
+        client.assert(
+            after === before + 1,
+            "AI usage should increase by exactly 1"
+        );
+    });
+%}
+
+
+### =========================================================
+### 5. GET SUGGESTION DETAIL
+### =========================================================
+
+# @name suggestionDetailBeforeApply
+GET {{baseUrl}}/ai/suggestions/{{suggestionId}}
+Authorization: Bearer {{memberToken}}
+
+> {%
+    client.test("Suggestion detail returns 200", function () {
+        client.assert(response.status === 200, "Expected HTTP 200");
+    });
+
+    const suggestion = response.body.data;
+    const items = suggestion.items || [];
+
+    client.test("Suggestion is successful before apply", function () {
+        client.assert(
+            suggestion.status === "SUCCESS",
+            "Suggestion must be SUCCESS before applying"
+        );
+    });
+
+    client.test("Full plan contains workout exercises", function () {
+        client.assert(
+            items.some(item => item.itemType === "EXERCISE"),
+            "No EXERCISE item found"
+        );
+    });
+
+    client.test("Full plan contains nutrition meals", function () {
+        client.assert(
+            items.some(item => item.itemType === "MEAL"),
+            "No MEAL item found"
+        );
+    });
+%}
+
+
+### =========================================================
+### 6. APPLY WORKOUT PLAN
+### =========================================================
+
+# @name applyWorkout
+POST {{baseUrl}}/ai/suggestions/{{suggestionId}}/apply-workout-plan
+Authorization: Bearer {{memberToken}}
+
+> {%
+    client.test("Apply workout returns success", function () {
+        client.assert(
+            response.status === 200 || response.status === 201,
+            "Expected HTTP 200 or 201"
+        );
+    });
+
+    const result = response.body.data;
+
+    client.test("Workout applied flag is true", function () {
+        client.assert(
+            result.workoutApplied === true,
+            "workoutApplied must be true"
+        );
+    });
+
+    client.test("Workout plan ID exists", function () {
+        client.assert(
+            result.workoutPlanId,
+            "workoutPlanId is missing"
+        );
+    });
+
+    client.global.set(
+        "workoutPlanId",
+        result.workoutPlanId
+    );
+%}
+
+
+### =========================================================
+### 7. VERIFY FULL PLAN STILL SUCCESS
+### Sau khi chỉ apply Workout
+### =========================================================
+
+GET {{baseUrl}}/ai/suggestions/{{suggestionId}}
+Authorization: Bearer {{memberToken}}
+
+> {%
+    const suggestion = response.body.data;
+
+    client.test("Workout ID is stored", function () {
+        client.assert(
+            suggestion.appliedWorkoutPlanId !== null,
+            "appliedWorkoutPlanId must exist"
+        );
+    });
+
+    client.test("Nutrition ID is still null", function () {
+        client.assert(
+            suggestion.appliedNutritionPlanId === null,
+            "appliedNutritionPlanId must still be null"
+        );
+    });
+
+    client.test("Full plan remains SUCCESS after one apply", function () {
+        client.assert(
+            suggestion.status === "SUCCESS",
+            "Full plan should remain SUCCESS until both plans are applied"
+        );
+    });
+%}
+
+
+### =========================================================
+### 8. APPLY NUTRITION PLAN
+### =========================================================
+
+# @name applyNutrition
+POST {{baseUrl}}/ai/suggestions/{{suggestionId}}/apply-nutrition-plan
+Authorization: Bearer {{memberToken}}
+
+> {%
+    client.test("Apply nutrition returns success", function () {
+        client.assert(
+            response.status === 200 || response.status === 201,
+            "Expected HTTP 200 or 201"
+        );
+    });
+
+    const result = response.body.data;
+
+    client.test("Nutrition applied flag is true", function () {
+        client.assert(
+            result.nutritionApplied === true,
+            "nutritionApplied must be true"
+        );
+    });
+
+    client.test("Nutrition plan ID exists", function () {
+        client.assert(
+            result.nutritionPlanId,
+            "nutritionPlanId is missing"
+        );
+    });
+
+    client.global.set(
+        "nutritionPlanId",
+        result.nutritionPlanId
+    );
+%}
+
+
+### =========================================================
+### 9. VERIFY FINAL APPLIED STATE
+### =========================================================
+
+GET {{baseUrl}}/ai/suggestions/{{suggestionId}}
+Authorization: Bearer {{memberToken}}
+
+> {%
+    const suggestion = response.body.data;
+
+    client.test("Suggestion status is APPLIED", function () {
+        client.assert(
+            suggestion.status === "APPLIED",
+            "Suggestion must be APPLIED"
+        );
+    });
+
+    client.test("Both plan IDs exist", function () {
+        client.assert(
+            suggestion.appliedWorkoutPlanId !== null,
+            "Workout plan ID missing"
+        );
+
+        client.assert(
+            suggestion.appliedNutritionPlanId !== null,
+            "Nutrition plan ID missing"
+        );
+    });
+%}
+
+
+### =========================================================
+### 10. APPLY WORKOUT AGAIN
+### Expected 409
+### =========================================================
+
+POST {{baseUrl}}/ai/suggestions/{{suggestionId}}/apply-workout-plan
+Authorization: Bearer {{memberToken}}
+
+> {%
+    client.test("Duplicate workout apply is rejected", function () {
+        client.assert(
+            response.status === 409,
+            "Expected HTTP 409"
+        );
+    });
+%}
+
+
+### =========================================================
+### 11. APPLY NUTRITION AGAIN
+### Expected 409
+### =========================================================
+
+POST {{baseUrl}}/ai/suggestions/{{suggestionId}}/apply-nutrition-plan
+Authorization: Bearer {{memberToken}}
+
+> {%
+    client.test("Duplicate nutrition apply is rejected", function () {
+        client.assert(
+            response.status === 409,
+            "Expected HTTP 409"
+        );
+    });
+%}
+
+
+### =========================================================
+### 12. USAGE MUST NOT INCREASE AFTER APPLY
+### =========================================================
+
+GET {{baseUrl}}/ai/suggestions/usage/today
+Authorization: Bearer {{memberToken}}
+
+> {%
+    client.test("Apply operations do not consume AI quota", function () {
+        const before = Number(
+            client.global.get("usageBefore")
+        );
+
+        const current = response.body.data.used;
+
+        client.assert(
+            current === before + 1,
+            "Only generate request should consume quota"
+        );
+    });
+%}
+
+
+### =========================================================
+### 13. NO TOKEN
+### =========================================================
+
+GET {{baseUrl}}/ai/suggestions/usage/today
+
+> {%
+    client.test("Missing token returns 401", function () {
+        client.assert(
+            response.status === 401,
+            "Expected HTTP 401"
+        );
+    });
+%}
+
+
+### =========================================================
+### 14. ADMIN TOKEN CANNOT USE MEMBER AI
+### =========================================================
+
+GET {{baseUrl}}/ai/suggestions/usage/today
+Authorization: Bearer {{adminToken}}
+
+> {%
+    client.test("Admin token returns 403", function () {
+        client.assert(
+            response.status === 403,
+            "Expected HTTP 403"
+        );
+    });
+%}
