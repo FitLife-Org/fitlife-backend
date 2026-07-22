@@ -9,19 +9,30 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface TrainerRepository extends JpaRepository<Trainer, Long> {
+public interface TrainerRepository
+        extends JpaRepository<Trainer, Long> {
 
-    boolean existsByUserIdAndDeletedFalse(Long userId);
+    boolean existsByUserIdAndDeletedFalse(
+            Long userId
+    );
 
-    boolean existsByTrainerCodeAndDeletedFalse(String trainerCode);
+    boolean existsByTrainerCodeAndDeletedFalse(
+            String trainerCode
+    );
 
+    Optional<Trainer> findByIdAndDeletedFalse(
+            Long id
+    );
 
-    Optional<Trainer> findByUserUsernameAndDeletedFalse(String username);
+    Optional<Trainer> findByUserIdAndDeletedFalse(
+            Long userId
+    );
 
+    Optional<Trainer> findByTrainerCodeAndDeletedFalse(
+            String trainerCode
+    );
 
-    List<Trainer> findAllByStatusAndDeletedFalse(TrainerStatus status);
-
-    java.util.Optional findByIdAndStatusAndDeletedFalse(Long id, TrainerStatus status);
-
-
+    List<Trainer> findAllByStatusAndDeletedFalseOrderByIdDesc(
+            TrainerStatus status
+    );
 }

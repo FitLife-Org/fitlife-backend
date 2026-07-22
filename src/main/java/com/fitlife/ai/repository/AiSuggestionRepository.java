@@ -15,40 +15,58 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Optional;
 
-public interface AiSuggestionRepository extends JpaRepository<AiSuggestion, Long> {
+public interface AiSuggestionRepository
+        extends JpaRepository<AiSuggestion, Long> {
 
-    Page<AiSuggestion> findByMemberIdAndDeletedFalseOrderByCreatedAtDesc(
+    Page<AiSuggestion>
+    findByMemberIdAndDeletedFalseOrderByCreatedAtDesc(
             Long memberId,
             Pageable pageable
     );
 
-    Optional<AiSuggestion> findByIdAndMemberIdAndDeletedFalse(
+    Optional<AiSuggestion>
+    findByIdAndMemberIdAndDeletedFalse(
             Long id,
             Long memberId
     );
 
-    Page<AiSuggestion> findByMemberIdAndSuggestionTypeAndDeletedFalseOrderByCreatedAtDesc(
+    Page<AiSuggestion>
+    findByMemberIdAndSuggestionTypeAndDeletedFalseOrderByCreatedAtDesc(
             Long memberId,
             AiSuggestionType suggestionType,
             Pageable pageable
     );
 
-    Page<AiSuggestion> findByMemberIdAndStatusAndDeletedFalseOrderByCreatedAtDesc(
+    Page<AiSuggestion>
+    findByMemberIdAndStatusAndDeletedFalseOrderByCreatedAtDesc(
             Long memberId,
             AiSuggestionStatus status,
             Pageable pageable
     );
 
-    Page<AiSuggestion> findByMemberIdAndSuggestionTypeAndStatusAndDeletedFalseOrderByCreatedAtDesc(
+    Page<AiSuggestion>
+    findByMemberIdAndSuggestionTypeAndStatusAndDeletedFalseOrderByCreatedAtDesc(
             Long memberId,
             AiSuggestionType suggestionType,
             AiSuggestionStatus status,
             Pageable pageable
     );
 
-    long countByMemberIdAndRequestedAtBetweenAndDeletedFalse(
+    @Query("""
+            SELECT COUNT(s)
+            FROM AiSuggestion s
+            WHERE s.member.id = :memberId
+              AND s.requestedAt >= :from
+              AND s.requestedAt < :to
+            """)
+    long countTodayUsage(
+            @Param("memberId")
             Long memberId,
+
+            @Param("from")
             LocalDateTime from,
+
+            @Param("to")
             LocalDateTime to
     );
 
@@ -59,33 +77,54 @@ public interface AiSuggestionRepository extends JpaRepository<AiSuggestion, Long
             LocalDateTime to
     );
 
-    Page<AiSuggestion> findByDeletedFalseOrderByCreatedAtDesc(
+    Page<AiSuggestion>
+    findByDeletedFalseOrderByCreatedAtDesc(
             Pageable pageable
     );
 
-    Page<AiSuggestion> findBySuggestionTypeAndStatusAndDeletedFalseOrderByCreatedAtDesc(
+    Page<AiSuggestion>
+    findBySuggestionTypeAndStatusAndDeletedFalseOrderByCreatedAtDesc(
             AiSuggestionType suggestionType,
             AiSuggestionStatus status,
             Pageable pageable
     );
 
-    Page<AiSuggestion> findBySuggestionTypeAndDeletedFalseOrderByCreatedAtDesc(
+    Page<AiSuggestion>
+    findBySuggestionTypeAndDeletedFalseOrderByCreatedAtDesc(
             AiSuggestionType suggestionType,
             Pageable pageable
     );
 
-    Page<AiSuggestion> findByStatusAndDeletedFalseOrderByCreatedAtDesc(
+    Page<AiSuggestion>
+    findByStatusAndDeletedFalseOrderByCreatedAtDesc(
             AiSuggestionStatus status,
             Pageable pageable
     );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
-        select suggestion
-        from AiSuggestion suggestion
-        where suggestion.id = :id
-        """)
+            SELECT suggestion
+            FROM AiSuggestion suggestion
+            WHERE suggestion.id = :id
+            """)
     Optional<AiSuggestion> findByIdForUpdate(
-            @Param("id") Long id
+            @Param("id")
+            Long id
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT suggestion
+            FROM AiSuggestion suggestion
+            WHERE suggestion.id = :id
+              AND suggestion.member.id = :memberId
+              AND suggestion.deleted = false
+            """)
+    Optional<AiSuggestion> findOwnedByIdForUpdate(
+            @Param("id")
+            Long id,
+
+            @Param("memberId")
+            Long memberId
     );
 }

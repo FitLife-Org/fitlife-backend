@@ -1,6 +1,7 @@
 package com.fitlife.ai.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fitlife.ai.dto.internal.AiContextSnapshot;
 import com.fitlife.ai.dto.internal.AiInputSnapshot;
 import com.fitlife.ai.dto.internal.AiPromptResult;
 import com.fitlife.ai.dto.internal.AiProviderResult;
@@ -13,6 +14,8 @@ import com.fitlife.ai.enums.AiSuggestionStatus;
 import com.fitlife.ai.enums.AiSuggestionType;
 import com.fitlife.ai.mapper.AiSuggestionMapper;
 import com.fitlife.ai.repository.AiPlanItemRepository;
+import com.fitlife.ai.retrieval.dto.AiKnowledgeRetrievalRequest;
+import com.fitlife.ai.retrieval.service.AiKnowledgeRetrievalService;
 import com.fitlife.ai.service.*;
 import com.fitlife.bodymetric.entity.BodyMetric;
 import com.fitlife.bodymetric.repository.BodyMetricRepository;
@@ -44,6 +47,8 @@ public class AiBodyAnalysisOrchestratorServiceImpl
     private final AiSuggestionPersistenceService aiSuggestionPersistenceService;
     private final AiPlanItemRepository aiPlanItemRepository;
     private final AiSuggestionMapper aiSuggestionMapper;
+    private final AiKnowledgeRetrievalService
+            aiKnowledgeRetrievalService;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -64,8 +69,21 @@ public class AiBodyAnalysisOrchestratorServiceImpl
         AiInputSnapshot snapshot = aiSnapshotService
                 .buildBodyAnalysisSnapshot(member, metric, request);
 
-        AiPromptResult promptResult = aiPromptBuilderService
-                .buildBodyAnalysisPrompt(snapshot);
+        AiContextSnapshot contextSnapshot =
+                aiKnowledgeRetrievalService
+                        .retrieveContextSafely(
+                                buildBodyAnalysisRetrievalRequest(
+                                        snapshot,
+                                        request
+                                )
+                        );
+
+        AiPromptResult promptResult =
+                aiPromptBuilderService
+                        .buildBodyAnalysisPrompt(
+                                snapshot,
+                                contextSnapshot
+                        );
 
         AiSuggestion pending = aiSuggestionPersistenceService.createPending(
                 buildPendingSuggestion(member, metric, request, snapshot, promptResult)
@@ -122,6 +140,50 @@ public class AiBodyAnalysisOrchestratorServiceImpl
             );
             throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
         }
+    }
+
+    private AiKnowledgeRetrievalRequest
+    buildBodyAnalysisRetrievalRequest(
+            AiInputSnapshot snapshot,
+            AiBodyAnalysisRequest request
+    ) {
+        return AiKnowledgeRetrievalRequest.builder()
+                .query(
+                        """
+                        Phân tích chỉ số cơ thể và đưa ra khuyến nghị
+                        tập luyện, dinh dưỡng và an toàn phù hợp.
+    
+                        Input snapshot:
+                        %s
+                        """.formatted(
+                                toJson(snapshot)
+                        ).trim()
+                )
+                .category(null)
+                .goal(resolveGoalFromSnapshot(snapshot))
+                .experienceLevel(null)
+                .language(
+                        resolveLanguage(
+                                request.getPreferredLanguage()
+                        )
+                )
+                .limit(5)
+                .scoreThreshold(0.3)
+                .build();
+    }
+
+    private String resolveGoalFromSnapshot(
+            AiInputSnapshot snapshot
+    ) {
+        if (snapshot == null
+                || snapshot.getMember() == null
+                || snapshot.getMember().getFitnessGoal() == null) {
+            return null;
+        }
+
+        return snapshot.getMember()
+                .getFitnessGoal()
+                .toString();
     }
 
     private AiSuggestion buildPendingSuggestion(

@@ -7,9 +7,13 @@ import com.fitlife.ai.dto.response.AiGeneratedPlanResponse;
 import com.fitlife.ai.entity.AiSuggestion;
 import com.fitlife.ai.enums.AiProvider;
 import com.fitlife.ai.enums.AiSuggestionStatus;
+import com.fitlife.ai.enums.AiSuggestionType;
 import com.fitlife.ai.repository.AiSuggestionRepository;
 import com.fitlife.ai.service.AiPlanParserService;
 import com.fitlife.common.exception.AppException;
+import com.fitlife.member.entity.Member;
+import com.fitlife.member.enums.FitnessGoal;
+import com.fitlife.user.entity.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -49,11 +54,11 @@ class AiSuggestionPersistenceServiceImplTest {
     @Test
     void createPending_shouldSaveAndFlush() {
         AiSuggestion suggestion =
-                AiSuggestion.builder()
-                        .status(
-                                AiSuggestionStatus.PENDING
-                        )
-                        .build();
+                createPendingSuggestion(
+                        null,
+                        AiSuggestionType.FULL_PLAN,
+                        "FULL_PLAN_V2_RAG"
+                );
 
         when(aiSuggestionRepository.saveAndFlush(
                 suggestion
@@ -69,6 +74,16 @@ class AiSuggestionPersistenceServiceImplTest {
                 result.getStatus()
         );
 
+        assertEquals(
+                AiSuggestionType.FULL_PLAN,
+                result.getSuggestionType()
+        );
+
+        assertEquals(
+                "FULL_PLAN_V2_RAG",
+                result.getPromptVersion()
+        );
+
         verify(aiSuggestionRepository)
                 .saveAndFlush(suggestion);
     }
@@ -79,17 +94,19 @@ class AiSuggestionPersistenceServiceImplTest {
                 AppException.class,
                 () -> persistenceService.createPending(null)
         );
+
+        verify(aiSuggestionRepository, never())
+                .saveAndFlush(any());
     }
 
     @Test
     void markFullPlanSuccess_shouldPersistSuggestionAndItems() {
         AiSuggestion suggestion =
-                AiSuggestion.builder()
-                        .id(1L)
-                        .status(
-                                AiSuggestionStatus.PENDING
-                        )
-                        .build();
+                createPendingSuggestion(
+                        1L,
+                        AiSuggestionType.FULL_PLAN,
+                        "FULL_PLAN_V2_RAG"
+                );
 
         AiGeneratedPlanResponse plan =
                 new AiGeneratedPlanResponse();
@@ -125,33 +142,52 @@ class AiSuggestionPersistenceServiceImplTest {
                 AiSuggestionStatus.SUCCESS,
                 result.getStatus()
         );
+
         assertEquals(
                 AiProvider.GEMINI,
                 result.getProvider()
         );
+
         assertEquals(
                 "gemini-test",
                 result.getModelName()
         );
+
         assertEquals(
                 "request-1",
                 result.getProviderRequestId()
         );
+
+        assertEquals(
+                "Kế hoạch phù hợp",
+                result.getSummary()
+        );
+
+        assertEquals(
+                "Chỉ mang tính tham khảo",
+                result.getWarningMessage()
+        );
+
         assertNotNull(result.getCompletedAt());
 
         verify(aiPlanParserService)
-                .savePlanItems(result, plan);
+                .savePlanItems(
+                        result,
+                        plan
+                );
+
+        verify(aiSuggestionRepository)
+                .saveAndFlush(result);
     }
 
     @Test
     void markBodyAnalysisSuccess_shouldPersistItems() {
         AiSuggestion suggestion =
-                AiSuggestion.builder()
-                        .id(2L)
-                        .status(
-                                AiSuggestionStatus.PENDING
-                        )
-                        .build();
+                createPendingSuggestion(
+                        2L,
+                        AiSuggestionType.BODY_ANALYSIS,
+                        "BODY_ANALYSIS_V2_RAG"
+                );
 
         AiGeneratedBodyAnalysisResponse analysis =
                 new AiGeneratedBodyAnalysisResponse();
@@ -162,6 +198,7 @@ class AiSuggestionPersistenceServiceImplTest {
                 AiProviderResult.builder()
                         .provider(AiProvider.GEMINI)
                         .modelName("gemini-test")
+                        .providerRequestId("request-2")
                         .rawResponse("{}")
                         .build();
 
@@ -187,22 +224,41 @@ class AiSuggestionPersistenceServiceImplTest {
                 result.getStatus()
         );
 
+        assertEquals(
+                AiProvider.GEMINI,
+                result.getProvider()
+        );
+
+        assertEquals(
+                "gemini-test",
+                result.getModelName()
+        );
+
+        assertEquals(
+                "Phân tích cơ thể",
+                result.getSummary()
+        );
+
+        assertNotNull(result.getCompletedAt());
+
         verify(aiPlanParserService)
                 .saveBodyAnalysisItems(
                         result,
                         analysis
                 );
+
+        verify(aiSuggestionRepository)
+                .saveAndFlush(result);
     }
 
     @Test
     void markFailed_shouldPersistFailedState() {
         AiSuggestion suggestion =
-                AiSuggestion.builder()
-                        .id(3L)
-                        .status(
-                                AiSuggestionStatus.PENDING
-                        )
-                        .build();
+                createPendingSuggestion(
+                        3L,
+                        AiSuggestionType.FULL_PLAN,
+                        "FULL_PLAN_V2_RAG"
+                );
 
         when(aiSuggestionRepository.findById(3L))
                 .thenReturn(Optional.of(suggestion));
@@ -224,15 +280,21 @@ class AiSuggestionPersistenceServiceImplTest {
                 AiSuggestionStatus.FAILED,
                 result.getStatus()
         );
+
         assertEquals(
                 "AI_PROVIDER_ERROR",
                 result.getErrorCode()
         );
+
         assertEquals(
                 "Provider unavailable",
                 result.getErrorMessage()
         );
+
         assertNotNull(result.getCompletedAt());
+
+        verify(aiSuggestionRepository)
+                .saveAndFlush(result);
     }
 
     @Test
@@ -248,5 +310,39 @@ class AiSuggestionPersistenceServiceImplTest {
                         "Error"
                 )
         );
+
+        verify(aiSuggestionRepository, never())
+                .saveAndFlush(any());
+    }
+
+    private AiSuggestion createPendingSuggestion(
+            Long id,
+            AiSuggestionType suggestionType,
+            String promptVersion
+    ) {
+        User user = new User();
+        user.setId(100L);
+        user.setFullName("Member Test");
+
+        Member member = new Member();
+        member.setId(10L);
+        member.setUser(user);
+        member.setFitnessGoal(
+                FitnessGoal.GAIN_MUSCLE
+        );
+
+        return AiSuggestion.builder()
+                .id(id)
+                .member(member)
+                .suggestionType(suggestionType)
+                .goal(FitnessGoal.GAIN_MUSCLE.name())
+                .preferredLanguage("vi")
+                .inputSnapshot("{}")
+                .promptVersion(promptVersion)
+                .status(AiSuggestionStatus.PENDING)
+                .createdBy(user)
+                .updatedBy(user)
+                .deleted(false)
+                .build();
     }
 }

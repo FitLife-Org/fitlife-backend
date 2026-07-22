@@ -28,6 +28,10 @@ import com.fitlife.member.entity.Member;
 import com.fitlife.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import com.fitlife.ai.dto.internal.AiContextSnapshot;
+import com.fitlife.ai.knowledge.enums.AiKnowledgeCategory;
+import com.fitlife.ai.retrieval.dto.AiKnowledgeRetrievalRequest;
+import com.fitlife.ai.retrieval.service.AiKnowledgeRetrievalService;
 
 import java.util.List;
 
@@ -46,6 +50,8 @@ public class AiNutritionPlanOrchestratorServiceImpl
     private final AiResponseValidatorService aiResponseValidatorService;
     private final AiSuggestionPersistenceService aiSuggestionPersistenceService;
     private final AiSuggestionMapper aiSuggestionMapper;
+    private final AiKnowledgeRetrievalService
+            aiKnowledgeRetrievalService;
     private final ObjectMapper objectMapper;
 
     private static final int MIN_MEALS_PER_DAY = 1;
@@ -74,10 +80,21 @@ public class AiNutritionPlanOrchestratorServiceImpl
                         request
                 );
 
+        AiContextSnapshot contextSnapshot =
+                aiKnowledgeRetrievalService
+                        .retrieveContextSafely(
+                                buildNutritionRetrievalRequest(
+                                        snapshot,
+                                        request
+                                )
+                        );
+
         AiPromptResult promptResult =
-                aiPromptBuilderService.buildNutritionPlanPrompt(
-                        snapshot
-                );
+                aiPromptBuilderService
+                        .buildNutritionPlanPrompt(
+                                snapshot,
+                                contextSnapshot
+                        );
 
         AiSuggestion pending =
                 aiSuggestionPersistenceService.createPending(
@@ -136,6 +153,43 @@ public class AiNutritionPlanOrchestratorServiceImpl
                     ErrorCode.AI_RESPONSE_INVALID
             );
         }
+    }
+
+    private AiKnowledgeRetrievalRequest
+    buildNutritionRetrievalRequest(
+            AiInputSnapshot snapshot,
+            AiNutritionPlanRequest request
+    ) {
+        return AiKnowledgeRetrievalRequest.builder()
+                .query(
+                        """
+                        Xây dựng kế hoạch dinh dưỡng phù hợp.
+    
+                        Goal: %s
+                        Activity level: %s
+                        Meals per day: %s
+                        Body metric and health context:
+                        %s
+                        """.formatted(
+                                request.getGoal(),
+                                request.getActivityLevel(),
+                                request.getMealsPerDay(),
+                                toJson(snapshot)
+                        ).trim()
+                )
+                .category(
+                        AiKnowledgeCategory.NUTRITION
+                )
+                .goal(request.getGoal().name())
+                .experienceLevel(null)
+                .language(
+                        resolveLanguage(
+                                request.getPreferredLanguage()
+                        )
+                )
+                .limit(5)
+                .scoreThreshold(0.3)
+                .build();
     }
 
     private AiSuggestion buildPendingSuggestion(

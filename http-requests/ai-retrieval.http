@@ -1,0 +1,36 @@
+@baseUrl = http://localhost:8080/api/v1
+@adminToken = REPLACE_ADMIN_TOKEN
+
+### Search workout knowledge
+GET {{baseUrl}}/admin/ai/retrieval
+    ?query=người mới nên bắt đầu tập gym như thế nào
+    &category=WORKOUT
+    &experienceLevel=BEGINNER
+    &language=vi
+    &limit=5
+    &scoreThreshold=0.3
+Authorization: Bearer {{adminToken}}
+
+### Get context snapshot
+GET {{baseUrl}}/admin/ai/retrieval/context
+    ?query=lịch tập giảm mỡ cho người mới
+    &category=WORKOUT
+    &goal=FAT_LOSS
+    &experienceLevel=BEGINNER
+    &language=vi
+    &limit=5
+    &scoreThreshold=0.3
+Authorization: Bearer {{adminToken}}
+
+### Nutrition retrieval
+GET {{baseUrl}}/admin/ai/retrieval
+    ?query=protein và năng lượng cho người tập gym
+    &category=NUTRITION
+    &language=vi
+    &limit=5
+    &scoreThreshold=0.3
+Authorization: Bearer {{adminToken}}
+
+### Invalid blank query
+GET {{baseUrl}}/admin/ai/retrieval?query=
+Authorization: Bearer {{adminToken}}

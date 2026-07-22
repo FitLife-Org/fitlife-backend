@@ -10,105 +10,301 @@ import com.fitlife.trainer.enums.TrainerStatus;
 import com.fitlife.trainer.mapper.TrainerMapper;
 import com.fitlife.trainer.repository.TrainerRepository;
 import com.fitlife.trainer.service.TrainerService;
+import com.fitlife.user.entity.Role;
 import com.fitlife.user.entity.User;
+import com.fitlife.user.enums.UserStatus;
+import com.fitlife.user.repository.RoleRepository;
 import com.fitlife.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.HashSet;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class TrainerServiceImpl implements TrainerService {
+public class TrainerServiceImpl
+        implements TrainerService {
+
+    private static final String ROLE_ADMIN =
+            "ROLE_ADMIN";
+
+    private static final String ROLE_STAFF =
+            "ROLE_STAFF";
+
+    private static final String ROLE_TRAINER =
+            "ROLE_TRAINER";
+
+    private static final String ROLE_MEMBER =
+            "ROLE_MEMBER";
 
     private final TrainerRepository trainerRepository;
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final TrainerMapper trainerMapper;
 
     @Override
-    public TrainerResponse createTrainer(TrainerCreateRequest request) {
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+    public TrainerResponse createTrainer(
+            TrainerCreateRequest request
+    ) {
+        User user = userRepository
+                .findById(request.getUserId())
+                .orElseThrow(() ->
+                        new AppException(
+                                ErrorCode.USER_NOT_FOUND
+                        )
+                );
 
-        boolean isTrainerRole = user.getRoles().stream()
-                .anyMatch(role -> role.getCode().equalsIgnoreCase("ROLE_TRAINER"));
-        if (!isTrainerRole) {
-            throw new AppException(ErrorCode.USER_ROLE_INVALID);
-        }
+        validateUserCanBecomeTrainer(user);
 
-        if (trainerRepository.existsByUserIdAndDeletedFalse(request.getUserId())) {
-            throw new AppException(ErrorCode.TRAINER_ALREADY_EXISTS);
-        }
-        if (trainerRepository.existsByTrainerCodeAndDeletedFalse(request.getTrainerCode())) {
-            throw new AppException(ErrorCode.TRAINER_CODE_EXISTED);
-        }
-        Trainer trainer = trainerMapper.toEntity(request);
+        validateTrainerDoesNotExist(
+                user.getId(),
+                request.getTrainerCode()
+        );
+
+        assignTrainerRole(user);
+
+        Trainer trainer =
+                trainerMapper.toEntity(request);
+
         trainer.setUser(user);
 
-        if (request.getStatus() != null) {
-            trainer.setStatus(request.getStatus());
-        } else {
-            trainer.setStatus(TrainerStatus.ACTIVE);
-        }
+        trainer.setStatus(
+                request.getStatus() != null
+                        ? request.getStatus()
+                        : TrainerStatus.ACTIVE
+        );
 
-        Trainer savedTrainer = (Trainer) trainerRepository.save(trainer);
-        return trainerMapper.toResponse(savedTrainer);
+        Trainer savedTrainer =
+                trainerRepository.save(trainer);
+
+        return trainerMapper.toResponse(
+                savedTrainer
+        );
     }
 
     @Override
-    @org.springframework.transaction.annotation.Transactional
-    public TrainerResponse updateMyProfile(TrainerUpdateRequest request) {
-        String username = org.springframework.security.core.context.SecurityContextHolder
-                .getContext().getAuthentication().getName();
+    @Transactional(readOnly = true)
+    public TrainerResponse getTrainerById(
+            Long trainerId
+    ) {
+        Trainer trainer = trainerRepository
+                .findByIdAndDeletedFalse(
+                        trainerId
+                )
+                .orElseThrow(() ->
+                        new AppException(
+                                ErrorCode.TRAINER_NOT_FOUND
+                        )
+                );
 
-        java.util.Optional trainerOptional = trainerRepository.findByUserUsernameAndDeletedFalse(username);
+        return trainerMapper.toResponse(
+                trainer
+        );
+    }
 
-        if (!trainerOptional.isPresent()) {
-            throw new com.fitlife.common.exception.AppException(
-                    com.fitlife.common.exception.ErrorCode.TRAINER_NOT_FOUND);
+    private void validateUserCanBecomeTrainer(
+            User user
+    ) {
+        if (Boolean.TRUE.equals(
+                user.getIsDeleted()
+        )) {
+            throw new AppException(
+                    ErrorCode.ACCOUNT_DELETED
+            );
         }
-        Trainer trainer = (Trainer) trainerOptional.get();
 
-        trainer.setSpecialization(request.getSpecialization());
-        trainer.setExperienceYears(request.getExperienceYears());
-        trainer.setCertifications(request.getCertifications());
-        trainer.setBio(request.getBio());
+        if (user.getStatus()
+                == UserStatus.LOCKED) {
+            throw new AppException(
+                    ErrorCode.ACCOUNT_LOCKED
+            );
+        }
 
-        Trainer updatedTrainer = trainerRepository.save(trainer);
+        if (user.getStatus()
+                == UserStatus.INACTIVE) {
+            throw new AppException(
+                    ErrorCode.ACCOUNT_INACTIVE
+            );
+        }
 
-        return trainerMapper.toResponse(updatedTrainer);
+        if (user.getStatus()
+                == UserStatus.PENDING) {
+            throw new AppException(
+                    ErrorCode.EMAIL_NOT_VERIFIED
+            );
+        }
+
+        if (user.getStatus()
+                != UserStatus.ACTIVE) {
+            throw new AppException(
+                    ErrorCode.ACCOUNT_INACTIVE
+            );
+        }
+
+        if (!Boolean.TRUE.equals(
+                user.getEmailVerified()
+        )) {
+            throw new AppException(
+                    ErrorCode.EMAIL_NOT_VERIFIED
+            );
+        }
+
+        if (hasRole(user, ROLE_ADMIN)
+                || hasRole(user, ROLE_STAFF)) {
+            throw new AppException(
+                    ErrorCode.USER_ROLE_INVALID
+            );
+        }
+    }
+
+    private void validateTrainerDoesNotExist(
+            Long userId,
+            String trainerCode
+    ) {
+        if (trainerRepository
+                .existsByUserIdAndDeletedFalse(
+                        userId
+                )) {
+            throw new AppException(
+                    ErrorCode.TRAINER_ALREADY_EXISTS
+            );
+        }
+
+        if (trainerRepository
+                .existsByTrainerCodeAndDeletedFalse(
+                        trainerCode
+                )) {
+            throw new AppException(
+                    ErrorCode.TRAINER_CODE_EXISTED
+            );
+        }
+    }
+
+    private void assignTrainerRole(
+            User user
+    ) {
+        Role trainerRole = roleRepository
+                .findByCode(ROLE_TRAINER)
+                .orElseThrow(() ->
+                        new AppException(
+                                ErrorCode.ROLE_NOT_FOUND
+                        )
+                );
+
+        if (user.getRoles() == null) {
+            user.setRoles(
+                    new HashSet<>()
+            );
+        }
+
+        if (!hasRole(user, ROLE_TRAINER)) {
+            user.getRoles().removeIf(role ->
+                    ROLE_MEMBER.equalsIgnoreCase(
+                            role.getCode()
+                    )
+            );
+
+            user.getRoles().add(
+                    trainerRole
+            );
+
+            userRepository.save(user);
+        }
+    }
+
+    private boolean hasRole(
+            User user,
+            String roleCode
+    ) {
+        if (user.getRoles() == null
+                || user.getRoles().isEmpty()) {
+            return false;
+        }
+
+        return user.getRoles()
+                .stream()
+                .anyMatch(role ->
+                        roleCode.equalsIgnoreCase(
+                                role.getCode()
+                        )
+                );
     }
 
     @Override
-    @org.springframework.transaction.annotation.Transactional(readOnly = true)
-    public java.util.List<TrainerResponse> getActiveTrainers() {
-        java.util.List activeTrainers = trainerRepository
-                .findAllByStatusAndDeletedFalse(com.fitlife.trainer.enums.TrainerStatus.ACTIVE);
-
-        java.util.List<TrainerResponse> responses = new java.util.ArrayList<>();
-        for (Object obj : activeTrainers) {
-            Trainer trainer = (Trainer) obj;
-            // ĐÃ ĐỒNG BỘ: Sử dụng toResponse cho vòng lặp
-            responses.add(trainerMapper.toResponse(trainer));
-        }
-
-        return responses;
+    @Transactional(readOnly = true)
+    public List<TrainerResponse> getActiveTrainers() {
+        return trainerRepository
+                .findAllByStatusAndDeletedFalseOrderByIdDesc(
+                        TrainerStatus.ACTIVE
+                )
+                .stream()
+                .map(trainerMapper::toResponse)
+                .toList();
     }
 
-
     @Override
-    @org.springframework.transaction.annotation.Transactional(readOnly = true)
-    public TrainerResponse getTrainerById(Long id) {
-        java.util.Optional trainerOptional = trainerRepository
-                .findByIdAndStatusAndDeletedFalse(id, com.fitlife.trainer.enums.TrainerStatus.ACTIVE);
+    public TrainerResponse updateMyProfile(
+            TrainerUpdateRequest request
+    ) {
+        User currentUser = getCurrentUser();
 
-        if (!trainerOptional.isPresent()) {
-            throw new com.fitlife.common.exception.AppException(
-                    com.fitlife.common.exception.ErrorCode.TRAINER_NOT_FOUND);
+        Trainer trainer = trainerRepository
+                .findByUserIdAndDeletedFalse(
+                        currentUser.getId()
+                )
+                .orElseThrow(() ->
+                        new AppException(
+                                ErrorCode.TRAINER_PROFILE_NOT_FOUND
+                        )
+                );
+
+        trainerMapper.updateEntity(
+                request,
+                trainer
+        );
+
+        Trainer savedTrainer =
+                trainerRepository.save(trainer);
+
+        return trainerMapper.toResponse(
+                savedTrainer
+        );
+    }
+
+    private User getCurrentUser() {
+        Authentication authentication =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
+
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication.getName() == null
+                || "anonymousUser".equalsIgnoreCase(
+                authentication.getName()
+        )) {
+            throw new AppException(
+                    ErrorCode.UNAUTHENTICATED
+            );
         }
 
+        String principal =
+                authentication.getName();
 
-        Trainer trainer = (Trainer) trainerOptional.get();
-        return trainerMapper.toResponse(trainer);
+        return userRepository
+                .findByUsernameOrEmail(
+                        principal,
+                        principal
+                )
+                .orElseThrow(() ->
+                        new AppException(
+                                ErrorCode.USER_NOT_FOUND
+                        )
+                );
     }
 }

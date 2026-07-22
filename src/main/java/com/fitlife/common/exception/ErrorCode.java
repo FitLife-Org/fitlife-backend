@@ -509,12 +509,77 @@ public enum ErrorCode {
             HttpStatus.BAD_GATEWAY
     ),
 
-    AI_EMBEDDING_DIMENSION_MISMATCH(
+    AI_EMBEDDING_RESPONSE_INVALID(
             12009,
+            "AI embedding response is invalid",
+            HttpStatus.BAD_GATEWAY
+    ),
+
+    AI_EMBEDDING_DIMENSION_MISMATCH(
+            12010,
             "Embedding dimension does not match vector database configuration",
             HttpStatus.INTERNAL_SERVER_ERROR
     ),
 
+    AI_KNOWLEDGE_NOT_FOUND(
+            12011,
+            "AI knowledge not found",
+            HttpStatus.NOT_FOUND
+    ),
+
+    AI_KNOWLEDGE_CODE_EXISTS(
+            12012,
+            "AI knowledge code already exists",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    AI_KNOWLEDGE_INDEX_FAILED(
+            12013,
+            "AI knowledge indexing failed",
+            HttpStatus.BAD_GATEWAY
+    ),
+
+    QDRANT_OPERATION_FAILED(
+            12014,
+            "Qdrant operation failed",
+            HttpStatus.BAD_GATEWAY
+    ),
+
+    QDRANT_DISABLED(
+            12015,
+            "Qdrant integration is disabled",
+            HttpStatus.SERVICE_UNAVAILABLE
+    ),
+
+    AI_SUGGESTION_NOT_SUCCESS(
+            12016,
+            "Only successful AI suggestions can be applied",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    AI_SUGGESTION_NOT_APPLICABLE(
+            12017,
+            "AI suggestion cannot be applied to this plan type",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    AI_SUGGESTION_ALREADY_APPLIED(
+            12018,
+            "AI suggestion has already been applied",
+            HttpStatus.CONFLICT
+    ),
+
+    AI_SUGGESTION_ITEMS_NOT_FOUND(
+            12019,
+            "AI suggestion plan items not found",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    AI_WORKOUT_PLAN_CREATION_FAILED(
+            12020,
+            "Unable to create workout plan from AI suggestion",
+            HttpStatus.INTERNAL_SERVER_ERROR
+    ),
 
     // =========================
     // Check-in errors: 13000 - 13999

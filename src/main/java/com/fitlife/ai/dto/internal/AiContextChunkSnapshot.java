@@ -7,7 +7,12 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Metadata của một knowledge chunk được retrieve từ Qdrant.
+ * Snapshot của một knowledge được retrieve từ Qdrant.
+ *
+ * Dùng để:
+ * - đưa nội dung knowledge vào prompt RAG;
+ * - lưu lại metadata knowledge mà AI đã sử dụng;
+ * - phục vụ audit và debug.
  */
 @Getter
 @Setter
@@ -16,17 +21,32 @@ import lombok.Setter;
 @AllArgsConstructor
 public class AiContextChunkSnapshot {
 
-    private String documentId;
+    /**
+     * ID của bản ghi ai_knowledge trong MySQL.
+     */
+    private Long knowledgeId;
 
-    private String chunkId;
+    /**
+     * ID point trong Qdrant.
+     */
+    private String pointId;
+
+    /**
+     * Mã knowledge nghiệp vụ.
+     */
+    private String code;
 
     private String title;
 
+    private String content;
+
     private String category;
 
-    private String language;
+    private String goal;
 
-    private String version;
+    private String experienceLevel;
+
+    private String language;
 
     private Double score;
 }

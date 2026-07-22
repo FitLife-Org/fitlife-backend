@@ -7,10 +7,20 @@ import lombok.Getter;
 @Getter
 @Builder
 public class AiPromptResult {
+
     private final AiPromptVersion version;
+
     private final String prompt;
 
+    /**
+     * Knowledge context đã được sử dụng để build prompt.
+     * Có thể rỗng hoặc fallback khi Qdrant không khả dụng.
+     */
+    private final AiContextSnapshot contextSnapshot;
+
     public String getVersionCode() {
-        return version == null ? null : version.getCode();
+        return version == null
+                ? null
+                : version.getCode();
     }
 }

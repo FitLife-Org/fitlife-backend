@@ -1,31 +1,16 @@
-
-### CASE 2: TẠO MỚI HỒ SƠ HUẤN LUYỆN VIÊN THÀNH CÔNG (P0 - TRƯỜNG HỢP CHUẨN)
+### CASE 2: TẠO MỚI HỒ SƠ HUẤN LUYỆN VIÊN THÀNH CÔNG
 
 POST {{baseUrl}}/admin/trainers
 Content-Type: application/json
+Accept: application/json
 Authorization: Bearer {{adminToken}}
 
 {
-  "userId": 7,
+  "userId": 5,
   "trainerCode": "TRN001",
   "specialization": "Strength Training, Fat Loss",
   "experienceYears": 3,
   "certifications": "ACE Personal Trainer, Nutrition Basic",
   "bio": "Huấn luyện viên chuyên hỗ trợ giảm mỡ, tăng cơ và xây dựng thói quen tập luyện.",
   "status": "ACTIVE"
-}
-
-
-### --------------------------------------------------------------------
-### CASE 8: TRAINER TỰ CẬP NHẬT HỒ SƠ (YÊU CẦU ROLE_TRAINER)
-### --------------------------------------------------------------------
-PUT http://localhost:8080/api/v1/trainers/me
-Content-Type: application/json
-Authorization: Bearer {{trainerToken}}
-
-{
-  "specialization": "Fitness, Weight Loss, Boxing Master",
-  "experienceYears": 7,
-  "certifications": "ACE Certified Personal Trainer, International Red Cross CPR",
-  "bio": "Tiểu sử huấn luyện viên sau khi cập nhật dữ liệu mới tinh."
 }

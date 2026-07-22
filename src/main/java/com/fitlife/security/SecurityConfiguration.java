@@ -154,6 +154,13 @@ public class SecurityConfiguration {
                         ).hasRole("MEMBER")
 
                         // =====================================
+                        // Member AI APIs
+                        // =====================================
+                        .requestMatchers(
+                                "/ai/suggestions/**"
+                        ).hasRole("MEMBER")
+
+                        // =====================================
                         // Admin APIs
                         // =====================================
                         .requestMatchers(

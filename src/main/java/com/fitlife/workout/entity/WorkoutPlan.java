@@ -25,7 +25,10 @@ public class WorkoutPlan {
     @Column(name = "trainer_id")
     private Long trainerId;
 
-    @Column(name = "source_ai_suggestion_id")
+    @Column(
+            name = "source_ai_suggestion_id",
+            unique = true
+    )
     private Long sourceAiSuggestionId;
 
     @Column(nullable = false, unique = true, length = 50)
