@@ -1,0 +1,77 @@
+### ============================================================
+### AI - APPLY WORKOUT PLAN
+### ============================================================
+
+POST {{baseUrl}}/ai/suggestions/{{workoutSuggestionId}}/apply-workout-plan
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+> {%
+    client.test("Apply workout plan successfully", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+
+        client.assert(
+            response.body.data != null,
+            "Apply response data is missing"
+        );
+
+        client.assert(
+            response.body.data.workoutPlanId != null,
+            "workoutPlanId is missing"
+        );
+    });
+
+    client.global.set(
+        "workoutPlanId",
+        response.body.data.workoutPlanId
+    );
+%}
+
+### Duplicate apply - expected conflict
+POST {{baseUrl}}/ai/suggestions/{{workoutSuggestionId}}/apply-workout-plan
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+> {%
+    client.test("Duplicate workout apply is rejected", function () {
+        client.assert(
+            response.status === 409,
+            "Expected HTTP 409"
+        );
+
+        client.assert(
+            response.body.code === 12018,
+            "Expected AI_SUGGESTION_ALREADY_APPLIED"
+        );
+    });
+%}
+
+### ============================================================
+### AI - APPLY NUTRITION PLAN
+### ============================================================
+
+POST {{baseUrl}}/ai/suggestions/{{nutritionSuggestionId}}/apply-nutrition-plan
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+> {%
+    client.test("Apply nutrition plan successfully", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+
+        client.assert(
+            response.body.data.nutritionPlanId != null,
+            "nutritionPlanId is missing"
+        );
+    });
+
+    client.global.set(
+        "nutritionPlanId",
+        response.body.data.nutritionPlanId
+    );
+%}

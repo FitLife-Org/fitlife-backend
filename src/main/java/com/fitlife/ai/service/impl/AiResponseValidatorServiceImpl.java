@@ -315,8 +315,7 @@ public class AiResponseValidatorServiceImpl
 
         if (exercise == null) {
             invalid(
-                    fieldPrefix
-                            + " is null"
+                    fieldPrefix + " is null"
             );
         }
 
@@ -328,19 +327,40 @@ public class AiResponseValidatorServiceImpl
         Integer sets =
                 exercise.getSets();
 
+        String reps =
+                normalizeText(
+                        exercise.getReps()
+                );
+
         Integer durationMinutes =
                 exercise.getDurationMinutes();
 
-        if (sets == null
-                && durationMinutes == null) {
-            invalid(
-                    fieldPrefix
-                            + " must contain sets or durationMinutes"
-            );
-        }
+        Integer restSeconds =
+                exercise.getRestSeconds();
 
-        if (sets != null
-                && (sets < 1 || sets > 100)) {
+        boolean hasSets =
+                sets != null;
+
+        boolean hasValidSets =
+                sets != null
+                        && sets >= 1
+                        && sets <= 100;
+
+        boolean hasReps =
+                reps != null;
+
+        boolean hasDuration =
+                durationMinutes != null;
+
+        boolean hasValidDuration =
+                durationMinutes != null
+                        && durationMinutes >= 1
+                        && durationMinutes <= 600;
+
+        /*
+         * Kiểm tra range trước.
+         */
+        if (hasSets && !hasValidSets) {
             invalid(
                     fieldPrefix
                             + ".sets is invalid: "
@@ -348,9 +368,7 @@ public class AiResponseValidatorServiceImpl
             );
         }
 
-        if (durationMinutes != null
-                && (durationMinutes < 0
-                || durationMinutes > 600)) {
+        if (hasDuration && !hasValidDuration) {
             invalid(
                     fieldPrefix
                             + ".durationMinutes is invalid: "
@@ -358,15 +376,49 @@ public class AiResponseValidatorServiceImpl
             );
         }
 
-        if (sets != null) {
-            validateRequiredText(
-                    exercise.getReps(),
-                    fieldPrefix + ".reps"
+        /*
+         * Chấp nhận ba dạng bài:
+         *
+         * 1. Repetition exercise:
+         *    sets + reps
+         *
+         * 2. Timed-set exercise:
+         *    sets + durationMinutes
+         *
+         * 3. Duration/cardio exercise:
+         *    durationMinutes
+         */
+        boolean repetitionExercise =
+                hasValidSets && hasReps;
+
+        boolean timedSetExercise =
+                hasValidSets && hasValidDuration;
+
+        boolean durationExercise =
+                !hasSets && hasValidDuration;
+
+        if (!repetitionExercise
+                && !timedSetExercise
+                && !durationExercise) {
+            invalid(
+                    fieldPrefix
+                            + " must contain one valid prescription: "
+                            + "sets with reps, "
+                            + "sets with durationMinutes, "
+                            + "or durationMinutes only"
             );
         }
 
-        Integer restSeconds =
-                exercise.getRestSeconds();
+        /*
+         * Không chấp nhận reps đứng riêng
+         * mà không có sets.
+         */
+        if (hasReps && !hasValidSets) {
+            invalid(
+                    fieldPrefix
+                            + ".sets is required when reps is provided"
+            );
+        }
 
         if (restSeconds != null
                 && (restSeconds < 0
@@ -680,5 +732,20 @@ public class AiResponseValidatorServiceImpl
         throw new AppException(
                 ErrorCode.AI_RESPONSE_INVALID
         );
+    }
+
+    private String normalizeText(
+            String value
+    ) {
+        if (value == null) {
+            return null;
+        }
+
+        String normalized =
+                value.trim();
+
+        return normalized.isEmpty()
+                ? null
+                : normalized;
     }
 }

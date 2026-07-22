@@ -1,0 +1,59 @@
+### ============================================================
+### AI - SUBMIT FEEDBACK
+### ============================================================
+
+POST {{baseUrl}}/ai/suggestions/{{bodyAnalysisSuggestionId}}/feedback
+Authorization: Bearer {{memberToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "rating": 5,
+  "useful": true,
+  "comment": "Phân tích rõ ràng và phù hợp với chỉ số hiện tại."
+}
+
+> {%
+    client.test("Submit AI feedback successfully", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+
+        client.assert(
+            response.body.data.rating === 5,
+            "Expected rating 5"
+        );
+
+        client.assert(
+            response.body.data.useful === true,
+            "Expected useful true"
+        );
+    });
+%}
+
+### Duplicate feedback - expected error
+POST {{baseUrl}}/ai/suggestions/{{bodyAnalysisSuggestionId}}/feedback
+Authorization: Bearer {{memberToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "rating": 4,
+  "useful": true,
+  "comment": "Feedback lần hai"
+}
+
+> {%
+    client.test("Duplicate feedback is rejected", function () {
+        client.assert(
+            response.status === 400,
+            "Expected HTTP 400"
+        );
+
+        client.assert(
+            response.body.code === 12005,
+            "Expected AI_FEEDBACK_ALREADY_EXISTS"
+        );
+    });
+%}
