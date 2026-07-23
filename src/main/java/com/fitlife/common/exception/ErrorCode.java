@@ -587,6 +587,8 @@ public enum ErrorCode {
             HttpStatus.INTERNAL_SERVER_ERROR
     ),
 
+
+
     // =========================
     // Check-in errors: 13000 - 13999
     // =========================
@@ -658,6 +660,51 @@ public enum ErrorCode {
             14005,
             "User role is invalid for this action",
             HttpStatus.BAD_REQUEST
+    ),
+
+    // =========================
+// Nutrition errors: 15000 - 15999
+// =========================
+    NUTRITION_PLAN_NOT_FOUND(
+            15001,
+            "Nutrition plan not found",
+            HttpStatus.NOT_FOUND
+    ),
+
+    NUTRITION_PLAN_NOT_DRAFT(
+            15002,
+            "Only draft nutrition plans can be modified",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    NUTRITION_PLAN_NOT_ACTIVE(
+            15003,
+            "Only active nutrition plans can be completed",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    NUTRITION_PLAN_ITEMS_REQUIRED(
+            15004,
+            "Nutrition plan must contain at least one meal item",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    NUTRITION_PLAN_CALORIES_INVALID(
+            15005,
+            "Daily calories must be greater than zero",
+            HttpStatus.BAD_REQUEST
+    ),
+
+    NUTRITION_PLAN_CANNOT_DELETE_ACTIVE(
+            15006,
+            "Active nutrition plan cannot be deleted",
+            HttpStatus.CONFLICT
+    ),
+
+    NUTRITION_PLAN_ALREADY_ACTIVE(
+            15007,
+            "Nutrition plan is already active",
+            HttpStatus.CONFLICT
     ),
 
 
