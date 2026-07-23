@@ -19,11 +19,18 @@ public interface AiKnowledgeRepository
             String code
     );
 
-    Optional<AiKnowledge> findByIdAndDeletedFalse(
+    Optional<AiKnowledge>
+    findByIdAndDeletedFalse(
             Long id
     );
 
-    List<AiKnowledge> findAllByDeletedFalseAndActiveTrue();
+    List<AiKnowledge>
+    findAllByDeletedFalseAndActiveTrueOrderByIdAsc();
+
+    default List<AiKnowledge>
+    findAllByDeletedFalseAndActiveTrue() {
+        return findAllByDeletedFalseAndActiveTrueOrderByIdAsc();
+    }
 
     @Query("""
             SELECT k
@@ -32,9 +39,13 @@ public interface AiKnowledgeRepository
               AND (
                     :keyword IS NULL
                     OR LOWER(k.code)
-                        LIKE LOWER(CONCAT('%', :keyword, '%'))
+                        LIKE LOWER(
+                            CONCAT('%', :keyword, '%')
+                        )
                     OR LOWER(k.title)
-                        LIKE LOWER(CONCAT('%', :keyword, '%'))
+                        LIKE LOWER(
+                            CONCAT('%', :keyword, '%')
+                        )
               )
               AND (
                     :category IS NULL

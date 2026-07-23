@@ -127,33 +127,23 @@ public class AiKnowledgeRetrievalServiceImpl
     private Map<String, Object> buildFilter(
             AiKnowledgeRetrievalRequest request
     ) {
-        List<Map<String, Object>> must = new ArrayList<>();
+        List<Map<String, Object>> must =
+                new ArrayList<>();
 
-        must.add(matchCondition("active", true));
+        must.add(
+                matchCondition(
+                        "active",
+                        true
+                )
+        );
 
         if (request.getCategory() != null) {
             must.add(
                     matchCondition(
                             "category",
-                            request.getCategory().name()
-                    )
-            );
-        }
-
-        if (hasText(request.getGoal())) {
-            must.add(
-                    matchCondition(
-                            "goal",
-                            request.getGoal().trim()
-                    )
-            );
-        }
-
-        if (hasText(request.getExperienceLevel())) {
-            must.add(
-                    matchCondition(
-                            "experienceLevel",
-                            request.getExperienceLevel().trim()
+                            request
+                                    .getCategory()
+                                    .name()
                     )
             );
         }
@@ -162,12 +152,18 @@ public class AiKnowledgeRetrievalServiceImpl
             must.add(
                     matchCondition(
                             "language",
-                            request.getLanguage().trim()
+                            request
+                                    .getLanguage()
+                                    .trim()
+                                    .toLowerCase()
                     )
             );
         }
 
-        return Map.of("must", must);
+        return Map.of(
+                "must",
+                must
+        );
     }
 
     private Map<String, Object> matchCondition(

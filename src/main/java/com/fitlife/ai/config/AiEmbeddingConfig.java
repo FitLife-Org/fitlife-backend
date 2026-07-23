@@ -29,8 +29,7 @@ public class AiEmbeddingConfig {
         HttpClient httpClient =
                 HttpClient.newBuilder()
                         .connectTimeout(
-                                properties
-                                        .getConnectTimeout()
+                                properties.getConnectTimeout()
                         )
                         .build();
 
