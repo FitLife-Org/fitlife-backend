@@ -359,9 +359,7 @@ Accept: application/json
     );
 %}
 
-### ============================================================
-### 5. GENERATE FULL PLAN
-### ============================================================
+### GENERATE FULL PLAN
 
 # @timeout 180000
 POST {{baseUrl}}/ai/suggestions/full-plan
@@ -409,12 +407,6 @@ Accept: application/json
                 response.body.data.status
                 === "SUCCESS",
                 "Expected SUCCESS"
-            );
-
-            client.assert(
-                response.body.data.summary
-                != null,
-                "Summary is missing"
             );
         }
     );

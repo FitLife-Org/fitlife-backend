@@ -89,6 +89,13 @@ public class AiPromptBuilderServiceImpl implements AiPromptBuilderService {
                   - Never repeat information.
                   - Do not explain JSON fields.
                 
+                  WARNING RULES:
+                  - warnings must contain at most 2 items.
+                  - Each warning must be concise and non-empty.
+                  - Never repeat the same warning.
+                  - Combine related safety notices into one warning.
+                  - If there are no important warnings, return an empty array.
+                
                  STRICT TYPES:
                  - dayNo: integer
                  - sets: integer or null
@@ -124,15 +131,31 @@ public class AiPromptBuilderServiceImpl implements AiPromptBuilderService {
                        "dayOfWeek": "MONDAY",
                        "focus": "string",
                        "exercises": [
-                         {
-                           "name": "string",
-                           "sets": 3,
-                           "reps": "10-12",
-                           "durationMinutes": 10,
-                           "restSeconds": 90,
-                           "note": "string"
-                         }
-                       ]
+                          {
+                            "name": "Goblet Squat",
+                            "sets": 3,
+                            "reps": "10-12",
+                            "durationMinutes": null,
+                            "restSeconds": 90,
+                            "note": "string"
+                          },
+                          {
+                            "name": "Plank",
+                            "sets": 3,
+                            "reps": null,
+                            "durationMinutes": 1,
+                            "restSeconds": 60,
+                            "note": "string"
+                          },
+                          {
+                            "name": "Brisk Walking",
+                            "sets": null,
+                            "reps": null,
+                            "durationMinutes": 15,
+                            "restSeconds": null,
+                            "note": "string"
+                          }
+                        ]
                      }
                    ],
                    "nutritionPlan": {
