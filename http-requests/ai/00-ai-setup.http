@@ -1,0 +1,132 @@
+### ============================================================
+### FITLIFE AI API - SETUP
+### ============================================================
+
+@baseUrl = http://localhost:8080/api/v1
+
+### ============================================================
+### 1. LOGIN MEMBER
+### ============================================================
+
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "identifier": "member01",
+  "password": "123456"
+}
+
+> {%
+    client.test("Login member success", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+
+        client.assert(
+            response.body.data.accessToken,
+            "Member access token is missing"
+        );
+    });
+
+    client.global.set(
+        "memberToken",
+        response.body.data.accessToken
+    );
+
+    client.global.set(
+        "memberRefreshToken",
+        response.body.data.refreshToken
+    );
+%}
+
+
+### ============================================================
+### 2. LOGIN ADMIN
+### ============================================================
+
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "identifier": "admin",
+  "password": "123456"
+}
+
+> {%
+    client.test("Login admin success", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+
+        client.assert(
+            response.body.data.accessToken,
+            "Admin access token is missing"
+        );
+    });
+
+    client.global.set(
+        "adminToken",
+        response.body.data.accessToken
+    );
+%}
+
+
+### ============================================================
+### 3. CHECK CURRENT MEMBER
+### ============================================================
+
+GET {{baseUrl}}/members/me
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+> {%
+    client.test("Current member loaded", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+    });
+
+    if (response.body.data?.id) {
+        client.global.set(
+            "memberId",
+            response.body.data.id
+        );
+    }
+%}
+
+
+### ============================================================
+### 4. CHECK LATEST BODY METRIC
+### ============================================================
+
+GET {{baseUrl}}/body-metrics/me/latest
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+
+### ============================================================
+### 5. CHECK AI USAGE TODAY
+### ============================================================
+
+GET {{baseUrl}}/ai/suggestions/usage/today
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+> {%
+    client.test("AI usage loaded", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+
+        client.assert(
+            response.body.data.dailyLimit >= 0,
+            "dailyLimit is missing"
+        );
+    });
+%}

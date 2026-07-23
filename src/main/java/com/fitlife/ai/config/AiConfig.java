@@ -3,16 +3,45 @@ package com.fitlife.ai.config;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
+import java.net.http.HttpClient;
+
 @Configuration
-@EnableConfigurationProperties(GeminiProperties.class)
+@EnableConfigurationProperties(
+        GeminiProperties.class
+)
 public class AiConfig {
 
     @Bean
-    public RestClient geminiRestClient(GeminiProperties properties) {
+    public RestClient geminiRestClient(
+            GeminiProperties properties
+    ) {
+        HttpClient httpClient =
+                HttpClient.newBuilder()
+                        .connectTimeout(
+                                properties
+                                        .getConnectTimeout()
+                        )
+                        .build();
+
+        JdkClientHttpRequestFactory requestFactory =
+                new JdkClientHttpRequestFactory(
+                        httpClient
+                );
+
+        requestFactory.setReadTimeout(
+                properties.getReadTimeout()
+        );
+
         return RestClient.builder()
-                .baseUrl(properties.getBaseUrl())
+                .baseUrl(
+                        properties.getBaseUrl()
+                )
+                .requestFactory(
+                        requestFactory
+                )
                 .build();
     }
 }

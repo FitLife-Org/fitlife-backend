@@ -193,11 +193,29 @@ public class AiQdrantPointServiceImpl
         }
     }
 
-    private void validateVector(List<Float> vector) {
+    private void validateVector(
+            List<Float> vector
+    ) {
         if (vector == null
-                || vector.size() != properties.getVectorSize()) {
+                || vector.size()
+                != properties.getVectorSize()) {
             throw new AppException(
-                    ErrorCode.AI_EMBEDDING_DIMENSION_MISMATCH
+                    ErrorCode
+                            .AI_EMBEDDING_DIMENSION_MISMATCH
+            );
+        }
+
+        boolean invalidValue =
+                vector.stream().anyMatch(
+                        value ->
+                                value == null
+                                        || Float.isNaN(value)
+                                        || Float.isInfinite(value)
+                );
+
+        if (invalidValue) {
+            throw new AppException(
+                    ErrorCode.AI_EMBEDDING_RESPONSE_INVALID
             );
         }
     }

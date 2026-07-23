@@ -13,6 +13,8 @@ import java.time.Duration;
 )
 public class AiEmbeddingProperties {
 
+    private static final int MAX_OUTPUT_DIMENSION = 3072;
+
     private boolean enabled = false;
 
     private String apiKey;
@@ -26,7 +28,7 @@ public class AiEmbeddingProperties {
     private int outputDimensionality = 768;
 
     private Duration connectTimeout =
-            Duration.ofSeconds(5);
+            Duration.ofSeconds(10);
 
     private Duration readTimeout =
             Duration.ofSeconds(30);
@@ -36,58 +38,49 @@ public class AiEmbeddingProperties {
             return;
         }
 
-        if (apiKey == null
-                || apiKey.isBlank()
-                || "demo".equalsIgnoreCase(
-                apiKey.trim()
-        )) {
+        if (!hasText(apiKey)
+                || "demo".equalsIgnoreCase(apiKey.trim())
+                || apiKey.startsWith("your_")) {
             throw new IllegalStateException(
                     "fitlife.ai.embedding.api-key "
                             + "must be configured"
             );
         }
 
-        if (baseUrl == null
-                || baseUrl.isBlank()) {
+        if (!hasText(baseUrl)) {
             throw new IllegalStateException(
                     "fitlife.ai.embedding.base-url "
                             + "must not be blank"
             );
         }
 
-        if (model == null
-                || model.isBlank()) {
+        if (!hasText(model)) {
             throw new IllegalStateException(
                     "fitlife.ai.embedding.model "
                             + "must not be blank"
             );
         }
 
-        if (outputDimensionality <= 0) {
+        if (outputDimensionality <= 0
+                || outputDimensionality
+                > MAX_OUTPUT_DIMENSION) {
             throw new IllegalStateException(
                     "fitlife.ai.embedding."
                             + "output-dimensionality "
-                            + "must be greater than 0"
+                            + "must be between 1 and "
+                            + MAX_OUTPUT_DIMENSION
             );
         }
 
-        if (connectTimeout == null
-                || connectTimeout.isZero()
-                || connectTimeout.isNegative()) {
-            throw new IllegalStateException(
-                    "Embedding connect timeout "
-                            + "must be positive"
-            );
-        }
+        validateDuration(
+                connectTimeout,
+                "Embedding connect timeout"
+        );
 
-        if (readTimeout == null
-                || readTimeout.isZero()
-                || readTimeout.isNegative()) {
-            throw new IllegalStateException(
-                    "Embedding read timeout "
-                            + "must be positive"
-            );
-        }
+        validateDuration(
+                readTimeout,
+                "Embedding read timeout"
+        );
     }
 
     public String normalizedBaseUrl() {
@@ -106,10 +99,33 @@ public class AiEmbeddingProperties {
     public String normalizedModelName() {
         String value = model.trim();
 
-        if (value.startsWith("models/")) {
-            return value;
-        }
+        return value.startsWith("models/")
+                ? value
+                : "models/" + value;
+    }
 
-        return "models/" + value;
+    public String normalizedApiKey() {
+        return apiKey == null
+                ? null
+                : apiKey.trim();
+    }
+
+    private void validateDuration(
+            Duration duration,
+            String propertyName
+    ) {
+        if (duration == null
+                || duration.isZero()
+                || duration.isNegative()) {
+            throw new IllegalStateException(
+                    propertyName
+                            + " must be positive"
+            );
+        }
+    }
+
+    private boolean hasText(String value) {
+        return value != null
+                && !value.isBlank();
     }
 }

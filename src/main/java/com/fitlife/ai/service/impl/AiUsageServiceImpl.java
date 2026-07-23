@@ -19,7 +19,7 @@ import java.time.ZoneId;
 public class AiUsageServiceImpl
         implements AiUsageService {
 
-    private static final int DAILY_AI_LIMIT = 5;
+    private static final int DAILY_AI_LIMIT = 20;
 
     private static final ZoneId FITLIFE_ZONE_ID =
             ZoneId.of("Asia/Ho_Chi_Minh");

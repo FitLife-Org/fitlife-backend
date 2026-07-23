@@ -3,6 +3,7 @@ package com.fitlife.ai.knowledge.service.impl;
 import com.fitlife.ai.embedding.dto.AiEmbeddingResult;
 import com.fitlife.ai.embedding.service.AiEmbeddingService;
 import com.fitlife.ai.knowledge.entity.AiKnowledge;
+import com.fitlife.ai.knowledge.enums.AiKnowledgeIndexStatus;
 import com.fitlife.ai.knowledge.repository.AiKnowledgeRepository;
 import com.fitlife.ai.knowledge.service.AiKnowledgeIndexService;
 import com.fitlife.ai.knowledge.service.AiKnowledgePersistenceService;
@@ -12,6 +13,8 @@ import com.fitlife.common.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
@@ -24,27 +27,47 @@ import java.util.UUID;
 public class AiKnowledgeIndexServiceImpl
         implements AiKnowledgeIndexService {
 
-    private final AiKnowledgeRepository repository;
-    private final AiKnowledgePersistenceService persistenceService;
-    private final AiEmbeddingService embeddingService;
-    private final AiQdrantPointService qdrantPointService;
+    private final AiKnowledgeRepository
+            repository;
+
+    private final AiKnowledgePersistenceService
+            persistenceService;
+
+    private final AiEmbeddingService
+            embeddingService;
+
+    private final AiQdrantPointService
+            qdrantPointService;
 
     @Override
-    public void indexKnowledge(Long id) {
-        AiKnowledge knowledge = required(id);
+    public void indexKnowledge(
+            Long knowledgeId
+    ) {
+        validateKnowledgeId(knowledgeId);
 
-        if (Boolean.TRUE.equals(knowledge.getDeleted())
-                || !Boolean.TRUE.equals(knowledge.getActive())) {
+        AiKnowledge knowledge =
+                required(knowledgeId);
+
+        /*
+         * Knowledge inactive không được tồn tại
+         * trong vector index.
+         */
+        if (!Boolean.TRUE.equals(
+                knowledge.getActive()
+        )) {
             deleteIfPresent(knowledge);
             return;
         }
 
-        String pointId = resolvePointId(knowledge);
+        String pointId =
+                resolvePointId(knowledge);
 
         try {
             AiEmbeddingResult embedding =
                     embeddingService.embedDocument(
-                            buildEmbeddingText(knowledge),
+                            buildEmbeddingText(
+                                    knowledge
+                            ),
                             knowledge.getTitle()
                     );
 
@@ -61,32 +84,27 @@ public class AiKnowledgeIndexServiceImpl
                     pointId
             );
 
-        } catch (AppException ex) {
-            log.error(
-                    "Knowledge indexing failed. id={}, reason={}",
-                    id,
-                    ex.getMessage(),
-                    ex
+            log.info(
+                    "AI knowledge indexed successfully. "
+                            + "knowledgeId={}, code={}, pointId={}, dimension={}",
+                    knowledge.getId(),
+                    knowledge.getCode(),
+                    pointId,
+                    embedding.dimension()
             );
 
-            persistenceService.markFailed(
-                    id,
-                    safeErrorMessage(ex)
+        } catch (AppException exception) {
+            handleIndexFailure(
+                    knowledgeId,
+                    exception
             );
 
-            throw ex;
+            throw exception;
 
-        } catch (Exception ex) {
-            log.error(
-                    "Knowledge indexing failed. id={}, reason={}",
-                    id,
-                    ex.getMessage(),
-                    ex
-            );
-
-            persistenceService.markFailed(
-                    id,
-                    safeErrorMessage(ex)
+        } catch (Exception exception) {
+            handleIndexFailure(
+                    knowledgeId,
+                    exception
             );
 
             throw new AppException(
@@ -96,41 +114,159 @@ public class AiKnowledgeIndexServiceImpl
     }
 
     @Override
-    public void deleteKnowledgePoint(Long id) {
-        AiKnowledge knowledge = required(id);
+    public void deleteKnowledgePoint(
+            Long knowledgeId
+    ) {
+        validateKnowledgeId(knowledgeId);
+
+        AiKnowledge knowledge =
+                required(knowledgeId);
+
         deleteIfPresent(knowledge);
     }
 
     @Override
     public int reindexAll() {
         int successCount = 0;
+        int failureCount = 0;
 
-        for (AiKnowledge knowledge :
-                repository.findAllByDeletedFalseAndActiveTrue()) {
+        for (
+                AiKnowledge knowledge :
+                repository
+                        .findAllByDeletedFalseAndActiveTrue()
+        ) {
             try {
-                indexKnowledge(knowledge.getId());
+                indexKnowledge(
+                        knowledge.getId()
+                );
+
                 successCount++;
 
-            } catch (Exception ex) {
+            } catch (Exception exception) {
+                failureCount++;
+
                 log.warn(
-                        "Reindex skipped. id={}, reason={}",
+                        "AI knowledge reindex skipped. "
+                                + "knowledgeId={}, code={}, reason={}",
                         knowledge.getId(),
-                        ex.getMessage()
+                        knowledge.getCode(),
+                        exception.getMessage()
                 );
             }
         }
 
+        log.info(
+                "AI knowledge reindex completed. "
+                        + "success={}, failure={}",
+                successCount,
+                failureCount
+        );
+
         return successCount;
     }
 
-    private void deleteIfPresent(AiKnowledge knowledge) {
-        String pointId = knowledge.getQdrantPointId();
+    private void deleteIfPresent(
+            AiKnowledge knowledge
+    ) {
+        String pointId =
+                normalizeText(
+                        knowledge.getQdrantPointId()
+                );
 
-        if (pointId == null || pointId.isBlank()) {
+        if (pointId == null) {
+            log.debug(
+                    "Skip Qdrant delete because pointId is missing. "
+                            + "knowledgeId={}",
+                    knowledge.getId()
+            );
+
             return;
         }
 
-        qdrantPointService.delete(pointId);
+        try {
+            qdrantPointService.delete(
+                    pointId
+            );
+
+            persistenceService.markUnindexed(
+                    knowledge.getId()
+            );
+
+            log.info(
+                    "AI knowledge point deleted. "
+                            + "knowledgeId={}, pointId={}",
+                    knowledge.getId(),
+                    pointId
+            );
+
+        } catch (AppException exception) {
+            log.error(
+                    "Cannot delete AI knowledge point. "
+                            + "knowledgeId={}, pointId={}, reason={}",
+                    knowledge.getId(),
+                    pointId,
+                    exception.getMessage(),
+                    exception
+            );
+
+            persistenceService.markFailed(
+                    knowledge.getId(),
+                    safeErrorMessage(exception)
+            );
+
+            throw exception;
+
+        } catch (Exception exception) {
+            log.error(
+                    "Unexpected Qdrant delete error. "
+                            + "knowledgeId={}, pointId={}, reason={}",
+                    knowledge.getId(),
+                    pointId,
+                    exception.getMessage(),
+                    exception
+            );
+
+            persistenceService.markFailed(
+                    knowledge.getId(),
+                    safeErrorMessage(exception)
+            );
+
+            throw new AppException(
+                    ErrorCode.QDRANT_OPERATION_FAILED
+            );
+        }
+    }
+
+    private void handleIndexFailure(
+            Long knowledgeId,
+            Throwable throwable
+    ) {
+        log.error(
+                "AI knowledge indexing failed. "
+                        + "knowledgeId={}, type={}, reason={}",
+                knowledgeId,
+                throwable
+                        .getClass()
+                        .getSimpleName(),
+                throwable.getMessage(),
+                throwable
+        );
+
+        try {
+            persistenceService.markFailed(
+                    knowledgeId,
+                    safeErrorMessage(throwable)
+            );
+
+        } catch (Exception persistenceException) {
+            log.error(
+                    "Cannot update knowledge index status to FAILED. "
+                            + "knowledgeId={}, reason={}",
+                    knowledgeId,
+                    persistenceException.getMessage(),
+                    persistenceException
+            );
+        }
     }
 
     private void validateEmbedding(
@@ -143,21 +279,50 @@ public class AiKnowledgeIndexServiceImpl
                     ErrorCode.AI_EMBEDDING_RESPONSE_INVALID
             );
         }
+
+        if (embedding.dimension()
+                != embedding.vector().size()) {
+            throw new AppException(
+                    ErrorCode.AI_EMBEDDING_DIMENSION_MISMATCH
+            );
+        }
+
+        boolean containsInvalidValue =
+                embedding.vector()
+                        .stream()
+                        .anyMatch(value ->
+                                value == null
+                                        || Float.isNaN(value)
+                                        || Float.isInfinite(value)
+                        );
+
+        if (containsInvalidValue) {
+            throw new AppException(
+                    ErrorCode.AI_EMBEDDING_RESPONSE_INVALID
+            );
+        }
     }
 
     private String resolvePointId(
             AiKnowledge knowledge
     ) {
-        if (knowledge.getQdrantPointId() != null
-                && !knowledge.getQdrantPointId().isBlank()) {
-            return knowledge.getQdrantPointId();
+        String currentPointId =
+                normalizeText(
+                        knowledge.getQdrantPointId()
+                );
+
+        if (currentPointId != null) {
+            return currentPointId;
         }
 
+        String source =
+                "fitlife-ai-knowledge-"
+                        + knowledge.getId();
+
         return UUID.nameUUIDFromBytes(
-                (
-                        "fitlife-ai-knowledge-"
-                                + knowledge.getId()
-                ).getBytes(StandardCharsets.UTF_8)
+                source.getBytes(
+                        StandardCharsets.UTF_8
+                )
         ).toString();
     }
 
@@ -165,21 +330,32 @@ public class AiKnowledgeIndexServiceImpl
             AiKnowledge knowledge
     ) {
         return """
+                Code: %s
                 Title: %s
                 Category: %s
                 Goal: %s
                 Experience level: %s
                 Language: %s
+
                 Content:
                 %s
                 """.formatted(
+                safe(knowledge.getCode()),
                 safe(knowledge.getTitle()),
-                knowledge.getCategory() == null
-                        ? ""
-                        : knowledge.getCategory().name(),
-                safe(knowledge.getGoal()),
-                safe(knowledge.getExperienceLevel()),
-                safe(knowledge.getLanguage()),
+                normalizeCategory(
+                        knowledge
+                                .getCategory()
+                ),
+                normalizeBusinessValue(
+                        knowledge.getGoal()
+                ),
+                normalizeBusinessValue(
+                        knowledge
+                                .getExperienceLevel()
+                ),
+                normalizeLanguage(
+                        knowledge.getLanguage()
+                ),
                 safe(knowledge.getContent())
         ).trim();
     }
@@ -194,26 +370,36 @@ public class AiKnowledgeIndexServiceImpl
                 "knowledgeId",
                 knowledge.getId()
         );
+
         payload.put(
                 "code",
-                knowledge.getCode()
+                safe(knowledge.getCode())
         );
+
         payload.put(
                 "title",
-                knowledge.getTitle()
+                safe(knowledge.getTitle())
         );
+
         payload.put(
                 "content",
-                knowledge.getContent()
+                safe(knowledge.getContent())
         );
+
         payload.put(
                 "category",
-                knowledge.getCategory().name()
+                normalizeCategory(
+                        knowledge.getCategory()
+                )
         );
+
         payload.put(
                 "language",
-                knowledge.getLanguage()
+                normalizeLanguage(
+                        knowledge.getLanguage()
+                )
         );
+
         payload.put(
                 "active",
                 Boolean.TRUE.equals(
@@ -221,47 +407,190 @@ public class AiKnowledgeIndexServiceImpl
                 )
         );
 
-        if (knowledge.getGoal() != null
-                && !knowledge.getGoal().isBlank()) {
+        String goal =
+                normalizeNullableBusinessValue(
+                        knowledge.getGoal()
+                );
+
+        if (goal != null) {
             payload.put(
                     "goal",
-                    knowledge.getGoal()
+                    goal
             );
         }
 
-        if (knowledge.getExperienceLevel() != null
-                && !knowledge.getExperienceLevel().isBlank()) {
+        String experienceLevel =
+                normalizeNullableBusinessValue(
+                        knowledge
+                                .getExperienceLevel()
+                );
+
+        if (experienceLevel != null) {
             payload.put(
                     "experienceLevel",
-                    knowledge.getExperienceLevel()
+                    experienceLevel
             );
         }
+
+        payload.put(
+                "source",
+                "FITLIFE_DATABASE"
+        );
 
         return payload;
     }
 
-    private AiKnowledge required(Long id) {
-        return repository.findByIdAndDeletedFalse(id)
-                .orElseThrow(
-                        () -> new AppException(
-                                ErrorCode.AI_KNOWLEDGE_NOT_FOUND
+    private AiKnowledge required(
+            Long knowledgeId
+    ) {
+        return repository
+                .findByIdAndDeletedFalse(
+                        knowledgeId
+                )
+                .orElseThrow(() ->
+                        new AppException(
+                                ErrorCode
+                                        .AI_KNOWLEDGE_NOT_FOUND
                         )
                 );
     }
 
-    private String safe(String value) {
-        return value == null ? "" : value.trim();
+    private void validateKnowledgeId(
+            Long knowledgeId
+    ) {
+        if (knowledgeId == null
+                || knowledgeId <= 0) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
     }
 
-    private String safeErrorMessage(Throwable throwable) {
-        String message = throwable.getMessage();
+    private String normalizeCategory(
+            Object value
+    ) {
+        if (value == null) {
+            return "GENERAL";
+        }
 
-        if (message == null || message.isBlank()) {
-            return throwable.getClass().getSimpleName();
+        if (value instanceof Enum<?> enumValue) {
+            return enumValue.name();
+        }
+
+        return value.toString()
+                .trim()
+                .toUpperCase();
+    }
+
+    private String normalizeBusinessValue(
+            String value
+    ) {
+        String normalized =
+                normalizeNullableBusinessValue(
+                        value
+                );
+
+        return normalized == null
+                ? "GENERAL"
+                : normalized;
+    }
+
+    private String normalizeNullableBusinessValue(
+            String value
+    ) {
+        String normalized =
+                normalizeText(value);
+
+        return normalized == null
+                ? null
+                : normalized.toUpperCase();
+    }
+
+    private String normalizeLanguage(
+            String language
+    ) {
+        String normalized =
+                normalizeText(language);
+
+        if (normalized == null) {
+            return "vi";
+        }
+
+        return "en".equalsIgnoreCase(
+                normalized
+        )
+                ? "en"
+                : "vi";
+    }
+
+    private String normalizeText(
+            String value
+    ) {
+        if (value == null) {
+            return null;
+        }
+
+        String normalized = value.trim();
+
+        return normalized.isEmpty()
+                ? null
+                : normalized;
+    }
+
+    private String safe(
+            Object value
+    ) {
+        return value == null
+                ? ""
+                : value.toString().trim();
+    }
+
+    private String safeErrorMessage(
+            Throwable throwable
+    ) {
+        if (throwable == null) {
+            return "Unknown knowledge indexing error";
+        }
+
+        String message =
+                throwable.getMessage();
+
+        if (message == null
+                || message.isBlank()) {
+            message =
+                    throwable.getClass()
+                            .getSimpleName();
         }
 
         return message.length() <= 500
                 ? message
-                : message.substring(0, 500);
+                : message.substring(
+                0,
+                500
+        );
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void markUnindexed(
+            Long knowledgeId
+    ) {
+        AiKnowledge knowledge =
+                repository.findById(knowledgeId)
+                        .orElseThrow(() ->
+                                new AppException(
+                                        ErrorCode.AI_KNOWLEDGE_NOT_FOUND
+                                )
+                        );
+
+        knowledge.setIndexStatus(
+                AiKnowledgeIndexStatus.PENDING
+        );
+
+        knowledge.setQdrantPointId(null);
+        knowledge.setIndexedAt(null);
+        knowledge.setIndexError(null);
+
+        repository.save(knowledge);
     }
 }

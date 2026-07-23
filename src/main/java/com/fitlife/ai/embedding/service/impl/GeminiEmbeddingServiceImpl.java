@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,7 +26,8 @@ public class GeminiEmbeddingServiceImpl
     private static final int MAX_TEXT_LENGTH =
             20_000;
 
-    private final RestClient restClient;
+    private final RestClient
+            restClient;
 
     private final AiEmbeddingProperties
             embeddingProperties;
@@ -42,9 +44,12 @@ public class GeminiEmbeddingServiceImpl
             AiEmbeddingProperties embeddingProperties,
             AiQdrantProperties qdrantProperties
     ) {
-        this.restClient = restClient;
+        this.restClient =
+                restClient;
+
         this.embeddingProperties =
                 embeddingProperties;
+
         this.qdrantProperties =
                 qdrantProperties;
 
@@ -56,61 +61,72 @@ public class GeminiEmbeddingServiceImpl
             String text,
             String title
     ) {
-        validateText(text);
+        String normalizedText =
+                validateAndNormalizeText(
+                        text
+                );
 
         GeminiEmbeddingRequest request =
                 GeminiEmbeddingRequest.document(
-                        text.trim(),
+                        normalizedText,
                         normalizeText(title),
                         embeddingProperties
                                 .getOutputDimensionality()
                 );
 
-        return executeEmbedding(request);
+        return executeEmbedding(
+                request,
+                "RETRIEVAL_DOCUMENT"
+        );
     }
 
     @Override
     public AiEmbeddingResult embedQuery(
             String text
     ) {
-        validateText(text);
+        String normalizedText =
+                validateAndNormalizeText(
+                        text
+                );
 
         GeminiEmbeddingRequest request =
                 GeminiEmbeddingRequest.query(
-                        text.trim(),
+                        normalizedText,
                         embeddingProperties
                                 .getOutputDimensionality()
                 );
 
-        return executeEmbedding(request);
+        return executeEmbedding(
+                request,
+                "RETRIEVAL_QUERY"
+        );
     }
 
     private AiEmbeddingResult executeEmbedding(
-            GeminiEmbeddingRequest request
+            GeminiEmbeddingRequest request,
+            String taskType
     ) {
-        if (!embeddingProperties.isEnabled()) {
-            throw new AppException(
-                    ErrorCode.AI_PROVIDER_DISABLED
-            );
-        }
+        requireEnabled();
+
+        String modelName =
+                embeddingProperties
+                        .normalizedModelName();
+
+        String endpoint =
+                embeddingProperties
+                        .normalizedBaseUrl()
+                        + "/"
+                        + modelName
+                        + ":embedContent";
 
         try {
             GeminiEmbeddingResponse response =
                     restClient.post()
-                            .uri(uriBuilder ->
-                                    uriBuilder
-                                            .path(
-                                                    "/{model}:embedContent"
-                                            )
-                                            .queryParam(
-                                                    "key",
-                                                    embeddingProperties
-                                                            .getApiKey()
-                                            )
-                                            .build(
-                                                    embeddingProperties
-                                                            .normalizedModelName()
-                                            )
+                            .uri(
+                                    endpoint
+                                            + "?key={apiKey}",
+                                    embeddingProperties
+                                            .normalizedApiKey()
                             )
                             .body(request)
                             .retrieve()
@@ -118,13 +134,57 @@ public class GeminiEmbeddingServiceImpl
                                     GeminiEmbeddingResponse.class
                             );
 
-            return mapResult(response);
+            AiEmbeddingResult result =
+                    mapResult(response);
+
+            log.info(
+                    "Gemini embedding completed. "
+                            + "model={}, taskType={}, dimension={}",
+                    result.modelName(),
+                    taskType,
+                    result.dimension()
+            );
+
+            return result;
+
         } catch (AppException exception) {
             throw exception;
+
+        } catch (
+                RestClientResponseException exception
+        ) {
+            log.error(
+                    "Gemini embedding HTTP error. "
+                            + "endpoint={}, model={}, taskType={}, "
+                            + "status={}, response={}",
+                    endpoint,
+                    modelName,
+                    taskType,
+                    exception.getStatusCode(),
+                    truncate(
+                            exception
+                                    .getResponseBodyAsString(),
+                            1000
+                    )
+            );
+
+            throw new AppException(
+                    ErrorCode.AI_PROVIDER_ERROR
+            );
+
         } catch (Exception exception) {
             log.error(
-                    "Gemini embedding request failed: {}",
-                    exception.getMessage()
+                    "Gemini embedding request failed. "
+                            + "endpoint={}, model={}, taskType={}, "
+                            + "type={}, message={}",
+                    endpoint,
+                    modelName,
+                    taskType,
+                    exception
+                            .getClass()
+                            .getSimpleName(),
+                    exception.getMessage(),
+                    exception
             );
 
             throw new AppException(
@@ -143,7 +203,7 @@ public class GeminiEmbeddingServiceImpl
                 .values()
                 .isEmpty()) {
             throw new AppException(
-                    ErrorCode.AI_RESPONSE_INVALID
+                    ErrorCode.AI_EMBEDDING_RESPONSE_INVALID
             );
         }
 
@@ -152,16 +212,7 @@ public class GeminiEmbeddingServiceImpl
                         response.embedding().values()
                 );
 
-        int expectedDimension =
-                embeddingProperties
-                        .getOutputDimensionality();
-
-        if (vector.size()
-                != expectedDimension) {
-            throw new AppException(
-                    ErrorCode.AI_RESPONSE_INVALID
-            );
-        }
+        validateOutputVector(vector);
 
         return new AiEmbeddingResult(
                 List.copyOf(vector),
@@ -171,29 +222,92 @@ public class GeminiEmbeddingServiceImpl
         );
     }
 
+    private void validateOutputVector(
+            List<Float> vector
+    ) {
+        int expectedDimension =
+                embeddingProperties
+                        .getOutputDimensionality();
+
+        if (vector.size()
+                != expectedDimension) {
+            log.error(
+                    "Embedding dimension mismatch. "
+                            + "expected={}, actual={}",
+                    expectedDimension,
+                    vector.size()
+            );
+
+            throw new AppException(
+                    ErrorCode
+                            .AI_EMBEDDING_DIMENSION_MISMATCH
+            );
+        }
+
+        boolean invalidValue =
+                vector.stream()
+                        .anyMatch(value ->
+                                value == null
+                                        || Float.isNaN(value)
+                                        || Float.isInfinite(value)
+                        );
+
+        if (invalidValue) {
+            throw new AppException(
+                    ErrorCode
+                            .AI_EMBEDDING_RESPONSE_INVALID
+            );
+        }
+    }
+
     private void validateDimensions() {
         if (!embeddingProperties.isEnabled()
                 || !qdrantProperties.isEnabled()) {
             return;
         }
 
-        if (embeddingProperties
-                .getOutputDimensionality()
-                != qdrantProperties
-                .getVectorSize()) {
+        int embeddingDimension =
+                embeddingProperties
+                        .getOutputDimensionality();
+
+        int qdrantDimension =
+                qdrantProperties
+                        .getVectorSize();
+
+        if (embeddingDimension
+                != qdrantDimension) {
             throw new IllegalStateException(
                     "Embedding dimension "
-                            + embeddingProperties
-                            .getOutputDimensionality()
+                            + embeddingDimension
                             + " does not match Qdrant "
                             + "vector size "
-                            + qdrantProperties
-                            .getVectorSize()
+                            + qdrantDimension
             );
         }
     }
 
-    private void validateText(
+    private void requireEnabled() {
+        if (!embeddingProperties.isEnabled()) {
+            throw new AppException(
+                    ErrorCode.AI_PROVIDER_DISABLED
+            );
+        }
+
+        String apiKey =
+                embeddingProperties
+                        .normalizedApiKey();
+
+        if (apiKey == null
+                || apiKey.isBlank()
+                || "demo".equalsIgnoreCase(apiKey)
+                || apiKey.startsWith("your_")) {
+            throw new AppException(
+                    ErrorCode.AI_PROVIDER_DISABLED
+            );
+        }
+    }
+
+    private String validateAndNormalizeText(
             String text
     ) {
         if (text == null
@@ -203,12 +317,17 @@ public class GeminiEmbeddingServiceImpl
             );
         }
 
-        if (text.trim().length()
+        String normalized =
+                text.trim();
+
+        if (normalized.length()
                 > MAX_TEXT_LENGTH) {
             throw new AppException(
                     ErrorCode.INVALID_REQUEST
             );
         }
+
+        return normalized;
     }
 
     private String normalizeText(
@@ -224,5 +343,23 @@ public class GeminiEmbeddingServiceImpl
         return normalized.isEmpty()
                 ? null
                 : normalized;
+    }
+
+    private String truncate(
+            String value,
+            int maxLength
+    ) {
+        if (value == null) {
+            return "";
+        }
+
+        if (value.length() <= maxLength) {
+            return value;
+        }
+
+        return value.substring(
+                0,
+                maxLength
+        );
     }
 }

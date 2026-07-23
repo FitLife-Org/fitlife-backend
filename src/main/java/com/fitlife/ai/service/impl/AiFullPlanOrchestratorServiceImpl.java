@@ -11,7 +11,6 @@ import com.fitlife.ai.dto.response.AiSuggestionResponse;
 import com.fitlife.ai.entity.AiSuggestion;
 import com.fitlife.ai.enums.AiSuggestionStatus;
 import com.fitlife.ai.enums.AiSuggestionType;
-import com.fitlife.ai.mapper.AiSuggestionMapper;
 import com.fitlife.ai.retrieval.dto.AiKnowledgeRetrievalRequest;
 import com.fitlife.ai.retrieval.service.AiKnowledgeRetrievalService;
 import com.fitlife.ai.service.AiFullPlanOrchestratorService;
@@ -21,6 +20,7 @@ import com.fitlife.ai.service.AiProviderService;
 import com.fitlife.ai.service.AiResponseValidatorService;
 import com.fitlife.ai.service.AiSnapshotService;
 import com.fitlife.ai.service.AiSuggestionPersistenceService;
+import com.fitlife.ai.service.AiSuggestionResponseService;
 import com.fitlife.ai.service.AiUsageService;
 import com.fitlife.ai.service.CurrentMemberService;
 import com.fitlife.bodymetric.entity.BodyMetric;
@@ -30,35 +30,64 @@ import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.member.entity.Member;
 import com.fitlife.user.entity.User;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AiFullPlanOrchestratorServiceImpl
         implements AiFullPlanOrchestratorService {
 
-    private final CurrentMemberService currentMemberService;
-    private final AiUsageService aiUsageService;
-    private final BodyMetricRepository bodyMetricRepository;
-    private final AiSnapshotService aiSnapshotService;
-    private final AiPromptBuilderService aiPromptBuilderService;
-    private final AiProviderService aiProviderService;
-    private final AiPlanParserService aiPlanParserService;
-    private final AiResponseValidatorService aiResponseValidatorService;
+    private static final int MIN_WORKOUT_DAYS = 2;
+    private static final int MAX_WORKOUT_DAYS = 6;
+
+    private static final int MIN_WORKOUT_DURATION = 20;
+    private static final int MAX_WORKOUT_DURATION = 180;
+
+    private static final int MIN_MEALS_PER_DAY = 1;
+    private static final int MAX_MEALS_PER_DAY = 10;
+
+    private static final int MAX_WARNINGS = 2;
+
+    private final CurrentMemberService
+            currentMemberService;
+
+    private final AiUsageService
+            aiUsageService;
+
+    private final BodyMetricRepository
+            bodyMetricRepository;
+
+    private final AiSnapshotService
+            aiSnapshotService;
+
+    private final AiPromptBuilderService
+            aiPromptBuilderService;
+
+    private final AiProviderService
+            aiProviderService;
+
+    private final AiPlanParserService
+            aiPlanParserService;
+
+    private final AiResponseValidatorService
+            aiResponseValidatorService;
+
     private final AiSuggestionPersistenceService
             aiSuggestionPersistenceService;
-    private final AiSuggestionMapper aiSuggestionMapper;
+
+    private final AiSuggestionResponseService
+            aiSuggestionResponseService;
 
     private final AiKnowledgeRetrievalService
             aiKnowledgeRetrievalService;
-    private final ObjectMapper objectMapper;
 
-    private static final int MIN_WORKOUT_DAYS = 1;
-    private static final int MAX_WORKOUT_DAYS = 7;
-    private static final int MIN_WORKOUT_DURATION = 15;
-    private static final int MAX_WORKOUT_DURATION = 180;
+    private final ObjectMapper
+            objectMapper;
 
     @Override
     public AiSuggestionResponse createFullPlan(
@@ -67,7 +96,8 @@ public class AiFullPlanOrchestratorServiceImpl
         validateRequest(request);
 
         Member currentMember =
-                currentMemberService.getCurrentMember();
+                currentMemberService
+                        .getCurrentMember();
 
         aiUsageService.validateDailyLimit(
                 currentMember.getId()
@@ -79,12 +109,12 @@ public class AiFullPlanOrchestratorServiceImpl
                 );
 
         AiInputSnapshot inputSnapshot =
-                aiSnapshotService.buildFullPlanSnapshot(
-                        currentMember,
-                        latestBodyMetric,
-                        request
-                );
-
+                aiSnapshotService
+                        .buildFullPlanSnapshot(
+                                currentMember,
+                                latestBodyMetric,
+                                request
+                        );
 
         AiContextSnapshot contextSnapshot =
                 aiKnowledgeRetrievalService
@@ -102,41 +132,159 @@ public class AiFullPlanOrchestratorServiceImpl
                                 contextSnapshot
                         );
 
-        AiSuggestion pendingSuggestion =
-                buildPendingSuggestion(
-                        currentMember,
-                        latestBodyMetric,
-                        request,
-                        inputSnapshot,
-                        promptResult
-                );
-
         AiSuggestion savedSuggestion =
-                aiSuggestionPersistenceService.createPending(
-                        pendingSuggestion
-                );
+                aiSuggestionPersistenceService
+                        .createPending(
+                                buildPendingSuggestion(
+                                        currentMember,
+                                        latestBodyMetric,
+                                        request,
+                                        inputSnapshot,
+                                        promptResult
+                                )
+                        );
+
+        AiProviderResult providerResult;
+        AiGeneratedPlanResponse generatedPlan;
 
         try {
-            return executeProviderFlow(
-                    savedSuggestion,
-                    inputSnapshot,
-                    promptResult
-            );
+            providerResult =
+                    aiProviderService.generate(
+                            promptResult.getPrompt()
+                    );
+
+            generatedPlan =
+                    aiPlanParserService
+                            .parseGeneratedPlan(
+                                    providerResult
+                                            .getRawResponse()
+                            );
+
+            normalizeWarnings(generatedPlan);
+
+            aiResponseValidatorService
+                    .validateFullPlan(
+                            generatedPlan,
+                            inputSnapshot
+                    );
+
         } catch (AppException exception) {
             safeMarkFailed(
                     savedSuggestion.getId(),
                     resolveFailureCode(exception)
             );
+
             throw exception;
+
         } catch (Exception exception) {
+            log.error(
+                    "Unexpected full-plan generation error. "
+                            + "suggestionId={}, type={}, message={}",
+                    savedSuggestion.getId(),
+                    exception.getClass().getName(),
+                    exception.getMessage(),
+                    exception
+            );
+
             safeMarkFailed(
                     savedSuggestion.getId(),
                     "AI_RESPONSE_INVALID"
             );
+
             throw new AppException(
                     ErrorCode.AI_RESPONSE_INVALID
             );
         }
+
+        String finalWarning =
+                mergeWarnings(
+                        savedSuggestion
+                                .getWarningMessage(),
+                        joinWarnings(
+                                generatedPlan
+                                        .getWarnings()
+                        )
+                );
+
+        try {
+            aiSuggestionPersistenceService
+                    .markFullPlanSuccess(
+                            savedSuggestion.getId(),
+                            providerResult,
+                            generatedPlan,
+                            finalWarning
+                    );
+
+            return aiSuggestionResponseService
+                    .getSummaryResponse(
+                            savedSuggestion.getId()
+                    );
+
+        } catch (AppException exception) {
+            log.error(
+                    "Full plan persistence or response error. "
+                            + "suggestionId={}, errorCode={}, message={}",
+                    savedSuggestion.getId(),
+                    exception.getErrorCode(),
+                    exception.getMessage(),
+                    exception
+            );
+
+            throw exception;
+
+        } catch (Exception exception) {
+            log.error(
+                    "Full plan was generated but response mapping failed. "
+                            + "suggestionId={}, type={}, message={}",
+                    savedSuggestion.getId(),
+                    exception.getClass().getName(),
+                    exception.getMessage(),
+                    exception
+            );
+
+            throw new AppException(
+                    ErrorCode.AI_RESPONSE_INVALID
+            );
+        }
+    }
+
+    private void normalizeWarnings(
+            AiGeneratedPlanResponse generatedPlan
+    ) {
+        if (generatedPlan == null) {
+            return;
+        }
+
+        List<String> warnings =
+                generatedPlan.getWarnings();
+
+        if (warnings == null
+                || warnings.isEmpty()) {
+            generatedPlan.setWarnings(
+                    new ArrayList<>()
+            );
+            return;
+        }
+
+        List<String> normalized =
+                warnings.stream()
+                        .filter(value ->
+                                value != null
+                                        && !value.isBlank()
+                        )
+                        .map(String::trim)
+                        .distinct()
+                        .limit(MAX_WARNINGS)
+                        .toList();
+
+        generatedPlan.setWarnings(
+                new ArrayList<>(normalized)
+        );
+
+        log.debug(
+                "Full-plan warnings normalized. count={}",
+                normalized.size()
+        );
     }
 
     private AiKnowledgeRetrievalRequest
@@ -144,18 +292,20 @@ public class AiFullPlanOrchestratorServiceImpl
             AiInputSnapshot snapshot,
             AiFullPlanRequest request
     ) {
-        return AiKnowledgeRetrievalRequest.builder()
+        return AiKnowledgeRetrievalRequest
+                .builder()
                 .query(
                         """
                         Xây dựng full plan gồm phân tích cơ thể,
                         lịch tập, dinh dưỡng và cảnh báo an toàn.
-    
+
                         Goal: %s
                         Experience level: %s
                         Activity level: %s
                         Workout days per week: %s
                         Workout duration minutes: %s
-    
+                        Meals per day: %s
+
                         Full input snapshot:
                         %s
                         """.formatted(
@@ -164,63 +314,28 @@ public class AiFullPlanOrchestratorServiceImpl
                                 request.getActivityLevel(),
                                 request.getWorkoutDaysPerWeek(),
                                 request.getWorkoutDurationMinutes(),
+                                request.getMealsPerDay(),
                                 toJson(snapshot)
                         ).trim()
                 )
                 .category(null)
-                .goal(request.getGoal().name())
+                .goal(
+                        request.getGoal().name()
+                )
                 .experienceLevel(
-                        request.getExperienceLevel().name()
+                        request
+                                .getExperienceLevel()
+                                .name()
                 )
                 .language(
                         resolveLanguage(
-                                request.getPreferredLanguage()
+                                request
+                                        .getPreferredLanguage()
                         )
                 )
                 .limit(10)
                 .scoreThreshold(0.3)
                 .build();
-    }
-
-    private AiSuggestionResponse executeProviderFlow(
-            AiSuggestion savedSuggestion,
-            AiInputSnapshot inputSnapshot,
-            AiPromptResult promptResult
-    ) {
-        AiProviderResult providerResult =
-                aiProviderService.generate(
-                        promptResult.getPrompt()
-                );
-
-        AiGeneratedPlanResponse generatedPlan =
-                aiPlanParserService.parseGeneratedPlan(
-                        providerResult.getRawResponse()
-                );
-
-        aiResponseValidatorService.validateFullPlan(
-                generatedPlan,
-                inputSnapshot
-        );
-
-        String finalWarning = mergeWarnings(
-                savedSuggestion.getWarningMessage(),
-                joinWarnings(
-                        generatedPlan.getWarnings()
-                )
-        );
-
-        AiSuggestion updatedSuggestion =
-                aiSuggestionPersistenceService
-                        .markFullPlanSuccess(
-                                savedSuggestion.getId(),
-                                providerResult,
-                                generatedPlan,
-                                finalWarning
-                        );
-
-        return aiSuggestionMapper.toResponse(
-                updatedSuggestion
-        );
     }
 
     private AiSuggestion buildPendingSuggestion(
@@ -230,15 +345,20 @@ public class AiFullPlanOrchestratorServiceImpl
             AiInputSnapshot inputSnapshot,
             AiPromptResult promptResult
     ) {
-        User currentUser = currentMember.getUser();
+        User currentUser =
+                currentMember.getUser();
 
         return AiSuggestion.builder()
                 .member(currentMember)
-                .latestBodyMetric(latestBodyMetric)
+                .latestBodyMetric(
+                        latestBodyMetric
+                )
                 .suggestionType(
                         AiSuggestionType.FULL_PLAN
                 )
-                .goal(request.getGoal().name())
+                .goal(
+                        request.getGoal().name()
+                )
                 .experienceLevel(
                         request.getExperienceLevel()
                 )
@@ -249,7 +369,8 @@ public class AiFullPlanOrchestratorServiceImpl
                         request.getWorkoutDaysPerWeek()
                 )
                 .workoutDurationMinutes(
-                        request.getWorkoutDurationMinutes()
+                        request
+                                .getWorkoutDurationMinutes()
                 )
                 .userNote(
                         normalizeText(
@@ -258,14 +379,19 @@ public class AiFullPlanOrchestratorServiceImpl
                 )
                 .preferredLanguage(
                         resolveLanguage(
-                                request.getPreferredLanguage()
+                                request
+                                        .getPreferredLanguage()
                         )
                 )
-                .inputSnapshot(toJson(inputSnapshot))
+                .inputSnapshot(
+                        toJson(inputSnapshot)
+                )
                 .promptVersion(
                         promptResult.getVersionCode()
                 )
-                .status(AiSuggestionStatus.PENDING)
+                .status(
+                        AiSuggestionStatus.PENDING
+                )
                 .warningMessage(
                         buildInitialWarningMessage(
                                 currentMember,
@@ -296,21 +422,38 @@ public class AiFullPlanOrchestratorServiceImpl
                 || request.getExperienceLevel() == null
                 || request.getActivityLevel() == null
                 || request.getWorkoutDaysPerWeek() == null
-                || request.getWorkoutDurationMinutes() == null) {
+                || request.getWorkoutDurationMinutes() == null
+                || request.getMealsPerDay() == null) {
             throw new AppException(
                     ErrorCode.INVALID_REQUEST
             );
         }
 
-        if (request.getWorkoutDaysPerWeek() < 1
-                || request.getWorkoutDaysPerWeek() > 7) {
+        int workoutDays =
+                request.getWorkoutDaysPerWeek();
+
+        if (workoutDays < MIN_WORKOUT_DAYS
+                || workoutDays > MAX_WORKOUT_DAYS) {
             throw new AppException(
                     ErrorCode.INVALID_REQUEST
             );
         }
 
-        if (request.getWorkoutDurationMinutes() < 15
-                || request.getWorkoutDurationMinutes() > 180) {
+        int workoutDuration =
+                request.getWorkoutDurationMinutes();
+
+        if (workoutDuration < MIN_WORKOUT_DURATION
+                || workoutDuration > MAX_WORKOUT_DURATION) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        int mealsPerDay =
+                request.getMealsPerDay();
+
+        if (mealsPerDay < MIN_MEALS_PER_DAY
+                || mealsPerDay > MAX_MEALS_PER_DAY) {
             throw new AppException(
                     ErrorCode.INVALID_REQUEST
             );
@@ -322,16 +465,21 @@ public class AiFullPlanOrchestratorServiceImpl
             String errorCode
     ) {
         try {
-            aiSuggestionPersistenceService.markFailed(
+            aiSuggestionPersistenceService
+                    .markFailed(
+                            suggestionId,
+                            errorCode,
+                            "Không thể xử lý yêu cầu AI vào lúc này."
+                    );
+
+        } catch (Exception exception) {
+            log.error(
+                    "Cannot mark full-plan suggestion as failed. "
+                            + "suggestionId={}, message={}",
                     suggestionId,
-                    errorCode,
-                    "Không thể xử lý yêu cầu AI vào lúc này."
+                    exception.getMessage(),
+                    exception
             );
-        } catch (Exception ignored) {
-            /*
-             * Không che mất lỗi gốc từ provider/parser/validator.
-             * Persistence failure cần được ghi log tập trung sau.
-             */
         }
     }
 
@@ -351,19 +499,18 @@ public class AiFullPlanOrchestratorServiceImpl
     private String resolveLanguage(
             String language
     ) {
-        if (language == null || language.isBlank()) {
+        if (language == null
+                || language.isBlank()) {
             return "vi";
         }
 
         String normalized =
-                language.trim().toLowerCase();
+                language.trim()
+                        .toLowerCase();
 
-        if ("vi".equals(normalized)
-                || "en".equals(normalized)) {
-            return normalized;
-        }
-
-        return "vi";
+        return "en".equals(normalized)
+                ? "en"
+                : "vi";
     }
 
     private String normalizeText(
@@ -373,7 +520,8 @@ public class AiFullPlanOrchestratorServiceImpl
             return null;
         }
 
-        String normalized = value.trim();
+        String normalized =
+                value.trim();
 
         return normalized.isEmpty()
                 ? null
@@ -383,7 +531,8 @@ public class AiFullPlanOrchestratorServiceImpl
     private String joinWarnings(
             List<String> warnings
     ) {
-        if (warnings == null || warnings.isEmpty()) {
+        if (warnings == null
+                || warnings.isEmpty()) {
             return null;
         }
 
@@ -393,6 +542,8 @@ public class AiFullPlanOrchestratorServiceImpl
                                 && !value.isBlank()
                 )
                 .map(String::trim)
+                .distinct()
+                .limit(MAX_WARNINGS)
                 .reduce(
                         (first, second) ->
                                 first + " " + second
@@ -434,13 +585,16 @@ public class AiFullPlanOrchestratorServiceImpl
             warning.append(
                     "Member chưa có Body Metric mới nhất. "
             );
+
             warning.append(
                     "Kết quả AI chỉ mang tính tham khảo."
             );
         }
 
         if (member.getHealthNote() != null
-                && !member.getHealthNote().isBlank()) {
+                && !member
+                .getHealthNote()
+                .isBlank()) {
             if (!warning.isEmpty()) {
                 warning.append(" ");
             }
@@ -448,11 +602,10 @@ public class AiFullPlanOrchestratorServiceImpl
             warning.append(
                     "Member có ghi chú sức khỏe, "
             );
+
             warning.append(
                     "nên hỏi huấn luyện viên hoặc bác sĩ "
-            );
-            warning.append(
-                    "trước khi áp dụng."
+                            + "trước khi áp dụng."
             );
         }
 
@@ -465,10 +618,15 @@ public class AiFullPlanOrchestratorServiceImpl
             Object value
     ) {
         try {
-            return objectMapper.writeValueAsString(
-                    value
-            );
+            return objectMapper
+                    .writeValueAsString(value);
+
         } catch (Exception exception) {
+            log.error(
+                    "Cannot serialize full-plan input snapshot.",
+                    exception
+            );
+
             throw new AppException(
                     ErrorCode.AI_RESPONSE_INVALID
             );

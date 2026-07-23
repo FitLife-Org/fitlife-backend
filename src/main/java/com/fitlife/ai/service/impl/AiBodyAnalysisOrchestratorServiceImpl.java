@@ -14,6 +14,7 @@ import com.fitlife.ai.enums.AiSuggestionStatus;
 import com.fitlife.ai.enums.AiSuggestionType;
 import com.fitlife.ai.mapper.AiSuggestionMapper;
 import com.fitlife.ai.repository.AiPlanItemRepository;
+import com.fitlife.ai.repository.AiSuggestionRepository;
 import com.fitlife.ai.retrieval.dto.AiKnowledgeRetrievalRequest;
 import com.fitlife.ai.retrieval.service.AiKnowledgeRetrievalService;
 import com.fitlife.ai.service.*;
@@ -49,6 +50,8 @@ public class AiBodyAnalysisOrchestratorServiceImpl
     private final AiSuggestionMapper aiSuggestionMapper;
     private final AiKnowledgeRetrievalService
             aiKnowledgeRetrievalService;
+    private final AiSuggestionRepository
+            aiSuggestionRepository;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -56,18 +59,37 @@ public class AiBodyAnalysisOrchestratorServiceImpl
             AiBodyAnalysisRequest request
     ) {
         if (request == null) {
-            throw new AppException(ErrorCode.INVALID_REQUEST);
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
         }
 
-        Member member = currentMemberService.getCurrentMember();
-        aiUsageService.validateDailyLimit(member.getId());
+        Member member =
+                currentMemberService
+                        .getCurrentMember();
 
-        BodyMetric metric = bodyMetricRepository
-                .findTopByMemberIdAndIsDeletedFalseOrderByRecordedAtDesc(member.getId())
-                .orElseThrow(() -> new AppException(ErrorCode.BODY_METRIC_NOT_FOUND));
+        aiUsageService.validateDailyLimit(
+                member.getId()
+        );
 
-        AiInputSnapshot snapshot = aiSnapshotService
-                .buildBodyAnalysisSnapshot(member, metric, request);
+        BodyMetric metric =
+                bodyMetricRepository
+                        .findTopByMemberIdAndIsDeletedFalseOrderByRecordedAtDesc(
+                                member.getId()
+                        )
+                        .orElseThrow(() ->
+                                new AppException(
+                                        ErrorCode.BODY_METRIC_NOT_FOUND
+                                )
+                        );
+
+        AiInputSnapshot snapshot =
+                aiSnapshotService
+                        .buildBodyAnalysisSnapshot(
+                                member,
+                                metric,
+                                request
+                        );
 
         AiContextSnapshot contextSnapshot =
                 aiKnowledgeRetrievalService
@@ -85,60 +107,133 @@ public class AiBodyAnalysisOrchestratorServiceImpl
                                 contextSnapshot
                         );
 
-        AiSuggestion pending = aiSuggestionPersistenceService.createPending(
-                buildPendingSuggestion(member, metric, request, snapshot, promptResult)
-        );
+        AiSuggestion pending =
+                aiSuggestionPersistenceService
+                        .createPending(
+                                buildPendingSuggestion(
+                                        member,
+                                        metric,
+                                        request,
+                                        snapshot,
+                                        promptResult
+                                )
+                        );
+
+        /*
+         * Giai đoạn 1:
+         * provider → parser → validator → persistence.
+         *
+         * Chỉ giai đoạn này mới được đánh dấu FAILED
+         * khi xảy ra lỗi.
+         */
+        AiSuggestion success;
 
         try {
-            AiProviderResult providerResult = aiProviderService.generate(
-                    promptResult.getPrompt()
-            );
+            AiProviderResult providerResult =
+                    aiProviderService.generate(
+                            promptResult.getPrompt()
+                    );
 
             AiGeneratedBodyAnalysisResponse analysis =
-                    aiPlanParserService.parseBodyAnalysis(
-                            providerResult.getRawResponse()
-                    );
+                    aiPlanParserService
+                            .parseBodyAnalysis(
+                                    providerResult
+                                            .getRawResponse()
+                            );
 
-            aiResponseValidatorService.validateBodyAnalysis(
-                    analysis,
-                    snapshot
-            );
-
-            String finalWarning = mergeWarnings(
-                    pending.getWarningMessage(),
-                    joinWarnings(analysis.getWarnings())
-            );
-
-            AiSuggestion success = aiSuggestionPersistenceService
-                    .markBodyAnalysisSuccess(
-                            pending.getId(),
-                            providerResult,
+            aiResponseValidatorService
+                    .validateBodyAnalysis(
                             analysis,
-                            finalWarning
+                            snapshot
                     );
 
-            List<AiPlanItem> items = aiPlanItemRepository
-                    .findByAiSuggestionIdOrderBySortOrderAscIdAsc(
-                            success.getId()
+            String finalWarning =
+                    mergeWarnings(
+                            pending.getWarningMessage(),
+                            joinWarnings(
+                                    analysis.getWarnings()
+                            )
                     );
 
-            return aiSuggestionMapper.toDetailResponse(
-                    success,
-                    items,
-                    null
-            );
+            success =
+                    aiSuggestionPersistenceService
+                            .markBodyAnalysisSuccess(
+                                    pending.getId(),
+                                    providerResult,
+                                    analysis,
+                                    finalWarning
+                            );
         } catch (AppException exception) {
             safeMarkFailed(
                     pending.getId(),
-                    resolveFailureCode(exception)
+                    resolveFailureCode(
+                            exception
+                    )
             );
+
             throw exception;
         } catch (Exception exception) {
+            log.error(
+                    "Unexpected body-analysis generation error. suggestionId={}",
+                    pending.getId(),
+                    exception
+            );
+
             safeMarkFailed(
                     pending.getId(),
                     "AI_RESPONSE_INVALID"
             );
-            throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
+
+            throw new AppException(
+                    ErrorCode.AI_RESPONSE_INVALID
+            );
+        }
+
+        /*
+         * Giai đoạn 2:
+         * tạo response.
+         *
+         * Suggestion đã SUCCESS tại đây.
+         * Không được chuyển lại FAILED nếu mapper lỗi.
+         */
+        try {
+            AiSuggestion detailSuggestion =
+                    aiSuggestionRepository
+                            .findDetailByIdAndMemberId(
+                                    success.getId(),
+                                    member.getId()
+                            )
+                            .orElseThrow(() ->
+                                    new AppException(
+                                            ErrorCode
+                                                    .AI_SUGGESTION_NOT_FOUND
+                                    )
+                            );
+
+            List<AiPlanItem> items =
+                    aiPlanItemRepository
+                            .findByAiSuggestionIdOrderBySortOrderAscIdAsc(
+                                    detailSuggestion.getId()
+                            );
+
+            return aiSuggestionMapper
+                    .toDetailResponse(
+                            detailSuggestion,
+                            items,
+                            null
+                    );
+        } catch (AppException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            log.error(
+                    "Cannot build body-analysis response. suggestionId={}",
+                    success.getId(),
+                    exception
+            );
+
+            throw new AppException(
+                    ErrorCode.UNCATEGORIZED_EXCEPTION
+            );
         }
     }
 

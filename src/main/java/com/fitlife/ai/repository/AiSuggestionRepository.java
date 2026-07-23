@@ -6,6 +6,7 @@ import com.fitlife.ai.enums.AiSuggestionType;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -18,15 +19,55 @@ import java.util.Optional;
 public interface AiSuggestionRepository
         extends JpaRepository<AiSuggestion, Long> {
 
+    @EntityGraph(
+            attributePaths = {
+                    "member",
+                    "member.user"
+            }
+    )
+    Optional<AiSuggestion>
+    findResponseById(
+            Long id
+    );
+
     Page<AiSuggestion>
     findByMemberIdAndDeletedFalseOrderByCreatedAtDesc(
             Long memberId,
             Pageable pageable
     );
 
+    @EntityGraph(
+            attributePaths = {
+                    "member",
+                    "member.user",
+                    "latestBodyMetric"
+            }
+    )
     Optional<AiSuggestion>
     findByIdAndMemberIdAndDeletedFalse(
             Long id,
+            Long memberId
+    );
+
+    @EntityGraph(
+            attributePaths = {
+                    "member",
+                    "member.user",
+                    "latestBodyMetric"
+            }
+    )
+    @Query("""
+            SELECT suggestion
+            FROM AiSuggestion suggestion
+            WHERE suggestion.id = :id
+              AND suggestion.member.id = :memberId
+              AND suggestion.deleted = false
+            """)
+    Optional<AiSuggestion> findDetailByIdAndMemberId(
+            @Param("id")
+            Long id,
+
+            @Param("memberId")
             Long memberId
     );
 

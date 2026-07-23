@@ -23,147 +23,83 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/ai/suggestions")
 public class AiSuggestionController {
 
-    private final AiSuggestionService
-            aiSuggestionService;
-
-    private final AiSuggestionApplyService
-            aiSuggestionApplyService;
-
-    private final AiUsageService
-            aiUsageService;
-
-    private final CurrentMemberService
-            currentMemberService;
+    private final AiSuggestionService aiSuggestionService;
+    private final AiSuggestionApplyService aiSuggestionApplyService;
+    private final AiUsageService aiUsageService;
+    private final CurrentMemberService currentMemberService;
 
     @PostMapping("/full-plan")
-    public ApiResponse<AiSuggestionResponse>
-    createFullPlan(
-            @Valid @RequestBody
-            AiFullPlanRequest request
+    public ApiResponse<AiSuggestionResponse> createFullPlan(
+            @Valid @RequestBody AiFullPlanRequest request
     ) {
-        return ApiResponse
-                .<AiSuggestionResponse>builder()
-                .message(
-                        "AI full plan created successfully"
-                )
-                .data(
-                        aiSuggestionService
-                                .createFullPlan(request)
-                )
-                .build();
+        return ApiResponse.success(
+                "AI full plan created successfully",
+                aiSuggestionService.createFullPlan(request)
+        );
     }
 
     @PostMapping("/workout-plan")
-    public ApiResponse<AiSuggestionResponse>
-    createWorkoutPlan(
-            @Valid @RequestBody
-            AiWorkoutPlanRequest request
+    public ApiResponse<AiSuggestionResponse> createWorkoutPlan(
+            @Valid @RequestBody AiWorkoutPlanRequest request
     ) {
-        return ApiResponse
-                .<AiSuggestionResponse>builder()
-                .message(
-                        "AI workout plan created successfully"
-                )
-                .data(
-                        aiSuggestionService
-                                .createWorkoutPlan(request)
-                )
-                .build();
+        return ApiResponse.success(
+                "AI workout plan created successfully",
+                aiSuggestionService.createWorkoutPlan(request)
+        );
     }
 
     @PostMapping("/nutrition-plan")
-    public ApiResponse<AiSuggestionResponse>
-    createNutritionPlan(
-            @Valid @RequestBody
-            AiNutritionPlanRequest request
+    public ApiResponse<AiSuggestionResponse> createNutritionPlan(
+            @Valid @RequestBody AiNutritionPlanRequest request
     ) {
-        return ApiResponse
-                .<AiSuggestionResponse>builder()
-                .message(
-                        "AI nutrition plan created successfully"
-                )
-                .data(
-                        aiSuggestionService
-                                .createNutritionPlan(request)
-                )
-                .build();
+        return ApiResponse.success(
+                "AI nutrition plan created successfully",
+                aiSuggestionService.createNutritionPlan(request)
+        );
     }
 
     @PostMapping("/body-analysis")
-    public ApiResponse<AiSuggestionDetailResponse>
-    analyzeBodyMetric(
-            @Valid @RequestBody
-            AiBodyAnalysisRequest request
+    public ApiResponse<AiSuggestionDetailResponse> analyzeBodyMetric(
+            @Valid @RequestBody AiBodyAnalysisRequest request
     ) {
-        return ApiResponse
-                .<AiSuggestionDetailResponse>builder()
-                .message(
-                        "AI body metric analysis created successfully"
-                )
-                .data(
-                        aiSuggestionService
-                                .analyzeBodyMetric(request)
-                )
-                .build();
+        return ApiResponse.success(
+                "AI body metric analysis created successfully",
+                aiSuggestionService.analyzeBodyMetric(request)
+        );
     }
 
     @GetMapping("/usage/today")
-    public ApiResponse<AiUsageTodayResponse>
-    getTodayUsage() {
+    public ApiResponse<AiUsageTodayResponse> getTodayUsage() {
         Member currentMember =
-                currentMemberService
-                        .getCurrentMember();
+                currentMemberService.getCurrentMember();
 
-        return ApiResponse
-                .<AiUsageTodayResponse>builder()
-                .message(
-                        "Get AI usage today successfully"
+        return ApiResponse.success(
+                "Get AI usage today successfully",
+                aiUsageService.getTodayUsage(
+                        currentMember.getId()
                 )
-                .data(
-                        aiUsageService.getTodayUsage(
-                                currentMember.getId()
-                        )
-                )
-                .build();
+        );
     }
 
     @GetMapping("/my")
     public ApiResponse<PageResponse<AiSuggestionResponse>>
     getMySuggestions(
-            @RequestParam(defaultValue = "0")
-            int page,
-
-            @RequestParam(defaultValue = "10")
-            int size
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
     ) {
-        return ApiResponse
-                .<PageResponse<AiSuggestionResponse>>builder()
-                .message(
-                        "Get my AI suggestions successfully"
+        return ApiResponse.success(
+                "Get my AI suggestions successfully",
+                aiSuggestionService.getMySuggestions(
+                        PageRequest.of(page, size)
                 )
-                .data(
-                        aiSuggestionService
-                                .getMySuggestions(
-                                        PageRequest.of(
-                                                page,
-                                                size
-                                        )
-                                )
-                )
-                .build();
+        );
     }
 
     @GetMapping("/my/filter")
@@ -177,54 +113,34 @@ public class AiSuggestionController {
 
             Pageable pageable
     ) {
-        return ApiResponse
-                .<PageResponse<AiSuggestionResponse>>builder()
-                .message(
-                        "Get filtered AI suggestions successfully"
+        return ApiResponse.success(
+                "Get filtered AI suggestions successfully",
+                aiSuggestionService.getMySuggestionsByFilter(
+                        suggestionType,
+                        status,
+                        pageable
                 )
-                .data(
-                        aiSuggestionService
-                                .getMySuggestionsByFilter(
-                                        suggestionType,
-                                        status,
-                                        pageable
-                                )
-                )
-                .build();
+        );
     }
 
     @PostMapping("/{id}/apply-workout-plan")
-    public ApiResponse<AiApplyPlanResponse>
-    applyWorkoutPlan(
+    public ApiResponse<AiApplyPlanResponse> applyWorkoutPlan(
             @PathVariable Long id
     ) {
-        return ApiResponse
-                .<AiApplyPlanResponse>builder()
-                .message(
-                        "AI workout plan applied successfully"
-                )
-                .data(
-                        aiSuggestionApplyService
-                                .applyWorkoutPlan(id)
-                )
-                .build();
+        return ApiResponse.success(
+                "AI workout plan applied successfully",
+                aiSuggestionApplyService.applyWorkoutPlan(id)
+        );
     }
 
     @PostMapping("/{id}/apply-nutrition-plan")
-    public ApiResponse<AiApplyPlanResponse>
-    applyNutritionPlan(
+    public ApiResponse<AiApplyPlanResponse> applyNutritionPlan(
             @PathVariable Long id
     ) {
-        return ApiResponse
-                .<AiApplyPlanResponse>builder()
-                .message(
-                        "AI nutrition plan applied successfully"
-                )
-                .data(
-                        aiSuggestionApplyService
-                                .applyNutritionPlan(id)
-                )
-                .build();
+        return ApiResponse.success(
+                "AI nutrition plan applied successfully",
+                aiSuggestionApplyService.applyNutritionPlan(id)
+        );
     }
 
     @GetMapping("/{id}")
@@ -232,38 +148,25 @@ public class AiSuggestionController {
     getMySuggestionDetail(
             @PathVariable Long id
     ) {
-        return ApiResponse
-                .<AiSuggestionDetailResponse>builder()
-                .message(
-                        "Get AI suggestion detail successfully"
-                )
-                .data(
-                        aiSuggestionService
-                                .getMySuggestionDetail(id)
-                )
-                .build();
+        return ApiResponse.success(
+                "Get AI suggestion detail successfully",
+                aiSuggestionService.getMySuggestionDetail(id)
+        );
     }
 
     @PostMapping("/{id}/feedback")
-    public ApiResponse<AiFeedbackResponse>
-    submitFeedback(
+    public ApiResponse<AiFeedbackResponse> submitFeedback(
             @PathVariable Long id,
 
             @Valid @RequestBody
             AiFeedbackRequest request
     ) {
-        return ApiResponse
-                .<AiFeedbackResponse>builder()
-                .message(
-                        "AI feedback submitted successfully"
+        return ApiResponse.success(
+                "AI feedback submitted successfully",
+                aiSuggestionService.submitFeedback(
+                        id,
+                        request
                 )
-                .data(
-                        aiSuggestionService
-                                .submitFeedback(
-                                        id,
-                                        request
-                                )
-                )
-                .build();
+        );
     }
 }
