@@ -1,5 +1,7 @@
 package com.fitlife.nutrition.controller;
 
+import com.fitlife.common.exception.AppException;
+import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.nutrition.dto.request.NutritionPlanRequest;
 import com.fitlife.nutrition.dto.response.NutritionPlanResponse;
 import com.fitlife.nutrition.service.NutritionPlanService;
@@ -11,105 +13,201 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/nutrition-plans")
+@RequestMapping("/nutrition-plans/me")
 @RequiredArgsConstructor
-@Tag(name = "Nutrition Plan API", description = "APIs for managing member nutrition plans")
+@Tag(
+        name = "Member Nutrition Plan API",
+        description = "APIs for members to manage their own nutrition plans"
+)
+@PreAuthorize("hasRole('MEMBER')")
 public class NutritionPlanController {
 
     private final NutritionPlanService nutritionPlanService;
 
-    @Operation(summary = "Get a nutrition plan by ID")
-    @GetMapping("/{id}")
-    public ResponseEntity<NutritionPlanResponse> getPlanById(
-            @PathVariable Long id,
-            @RequestParam Long memberId) {
-        return ResponseEntity.ok(nutritionPlanService.getNutritionPlanById(id, memberId));
-    }
-
-    @Operation(summary = "Get all nutrition plans for a member")
+    @Operation(summary = "Get my nutrition plans")
     @GetMapping
-    public ResponseEntity<Page<NutritionPlanResponse>> getPlansByMember(
-            @RequestParam Long memberId,
-            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        return ResponseEntity.ok(nutritionPlanService.getNutritionPlansByMember(memberId, pageable));
+    public ResponseEntity<Page<NutritionPlanResponse>> getMyPlans(
+            Authentication authentication,
+            @PageableDefault(
+                    size = 10,
+                    sort = "createdAt",
+                    direction = Sort.Direction.DESC
+            )
+            Pageable pageable
+    ) {
+        return ResponseEntity.ok(
+                nutritionPlanService.getMyNutritionPlans(
+                        getPrincipal(authentication),
+                        pageable
+                )
+        );
     }
 
-    @Operation(summary = "Activate a nutrition plan", description = "Activates a plan and automatically archives any currently active plan for the member.")
-    @PostMapping("/{id}/activate")
-    public ResponseEntity<Void> activatePlan(
+    @Operation(summary = "Get my nutrition plan by ID")
+    @GetMapping("/{id}")
+    public ResponseEntity<NutritionPlanResponse> getMyPlanById(
             @PathVariable Long id,
-            @RequestParam Long memberId) {
-        nutritionPlanService.activateNutritionPlan(id, memberId);
-        return ResponseEntity.ok().build();
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                nutritionPlanService.getMyNutritionPlanById(
+                        id,
+                        getPrincipal(authentication)
+                )
+        );
     }
 
-    @Operation(summary = "Archive a nutrition plan")
-    @PostMapping("/{id}/archive")
-    public ResponseEntity<Void> archivePlan(
-            @PathVariable Long id,
-            @RequestParam Long memberId) {
-        nutritionPlanService.archiveNutritionPlan(id, memberId);
-        return ResponseEntity.ok().build();
+    @Operation(summary = "Get my active nutrition plan")
+    @GetMapping("/active")
+    public ResponseEntity<NutritionPlanResponse> getMyActivePlan(
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                nutritionPlanService.getMyActiveNutritionPlan(
+                        getPrincipal(authentication)
+                )
+        );
     }
 
-    @Operation(summary = "Create a new nutrition plan")
+    @Operation(summary = "Get today's nutrition plan")
+    @GetMapping("/today")
+    public ResponseEntity<NutritionPlanResponse> getMyTodayPlan(
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                nutritionPlanService.getMyTodayNutritionPlan(
+                        getPrincipal(authentication)
+                )
+        );
+    }
+
+    @Operation(summary = "Create my nutrition plan")
     @PostMapping
-    public ResponseEntity<NutritionPlanResponse> createPlan(
-            @RequestParam Long memberId,
-            @Valid @RequestBody NutritionPlanRequest request) {
-        return ResponseEntity.ok(nutritionPlanService.createNutritionPlan(memberId, request));
+    public ResponseEntity<NutritionPlanResponse> createMyPlan(
+            Authentication authentication,
+            @Valid @RequestBody NutritionPlanRequest request
+    ) {
+        NutritionPlanResponse response =
+                nutritionPlanService.createMyNutritionPlan(
+                        getPrincipal(authentication),
+                        request
+                );
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(response);
     }
 
-    @Operation(summary = "Update an existing DRAFT nutrition plan")
+    @Operation(summary = "Update my DRAFT nutrition plan")
     @PutMapping("/{id}")
-    public ResponseEntity<NutritionPlanResponse> updatePlan(
+    public ResponseEntity<NutritionPlanResponse> updateMyPlan(
             @PathVariable Long id,
-            @RequestParam Long memberId,
-            @Valid @RequestBody NutritionPlanRequest request) {
-        return ResponseEntity.ok(nutritionPlanService.updateNutritionPlan(id, memberId, request));
+            Authentication authentication,
+            @Valid @RequestBody NutritionPlanRequest request
+    ) {
+        return ResponseEntity.ok(
+                nutritionPlanService.updateMyNutritionPlan(
+                        id,
+                        getPrincipal(authentication),
+                        request
+                )
+        );
     }
 
-    @Operation(summary = "Delete a nutrition plan (soft delete)")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletePlan(
+    @Operation(summary = "Activate my nutrition plan")
+    @PostMapping("/{id}/activate")
+    public ResponseEntity<Void> activateMyPlan(
             @PathVariable Long id,
-            @RequestParam Long memberId) {
-        nutritionPlanService.deleteNutritionPlan(id, memberId);
+            Authentication authentication
+    ) {
+        nutritionPlanService.activateMyNutritionPlan(
+                id,
+                getPrincipal(authentication)
+        );
+
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Archive my nutrition plan")
+    @PostMapping("/{id}/archive")
+    public ResponseEntity<Void> archiveMyPlan(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        nutritionPlanService.archiveMyNutritionPlan(
+                id,
+                getPrincipal(authentication)
+        );
+
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Complete my active nutrition plan")
+    @PostMapping("/{id}/complete")
+    public ResponseEntity<Void> completeMyPlan(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        nutritionPlanService.completeMyNutritionPlan(
+                id,
+                getPrincipal(authentication)
+        );
+
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Clone my nutrition plan")
+    @PostMapping("/{id}/clone")
+    public ResponseEntity<NutritionPlanResponse> cloneMyPlan(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        NutritionPlanResponse response =
+                nutritionPlanService.cloneMyNutritionPlan(
+                        id,
+                        getPrincipal(authentication)
+                );
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(response);
+    }
+
+    @Operation(summary = "Delete my nutrition plan")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteMyPlan(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        nutritionPlanService.deleteMyNutritionPlan(
+                id,
+                getPrincipal(authentication)
+        );
+
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Get current active nutrition plan for a member")
-    @GetMapping("/me/active")
-    public ResponseEntity<NutritionPlanResponse> getActivePlan(
-            @RequestParam Long memberId) {
-        return ResponseEntity.ok(nutritionPlanService.getActiveNutritionPlan(memberId));
-    }
+    private String getPrincipal(
+            Authentication authentication
+    ) {
+        if (authentication == null
+                || authentication.getName() == null
+                || authentication.getName().isBlank()
+                || "anonymousUser".equals(
+                authentication.getName()
+        )) {
+            throw new AppException(
+                    ErrorCode.UNAUTHENTICATED
+            );
+        }
 
-    @Operation(summary = "Get today's nutrition plan for a member")
-    @GetMapping("/me/today")
-    public ResponseEntity<NutritionPlanResponse> getTodayPlan(
-            @RequestParam Long memberId) {
-        return ResponseEntity.ok(nutritionPlanService.getTodayNutritionPlan(memberId));
-    }
-
-    @Operation(summary = "Complete an active nutrition plan")
-    @PostMapping("/{id}/complete")
-    public ResponseEntity<Void> completePlan(
-            @PathVariable Long id,
-            @RequestParam Long memberId) {
-        nutritionPlanService.completeNutritionPlan(id, memberId);
-        return ResponseEntity.ok().build();
-    }
-
-    @Operation(summary = "Clone an existing nutrition plan to a new draft plan")
-    @PostMapping("/{id}/clone")
-    public ResponseEntity<NutritionPlanResponse> clonePlan(
-            @PathVariable Long id,
-            @RequestParam Long memberId) {
-        return ResponseEntity.ok(nutritionPlanService.cloneNutritionPlan(id, memberId));
+        return authentication.getName();
     }
 }

@@ -1,5 +1,7 @@
 package com.fitlife.workout.controller;
 
+import com.fitlife.common.exception.AppException;
+import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.workout.dto.request.WorkoutPlanCreateRequest;
 import com.fitlife.workout.dto.request.WorkoutPlanDayRequest;
 import com.fitlife.workout.dto.request.WorkoutPlanUpdateRequest;
@@ -7,9 +9,11 @@ import com.fitlife.workout.dto.response.WorkoutPlanDayResponse;
 import com.fitlife.workout.dto.response.WorkoutPlanDetailResponse;
 import com.fitlife.workout.dto.response.WorkoutPlanResponse;
 import com.fitlife.workout.service.WorkoutPlanService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,182 +25,240 @@ public class WorkoutPlanController {
 
     private final WorkoutPlanService workoutPlanService;
 
-    // WORKOUT-01: POST /workout-plans
     @PostMapping("/workout-plans")
+    @PreAuthorize("hasRole('MEMBER')")
     public ResponseEntity<WorkoutPlanResponse> createWorkoutPlan(
-            @RequestBody WorkoutPlanCreateRequest request,
-            Authentication authentication) {
-
-        String currentUsername = (authentication != null) ? authentication.getName() : "anonymous";
-        WorkoutPlanResponse response = workoutPlanService.createWorkoutPlan(request, currentUsername);
-
+            @Valid @RequestBody WorkoutPlanCreateRequest request,
+            Authentication authentication
+    ) {
+        WorkoutPlanResponse response = workoutPlanService.createWorkoutPlan(
+                request,
+                getPrincipal(authentication)
+        );
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-
-    @GetMapping("/workout-plans/my")
-    public ResponseEntity<List<WorkoutPlanResponse>> getMyWorkoutPlans() {
-        Long memberId = 1L;
-        List<WorkoutPlanResponse> responses = workoutPlanService.getMyWorkoutPlans(memberId);
-        return ResponseEntity.ok(responses);
-    }
-
-
     @GetMapping("/workout-plans/me")
-    public ResponseEntity<List<WorkoutPlanResponse>> getMyWorkoutPlansMe(Authentication authentication) {
-        String currentUsername = (authentication != null) ? authentication.getName() : "anonymous";
-        List<WorkoutPlanResponse> responses = workoutPlanService.getMyWorkoutPlans(currentUsername);
-        return ResponseEntity.ok(responses);
+    @PreAuthorize("hasRole('MEMBER')")
+    public ResponseEntity<List<WorkoutPlanResponse>> getMyWorkoutPlans(
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                workoutPlanService.getMyWorkoutPlans(
+                        getPrincipal(authentication)
+                )
+        );
     }
-
 
     @GetMapping("/workout-plans/me/active")
-    public ResponseEntity<WorkoutPlanDetailResponse> getActiveWorkoutPlan(Authentication authentication) {
-        String currentUsername = (authentication != null) ? authentication.getName() : "anonymous";
-        WorkoutPlanDetailResponse response = workoutPlanService.getActiveWorkoutPlan(currentUsername);
-        return ResponseEntity.ok(response);
+    @PreAuthorize("hasRole('MEMBER')")
+    public ResponseEntity<WorkoutPlanDetailResponse> getActiveWorkoutPlan(
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                workoutPlanService.getActiveWorkoutPlan(
+                        getPrincipal(authentication)
+                )
+        );
     }
 
+    @GetMapping("/workout-plans/me/today")
+    @PreAuthorize("hasRole('MEMBER')")
+    public ResponseEntity<WorkoutPlanDayResponse> getTodayWorkoutDay(
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                workoutPlanService.getTodayWorkoutDay(
+                        getPrincipal(authentication)
+                )
+        );
+    }
 
     @GetMapping("/workout-plans/{id}")
+    @PreAuthorize("hasRole('MEMBER')")
     public ResponseEntity<WorkoutPlanDetailResponse> getWorkoutPlanById(
-            @PathVariable("id") Long id,
-            Authentication authentication) {
-
-        String currentUsername = (authentication != null) ? authentication.getName() : "anonymous";
-        WorkoutPlanDetailResponse response = workoutPlanService.getWorkoutPlanById(id, currentUsername);
-        return ResponseEntity.ok(response);
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                workoutPlanService.getWorkoutPlanById(
+                        id,
+                        getPrincipal(authentication)
+                )
+        );
     }
-
 
     @PatchMapping("/workout-plans/{id}")
+    @PreAuthorize("hasRole('MEMBER')")
     public ResponseEntity<WorkoutPlanResponse> patchWorkoutPlan(
-            @PathVariable("id") Long id,
-            @RequestBody WorkoutPlanUpdateRequest request,
-            Authentication authentication) {
-
-        String currentUsername = (authentication != null) ? authentication.getName() : "anonymous";
-        WorkoutPlanResponse response = workoutPlanService.patchWorkoutPlan(id, request, currentUsername);
-        return ResponseEntity.ok(response);
+            @PathVariable Long id,
+            @Valid @RequestBody WorkoutPlanUpdateRequest request,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                workoutPlanService.patchWorkoutPlan(
+                        id,
+                        request,
+                        getPrincipal(authentication)
+                )
+        );
     }
 
-
     @PutMapping("/workout-plans/{id}/structure")
+    @PreAuthorize("hasRole('MEMBER')")
     public ResponseEntity<WorkoutPlanDetailResponse> updateWorkoutPlanStructure(
-            @PathVariable("id") Long id,
-            @RequestBody List<WorkoutPlanDayRequest> daysRequest,
-            Authentication authentication) {
-
-        String currentUsername = (authentication != null) ? authentication.getName() : "anonymous";
-        WorkoutPlanDetailResponse response = workoutPlanService.updateWorkoutPlanStructure(id, daysRequest, currentUsername);
-        return ResponseEntity.ok(response);
+            @PathVariable Long id,
+            @Valid @RequestBody List<WorkoutPlanDayRequest> daysRequest,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                workoutPlanService.updateWorkoutPlanStructure(
+                        id,
+                        daysRequest,
+                        getPrincipal(authentication)
+                )
+        );
     }
 
     @PostMapping("/workout-plans/{id}/activate")
+    @PreAuthorize("hasRole('MEMBER')")
     public ResponseEntity<WorkoutPlanResponse> activateWorkoutPlan(
-            @PathVariable("id") Long id,
-            Authentication authentication) {
-
-        String currentUsername = (authentication != null) ? authentication.getName() : "anonymous";
-        WorkoutPlanResponse response = workoutPlanService.activateWorkoutPlan(id, currentUsername);
-        return ResponseEntity.ok(response);
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                workoutPlanService.activateWorkoutPlan(
+                        id,
+                        getPrincipal(authentication)
+                )
+        );
     }
-
 
     @PostMapping("/workout-plans/{id}/complete")
+    @PreAuthorize("hasRole('MEMBER')")
     public ResponseEntity<WorkoutPlanResponse> completeWorkoutPlan(
-            @PathVariable("id") Long id,
-            Authentication authentication) {
-
-        String currentUsername = (authentication != null) ? authentication.getName() : "anonymous";
-        WorkoutPlanResponse response = workoutPlanService.completeWorkoutPlan(id, currentUsername);
-        return ResponseEntity.ok(response);
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                workoutPlanService.completeWorkoutPlan(
+                        id,
+                        getPrincipal(authentication)
+                )
+        );
     }
-
 
     @PostMapping("/workout-plans/{id}/archive")
+    @PreAuthorize("hasRole('MEMBER')")
     public ResponseEntity<WorkoutPlanResponse> archiveWorkoutPlan(
-            @PathVariable("id") Long id,
-            Authentication authentication) {
-
-        String currentUsername = (authentication != null) ? authentication.getName() : "anonymous";
-        WorkoutPlanResponse response = workoutPlanService.archiveWorkoutPlan(id, currentUsername);
-        return ResponseEntity.ok(response);
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                workoutPlanService.archiveWorkoutPlan(
+                        id,
+                        getPrincipal(authentication)
+                )
+        );
     }
 
-
     @PostMapping("/workout-plans/{id}/clone")
+    @PreAuthorize("hasRole('MEMBER')")
     public ResponseEntity<WorkoutPlanResponse> cloneWorkoutPlan(
-            @PathVariable("id") Long id,
-            Authentication authentication) {
-
-        String currentUsername = (authentication != null) ? authentication.getName() : "anonymous";
-        WorkoutPlanResponse response = workoutPlanService.cloneWorkoutPlan(id, currentUsername);
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        WorkoutPlanResponse response = workoutPlanService.cloneWorkoutPlan(
+                id,
+                getPrincipal(authentication)
+        );
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-
-    @GetMapping("/workout-plans/me/today")
-    public ResponseEntity<WorkoutPlanDayResponse> getTodayWorkoutDay(Authentication authentication) {
-        String currentUsername = (authentication != null) ? authentication.getName() : "anonymous";
-        WorkoutPlanDayResponse response = workoutPlanService.getTodayWorkoutDay(currentUsername);
-        return ResponseEntity.ok(response);
-    }
-
-
     @PostMapping("/trainer/members/{memberId}/workout-plans")
+    @PreAuthorize("hasRole('TRAINER')")
     public ResponseEntity<WorkoutPlanResponse> createWorkoutPlanForMember(
-            @PathVariable("memberId") Long memberId,
-            @RequestBody WorkoutPlanCreateRequest request,
-            Authentication authentication) {
-
-        String trainerUsername = (authentication != null) ? authentication.getName() : "anonymous";
-        WorkoutPlanResponse response = workoutPlanService.createWorkoutPlanForMember(memberId, request, trainerUsername);
-
+            @PathVariable Long memberId,
+            @Valid @RequestBody WorkoutPlanCreateRequest request,
+            Authentication authentication
+    ) {
+        WorkoutPlanResponse response = workoutPlanService.createWorkoutPlanForMember(
+                memberId,
+                request,
+                getPrincipal(authentication)
+        );
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/trainer/members/{memberId}/workout-plans")
+    @PreAuthorize("hasRole('TRAINER')")
     public ResponseEntity<List<WorkoutPlanResponse>> getMemberWorkoutPlansForTrainer(
-            @PathVariable("memberId") Long memberId,
-            Authentication authentication) {
-
-        String trainerUsername = (authentication != null) ? authentication.getName() : "anonymous";
-        List<WorkoutPlanResponse> responses = workoutPlanService.getMemberWorkoutPlansForTrainer(memberId, trainerUsername);
-
-        return ResponseEntity.ok(responses);
+            @PathVariable Long memberId,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                workoutPlanService.getMemberWorkoutPlansForTrainer(
+                        memberId,
+                        getPrincipal(authentication)
+                )
+        );
     }
 
-    @PutMapping("/workout-plans/{id}")
-    public ResponseEntity<WorkoutPlanResponse> updateWorkoutPlan(
-            @PathVariable("id") Long id,
-            @RequestBody WorkoutPlanUpdateRequest request) {
-
-        WorkoutPlanResponse response = workoutPlanService.updateWorkoutPlan(id, request);
-        return ResponseEntity.ok(response);
+    @PatchMapping("/trainer/members/{memberId}/workout-plans/{id}")
+    @PreAuthorize("hasRole('TRAINER')")
+    public ResponseEntity<WorkoutPlanResponse> patchWorkoutPlanForMember(
+            @PathVariable Long memberId,
+            @PathVariable Long id,
+            @Valid @RequestBody WorkoutPlanUpdateRequest request,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                workoutPlanService.patchWorkoutPlanForMember(
+                        memberId,
+                        id,
+                        request,
+                        getPrincipal(authentication)
+                )
+        );
     }
 
-    @DeleteMapping("/workout-plans/{id}")
-    public ResponseEntity<Void> deleteWorkoutPlan(@PathVariable("id") Long id) {
+    @GetMapping("/admin/workout-plans")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<WorkoutPlanResponse>> getAllWorkoutPlansForAdmin() {
+        return ResponseEntity.ok(
+                workoutPlanService.getAllWorkoutPlansForAdmin()
+        );
+    }
+
+    @PutMapping("/admin/workout-plans/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<WorkoutPlanResponse> updateWorkoutPlanForAdmin(
+            @PathVariable Long id,
+            @Valid @RequestBody WorkoutPlanUpdateRequest request
+    ) {
+        return ResponseEntity.ok(
+                workoutPlanService.updateWorkoutPlan(id, request)
+        );
+    }
+
+    @DeleteMapping("/admin/workout-plans/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deleteWorkoutPlanForAdmin(
+            @PathVariable Long id
+    ) {
         workoutPlanService.deleteWorkoutPlan(id);
         return ResponseEntity.noContent().build();
     }
-    @PatchMapping("/trainer/members/{memberId}/workout-plans/{id}")
-    public ResponseEntity patchWorkoutPlanForMember(
-            @PathVariable("memberId") Long memberId,
-            @PathVariable("id") Long id,
-            @RequestBody WorkoutPlanUpdateRequest request,
-            Authentication authentication) {
 
-        String trainerUsername = (authentication != null) ? authentication.getName() : "anonymous";
-        WorkoutPlanResponse response = workoutPlanService.patchWorkoutPlanForMember(memberId, id, request, trainerUsername);
-        return ResponseEntity.ok(response);
-    }
-
-
-    @GetMapping("/admin/workout-plans")
-    public ResponseEntity<List<WorkoutPlanResponse>> getAllWorkoutPlansForAdmin(Authentication authentication) {
-        List<WorkoutPlanResponse> responses = workoutPlanService.getAllWorkoutPlansForAdmin();
-        return ResponseEntity.ok(responses);
+    private String getPrincipal(Authentication authentication) {
+        if (authentication == null
+                || authentication.getName() == null
+                || authentication.getName().isBlank()
+                || "anonymousUser".equals(authentication.getName())
+                || "anonymous".equals(authentication.getName())) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+        return authentication.getName();
     }
 }
+

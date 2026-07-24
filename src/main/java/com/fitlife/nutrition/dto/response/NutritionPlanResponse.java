@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -45,5 +46,7 @@ public class NutritionPlanResponse {
     private Long replacementPlanId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private List<MealDto> meals;
+    @Builder.Default
+    private List<MealDto> meals =
+            new ArrayList<>();
 }

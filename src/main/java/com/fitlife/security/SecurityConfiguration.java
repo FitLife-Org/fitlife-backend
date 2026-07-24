@@ -67,162 +67,163 @@ public class SecurityConfiguration {
 
                 .authorizeHttpRequests(auth -> auth
 
-                        // Swagger / OpenAPI
-                        .requestMatchers(
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/v3/api-docs/**",
-                                "/swagger-resources/**",
-                                "/webjars/**"
-                        ).permitAll()
+                                // Swagger / OpenAPI
+                                .requestMatchers(
+                                        "/swagger-ui/**",
+                                        "/swagger-ui.html",
+                                        "/v3/api-docs/**",
+                                        "/swagger-resources/**",
+                                        "/webjars/**"
+                                ).permitAll()
 
-                        // Common public
-                        .requestMatchers(
-                                "/error"
-                        ).permitAll()
+                                // Common public
+                                .requestMatchers(
+                                        "/error"
+                                ).permitAll()
 
-                        /*
-                         * Chỉ permit /test/** ở local/dev.
-                         * Không nên public khi deploy thật.
-                         */
-                        .requestMatchers(
-                                "/test/**"
-                        ).permitAll()
+                                /*
+                                 * Chỉ permit /test/** ở local/dev.
+                                 * Không nên public khi deploy thật.
+                                 */
+                                .requestMatchers(
+                                        "/test/**"
+                                ).permitAll()
 
-                        // Auth public
-                        .requestMatchers(
-                                HttpMethod.POST,
-                                "/auth/register",
-                                "/auth/login",
-                                "/auth/google-login",
-                                "/auth/refresh-token",
-                                "/auth/resend-verification-email",
-                                "/auth/forgot-password",
-                                "/auth/reset-password"
-                        ).permitAll()
+                                // Auth public
+                                .requestMatchers(
+                                        HttpMethod.POST,
+                                        "/auth/register",
+                                        "/auth/login",
+                                        "/auth/google-login",
+                                        "/auth/refresh-token",
+                                        "/auth/resend-verification-email",
+                                        "/auth/forgot-password",
+                                        "/auth/reset-password"
+                                ).permitAll()
 
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/auth/verify-email"
-                        ).permitAll()
+                                .requestMatchers(
+                                        HttpMethod.GET,
+                                        "/auth/verify-email"
+                                ).permitAll()
 
-                        /*
-                         * Logout nên có token để xác định
-                         * phiên đăng nhập hiện tại.
-                         */
-                        .requestMatchers(
-                                HttpMethod.POST,
-                                "/auth/logout",
-                                "/auth/logout-all"
-                        ).authenticated()
+                                /*
+                                 * Logout nên có token để xác định
+                                 * phiên đăng nhập hiện tại.
+                                 */
+                                .requestMatchers(
+                                        HttpMethod.POST,
+                                        "/auth/logout",
+                                        "/auth/logout-all"
+                                ).authenticated()
 
-                        // VNPay callback
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/payments/vnpay/return",
-                                "/payments/vnpay/ipn"
-                        ).permitAll()
+                                // VNPay callback
+                                .requestMatchers(
+                                        HttpMethod.GET,
+                                        "/payments/vnpay/return",
+                                        "/payments/vnpay/ipn"
+                                ).permitAll()
 
-                        // Public packages
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/gym-packages/**",
-                                "/package-durations/**"
-                        ).permitAll()
+                                // Public packages
+                                .requestMatchers(
+                                        HttpMethod.GET,
+                                        "/gym-packages/**",
+                                        "/package-durations/**"
+                                ).permitAll()
 
-                        // CORS preflight
-                        .requestMatchers(
-                                HttpMethod.OPTIONS,
-                                "/**"
-                        ).permitAll()
+                                // CORS preflight
+                                .requestMatchers(
+                                        HttpMethod.OPTIONS,
+                                        "/**"
+                                ).permitAll()
 
-                        // Admin / Staff operations
-                        .requestMatchers(
-                                "/admin/payments/**",
-                                "/admin/equipment/**"
-                        ).hasAnyRole(
-                                "ADMIN",
-                                "STAFF"
-                        )
+                                // Admin / Staff operations
+                                .requestMatchers(
+                                        "/admin/payments/**",
+                                        "/admin/equipment/**",
+                                        "/admin/check-in-qrs/**"
+                                ).hasAnyRole(
+                                        "ADMIN",
+                                        "STAFF"
+                                )
 
-                        .requestMatchers(
-                                "/check-ins/**"
-                        ).hasAnyRole(
-                                "ADMIN",
-                                "STAFF"
-                        )
+                                .requestMatchers(
+                                        "/check-ins/**"
+                                ).hasAnyRole(
+                                        "ADMIN",
+                                        "STAFF"
+                                )
 
-                        // Trainer APIs
-                        .requestMatchers(
-                                "/trainer/**"
-                        ).hasRole("TRAINER")
+                                // Trainer APIs
+                                .requestMatchers(
+                                        "/trainer/**"
+                                ).hasRole("TRAINER")
 
-                        // Member self-service check-in
-                        .requestMatchers(
-                                "/member/check-ins/**",
-                                "/member/check-outs/**"
-                        ).hasRole("MEMBER")
+                                // Member self-service check-in
+                                .requestMatchers(
+                                        "/member/check-ins/**",
+                                        "/member/check-outs/**"
+                                ).hasRole("MEMBER")
 
-                        // Member AI
-                        .requestMatchers(
-                                "/ai/suggestions/**"
-                        ).hasRole("MEMBER")
+                                // Member AI
+                                .requestMatchers(
+                                        "/ai/suggestions/**"
+                                ).hasRole("MEMBER")
 
-                        // AI knowledge administration
-                        .requestMatchers(
-                                "/admin/ai/knowledge/**"
-                        ).hasRole("ADMIN")
+                                // AI knowledge administration
+                                .requestMatchers(
+                                        "/admin/ai/knowledge/**"
+                                ).hasRole("ADMIN")
 
-                        // Member payments
-                        .requestMatchers(
-                                "/payments/**"
-                        ).hasRole("MEMBER")
+                                // Member payments
+                                .requestMatchers(
+                                        "/payments/**"
+                                ).hasRole("MEMBER")
 
-                        // Member subscriptions/invoices
-                        .requestMatchers(
-                                "/subscriptions/**",
-                                "/invoices/**"
-                        ).hasRole("MEMBER")
+                                // Member subscriptions and invoices
+                                .requestMatchers(
+                                        "/subscriptions/**",
+                                        "/invoices/**"
+                                ).hasRole("MEMBER")
 
-                        // Member health and plans
-                        .requestMatchers(
-                                "/body-metrics/me/**",
-                                "/members/me/**"
-                        ).hasRole("MEMBER")
+                                // Member profile and body metrics
+                                .requestMatchers(
+                                        "/body-metrics/me/**",
+                                        "/members/me/**"
+                                ).hasRole("MEMBER")
 
-                        /*
-                         * Workout/Nutrition hiện có một số API
-                         * dùng chung hoặc còn nhận memberId.
-                         * Tạm giới hạn authenticated và dùng
-                         * @PreAuthorize tại controller/service.
-                         *
-                         * Sau khi refactor self-service, nên đổi
-                         * toàn bộ member route sang hasRole MEMBER.
-                         */
-                        .requestMatchers(
-                                "/workout-plans/**",
-                                "/nutrition-plans/**"
-                        ).authenticated()
+                                // Member nutrition self-service
+                                .requestMatchers(
+                                        "/nutrition-plans/me/**"
+                                ).hasRole("MEMBER")
 
-                        // Admin APIs còn lại
-                        .requestMatchers(
-                                "/admin/**"
-                        ).hasRole("ADMIN")
+                                // Admin nutrition management
+                                .requestMatchers(
+                                        "/admin/nutrition-plans/**"
+                                ).hasRole("ADMIN")
 
-                        // User profile chung
-                        .requestMatchers(
-                                "/users/me/**"
-                        ).authenticated()
+                                // Workout chưa refactor hoàn toàn
+                                .requestMatchers(
+                                        "/workout-plans/**"
+                                ).authenticated()
+                                // Admin APIs còn lại
+                                .requestMatchers(
+                                        "/admin/**"
+                                ).hasRole("ADMIN")
 
-                        // Equipment public list
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/equipment/**"
-                        ).authenticated()
+                                // User profile chung
+                                .requestMatchers(
+                                        "/users/me/**"
+                                ).authenticated()
 
-                        // Default deny-by-authentication
-                        .anyRequest()
-                        .authenticated()
+                                // Equipment public list
+                                .requestMatchers(
+                                        HttpMethod.GET,
+                                        "/equipment/**"
+                                ).authenticated()
+
+                                // Default deny-by-authentication
+                                .anyRequest()
+                                .authenticated()
                 )
 
                 .authenticationProvider(
