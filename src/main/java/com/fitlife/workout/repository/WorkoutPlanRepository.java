@@ -11,43 +11,36 @@ import java.util.Optional;
 public interface WorkoutPlanRepository
         extends JpaRepository<WorkoutPlan, Long> {
 
-    List<WorkoutPlan>
-    findByMemberIdAndIsDeletedFalse(
+    List<WorkoutPlan> findByMemberIdAndIsDeletedFalse(
             Long memberId
     );
 
-    List<WorkoutPlan>
-    findByMemberIdAndIsDeletedFalseOrderByCreatedAtDesc(
+    List<WorkoutPlan> findByMemberIdAndIsDeletedFalseOrderByCreatedAtDesc(
             Long memberId
     );
 
-    Optional<WorkoutPlan>
-    findFirstByMemberIdAndStatusAndIsDeletedFalse(
+    Optional<WorkoutPlan> findFirstByMemberIdAndStatusAndIsDeletedFalse(
             Long memberId,
             String status
     );
 
-    Optional<WorkoutPlan>
-    findByIdAndMemberIdAndIsDeletedFalse(
+    Optional<WorkoutPlan> findByIdAndMemberIdAndIsDeletedFalse(
             Long id,
             Long memberId
     );
 
-    List<WorkoutPlan>
-    findByMemberIdAndStatusAndIsDeletedFalse(
+    List<WorkoutPlan> findByMemberIdAndStatusAndIsDeletedFalse(
             Long memberId,
             String status
     );
 
-    List<WorkoutPlan>
-    findByIsDeletedFalseOrderByCreatedAtDesc();
+    List<WorkoutPlan> findByIsDeletedFalseOrderByCreatedAtDesc();
 
     boolean existsBySourceAiSuggestionIdAndIsDeletedFalse(
             Long sourceAiSuggestionId
     );
 
-    Optional<WorkoutPlan>
-    findBySourceAiSuggestionIdAndIsDeletedFalse(
+    Optional<WorkoutPlan> findBySourceAiSuggestionIdAndIsDeletedFalse(
             Long sourceAiSuggestionId
     );
 }

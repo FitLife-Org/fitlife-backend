@@ -708,6 +708,41 @@ public enum ErrorCode {
     ),
 
 
+
+    // =========================
+    // Workout errors: 16000 - 16999
+    // =========================
+    WORKOUT_PLAN_NOT_FOUND(
+            16001,
+            "Workout plan not found or does not belong to current member",
+            HttpStatus.NOT_FOUND
+    ),
+
+    WORKOUT_ACTIVE_PLAN_NOT_FOUND(
+            16002,
+            "Current member does not have an active workout plan",
+            HttpStatus.NOT_FOUND
+    ),
+
+    WORKOUT_TODAY_NOT_FOUND(
+            16003,
+            "No workout is scheduled for today",
+            HttpStatus.NOT_FOUND
+    ),
+
+    WORKOUT_PLAN_ALREADY_ACTIVE(
+            16004,
+            "Workout plan is already active",
+            HttpStatus.CONFLICT
+    ),
+
+    WORKOUT_PLAN_NOT_ACTIVE(
+            16005,
+            "Only an active workout plan can be completed",
+            HttpStatus.BAD_REQUEST
+    ),
+
+
     // =========================
     // Uncategorized error
     // =========================
