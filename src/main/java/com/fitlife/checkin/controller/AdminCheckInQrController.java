@@ -35,16 +35,16 @@ public class AdminCheckInQrController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ADMIN')")
-    @Operation(summary = "Get all QR points", description = "Admin only. Retrieve list of registered check-in QR codes.")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STAFF', 'ADMIN', 'STAFF')")
+    @Operation(summary = "Get all QR points", description = "Retrieve list of registered check-in QR codes.")
     public ResponseEntity<ApiResponse<List<AdminCheckInQrResponse>>> getAllGymQrs() {
         List<AdminCheckInQrResponse> response = checkInService.getAllGymQrs();
         return ResponseEntity.ok(ApiResponse.success("Get all gym QR points successfully", response));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ADMIN')")
-    @Operation(summary = "Get QR point details", description = "Admin only. View details of a specific QR code point.")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STAFF', 'ADMIN', 'STAFF')")
+    @Operation(summary = "Get QR point details", description = "View details of a specific QR code point.")
     public ResponseEntity<ApiResponse<AdminCheckInQrResponse>> getGymQrDetail(
             @PathVariable Long id
     ) {
@@ -53,8 +53,8 @@ public class AdminCheckInQrController {
     }
 
     @PostMapping("/{id}/regenerate")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ADMIN')")
-    @Operation(summary = "Regenerate QR token", description = "Admin only. Rotate and update the security token of a QR point.")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STAFF', 'ADMIN', 'STAFF')")
+    @Operation(summary = "Regenerate QR token", description = "Rotate and update the security token of a QR point.")
     public ResponseEntity<ApiResponse<AdminCheckInQrResponse>> regenerateGymQrToken(
             @PathVariable Long id
     ) {
