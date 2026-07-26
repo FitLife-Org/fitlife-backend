@@ -35,4 +35,6 @@ public interface TrainerRepository
     List<Trainer> findAllByStatusAndDeletedFalseOrderByIdDesc(
             TrainerStatus status
     );
+
+    List<Trainer> findAllByDeletedFalseOrderByIdDesc();
 }

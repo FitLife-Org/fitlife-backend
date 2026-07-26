@@ -42,6 +42,8 @@ public interface BodyMetricService {
     // Member - My Body Metric
     // =========================
 
+    BodyMetricResponse createMyBodyMetric(BodyMetricCreateRequest request);
+
     PageResponse<BodyMetricResponse> getMyBodyMetrics(Pageable pageable);
 
     BodyMetricResponse getMyBodyMetricDetail(Long id);

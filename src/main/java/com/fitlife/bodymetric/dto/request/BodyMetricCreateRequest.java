@@ -14,7 +14,6 @@ import java.time.LocalDateTime;
 @Setter
 public class BodyMetricCreateRequest {
 
-    @NotNull(message = "MEMBER_ID_REQUIRED")
     private Long memberId;
 
     @NotNull(message = "WEIGHT_REQUIRED")

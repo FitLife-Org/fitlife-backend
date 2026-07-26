@@ -234,10 +234,6 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         Subscription subscription = subscriptionRepository.findById(subscriptionId)
                 .orElseThrow(() -> new AppException(ErrorCode.SUBSCRIPTION_NOT_FOUND));
 
-        if (subscription.getStatus() == SubscriptionStatus.ACTIVE) {
-            throw new AppException(ErrorCode.CANNOT_CANCEL_ACTIVE_SUBSCRIPTION);
-        }
-
         if (subscription.getStatus() == SubscriptionStatus.CANCELLED) {
             throw new AppException(ErrorCode.SUBSCRIPTION_ALREADY_CANCELLED);
         }
