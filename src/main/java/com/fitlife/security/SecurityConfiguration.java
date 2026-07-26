@@ -78,7 +78,8 @@ public class SecurityConfiguration {
 
                                 // Common public
                                 .requestMatchers(
-                                        "/error"
+                                        "/error",
+                                        "/uploads/**"
                                 ).permitAll()
 
                                 /*
