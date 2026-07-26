@@ -276,6 +276,46 @@ public class TrainerServiceImpl
         );
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<TrainerResponse> getAllTrainers() {
+        return trainerRepository.findAllByDeletedFalseOrderByIdDesc().stream()
+                .map(trainerMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TrainerResponse getMyProfile() {
+        Trainer trainer = trainerRepository.findByUserIdAndDeletedFalse(getCurrentUser().getId())
+                .orElseThrow(() -> new AppException(ErrorCode.TRAINER_PROFILE_NOT_FOUND));
+        return trainerMapper.toResponse(trainer);
+    }
+
+    @Override
+    public TrainerResponse updateTrainer(Long id, TrainerUpdateRequest request) {
+        Trainer trainer = trainerRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new AppException(ErrorCode.TRAINER_NOT_FOUND));
+        trainerMapper.updateEntity(request, trainer);
+        return trainerMapper.toResponse(trainerRepository.save(trainer));
+    }
+
+    @Override
+    public TrainerResponse updateTrainerStatus(Long id, TrainerStatus status) {
+        Trainer trainer = trainerRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new AppException(ErrorCode.TRAINER_NOT_FOUND));
+        trainer.setStatus(status);
+        return trainerMapper.toResponse(trainerRepository.save(trainer));
+    }
+
+    @Override
+    public void deleteTrainer(Long id) {
+        Trainer trainer = trainerRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new AppException(ErrorCode.TRAINER_NOT_FOUND));
+        trainer.setDeleted(true);
+        trainerRepository.save(trainer);
+    }
+
     private User getCurrentUser() {
         Authentication authentication =
                 SecurityContextHolder

@@ -22,6 +22,11 @@ public interface TrainerMapper {
             TrainerCreateRequest request
     );
 
+    @Mapping(target = "userId", source = "user.id")
+    @Mapping(target = "username", source = "user.username")
+    @Mapping(target = "fullName", source = "user.fullName")
+    @Mapping(target = "email", source = "user.email")
+    @Mapping(target = "phone", source = "user.phone")
     TrainerResponse toResponse(
             Trainer trainer
     );

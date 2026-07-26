@@ -1,6 +1,7 @@
 package com.fitlife.bodymetric.controller;
 
 import com.fitlife.bodymetric.dto.response.BodyMetricResponse;
+import com.fitlife.bodymetric.dto.request.BodyMetricCreateRequest;
 import com.fitlife.bodymetric.service.BodyMetricService;
 import com.fitlife.common.response.ApiResponse;
 import com.fitlife.common.response.PageResponse;
@@ -18,6 +19,16 @@ import java.util.List;
 public class MyBodyMetricController {
 
     private final BodyMetricService bodyMetricService;
+
+    @PostMapping
+    public ApiResponse<BodyMetricResponse> createMyBodyMetric(
+            @Valid @RequestBody BodyMetricCreateRequest request
+    ) {
+        return ApiResponse.<BodyMetricResponse>builder()
+                .message("Body metric created successfully")
+                .data(bodyMetricService.createMyBodyMetric(request))
+                .build();
+    }
 
     /**
      * Member xem danh sách body metric của chính mình.

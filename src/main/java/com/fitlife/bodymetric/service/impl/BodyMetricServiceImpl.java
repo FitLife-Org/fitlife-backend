@@ -144,6 +144,13 @@ public class BodyMetricServiceImpl implements BodyMetricService {
     // =========================
 
     @Override
+    public BodyMetricResponse createMyBodyMetric(BodyMetricCreateRequest request) {
+        Member currentMember = getCurrentMember();
+        request.setMemberId(currentMember.getId());
+        return createByAdmin(request);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public PageResponse<BodyMetricResponse> getMyBodyMetrics(Pageable pageable) {
         Member currentMember = getCurrentMember();
