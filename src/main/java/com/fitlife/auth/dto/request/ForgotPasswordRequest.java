@@ -9,7 +9,11 @@ import lombok.Setter;
 @Setter
 public class ForgotPasswordRequest {
 
-    @NotBlank(message = "Email is required")
-    @Email(message = "Email is invalid")
+    @NotBlank(
+            message = "Email is required"
+    )
+    @Email(
+            message = "Email is invalid"
+    )
     private String email;
 }
