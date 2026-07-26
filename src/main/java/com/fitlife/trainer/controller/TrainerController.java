@@ -27,6 +27,14 @@ public class TrainerController {
                 .build();
     }
 
+    @GetMapping("/me")
+    @PreAuthorize("hasRole('TRAINER')")
+    public ApiResponse<TrainerResponse> getMyProfile() {
+        return ApiResponse.<TrainerResponse>builder()
+                .data(trainerService.getMyProfile())
+                .build();
+    }
+
 
     @GetMapping
     public ApiResponse<List<TrainerResponse>> getActiveTrainers() {

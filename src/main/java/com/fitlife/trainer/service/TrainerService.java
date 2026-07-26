@@ -21,4 +21,14 @@ public interface TrainerService {
     TrainerResponse getTrainerById(
             Long id
     );
+
+    List<TrainerResponse> getAllTrainers();
+
+    TrainerResponse getMyProfile();
+
+    TrainerResponse updateTrainer(Long id, TrainerUpdateRequest request);
+
+    TrainerResponse updateTrainerStatus(Long id, com.fitlife.trainer.enums.TrainerStatus status);
+
+    void deleteTrainer(Long id);
 }
