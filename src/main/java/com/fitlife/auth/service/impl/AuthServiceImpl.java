@@ -110,9 +110,23 @@ public class AuthServiceImpl implements AuthService {
         );
     }
 
-    private void validateRegisterRequest(RegisterRequest request) {
-        String email = request.getEmail().trim().toLowerCase();
-        String username = request.getUsername().trim().toLowerCase();
+    private void validateRegisterRequest(
+            RegisterRequest request
+    ) {
+        validatePasswordConfirmation(
+                request.getPassword(),
+                request.getConfirmPassword()
+        );
+
+        String email =
+                request.getEmail()
+                        .trim()
+                        .toLowerCase();
+
+        String username =
+                request.getUsername()
+                        .trim()
+                        .toLowerCase();
 
         if (userRepository.existsByEmail(email)) {
             throw new AppException(
@@ -126,11 +140,28 @@ public class AuthServiceImpl implements AuthService {
             );
         }
 
-        String phone = normalizeNullable(request.getPhone());
+        String phone =
+                normalizeNullable(
+                        request.getPhone()
+                );
 
-        if (phone != null && userRepository.existsByPhone(phone)) {
+        if (phone != null
+                && userRepository.existsByPhone(phone)) {
             throw new AppException(
                     ErrorCode.PHONE_ALREADY_EXISTS
+            );
+        }
+    }
+
+    private void validatePasswordConfirmation(
+            String password,
+            String confirmPassword
+    ) {
+        if (password == null
+                || confirmPassword == null
+                || !password.equals(confirmPassword)) {
+            throw new AppException(
+                    ErrorCode.PASSWORD_CONFIRM_NOT_MATCH
             );
         }
     }
@@ -365,12 +396,10 @@ public class AuthServiceImpl implements AuthService {
     public void resetPassword(
             ResetPasswordRequest request
     ) {
-        if (!request.getNewPassword()
-                .equals(request.getConfirmPassword())) {
-            throw new AppException(
-                    ErrorCode.PASSWORD_CONFIRM_NOT_MATCH
-            );
-        }
+        validatePasswordConfirmation(
+                request.getNewPassword(),
+                request.getConfirmPassword()
+        );
 
         User user = userRepository
                 .findByEmail(
@@ -421,9 +450,6 @@ public class AuthServiceImpl implements AuthService {
 
         userRepository.save(user);
 
-        /*
-         * Sau khi đổi mật khẩu, đăng xuất toàn bộ thiết bị.
-         */
         refreshTokenService.revokeAllByUserId(
                 user.getId()
         );
