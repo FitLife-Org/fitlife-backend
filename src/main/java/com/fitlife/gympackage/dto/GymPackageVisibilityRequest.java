@@ -11,6 +11,14 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class GymPackageVisibilityRequest {
-    @NotBlank(message = "Trạng thái hiển thị không được để trống")
-    private String status; // ACTIVE, INACTIVE
+    private String status;
+    private Boolean active;
+
+    public String getStatus() {
+        if (status != null) return status;
+        if (active != null) {
+            return Boolean.TRUE.equals(active) ? "ACTIVE" : "INACTIVE";
+        }
+        return null;
+    }
 }

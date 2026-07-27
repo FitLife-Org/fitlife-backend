@@ -90,4 +90,24 @@ public class PackageDurationController {
         packageDurationService.deleteDuration(id);
         return ApiResponse.success("Xóa thời hạn thành công");
     }
+
+    @GetMapping("/gym-packages/{packageId}/durations")
+    @Operation(summary = "Get active durations of a specific package")
+    public ApiResponse<List<PackageDurationResponse>> getDurationsByPackageId(
+            @PathVariable("packageId") Long packageId
+    ) {
+        List<PackageDurationResponse> response = packageDurationService.getDurationsByPackageId(packageId);
+        return ApiResponse.success("Lấy danh sách thời hạn thành công", response);
+    }
+
+    @PostMapping("/admin/gym-packages/{packageId}/durations")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Create package duration for package")
+    public ApiResponse<PackageDurationResponse> createDurationForPackage(
+            @PathVariable("packageId") Long packageId,
+            @Valid @RequestBody PackageDurationCreateRequest request
+    ) {
+        PackageDurationResponse response = packageDurationService.createDurationForPackage(packageId, request);
+        return ApiResponse.created("Tạo thời hạn cho gói tập thành công", response);
+    }
 }

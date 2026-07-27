@@ -13,4 +13,7 @@ public interface PackageDurationRepository extends JpaRepository<PackageDuration
     Optional<PackageDuration> findByCode(String code);
     boolean existsByCode(String code);
     List<PackageDuration> findByStatus(String status);
+    List<PackageDuration> findByGymPackageId(Long gymPackageId);
+    List<PackageDuration> findByGymPackageIdAndStatus(Long gymPackageId, String status);
+    Optional<PackageDuration> findByGymPackageIdAndMonthsAndStatus(Long gymPackageId, Integer months, String status);
 }
