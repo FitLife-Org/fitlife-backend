@@ -29,13 +29,31 @@ public class GymPackageController {
     @GetMapping("/gym-packages")
     @Operation(summary = "Get list of gym packages with pagination and filtering")
     public ApiResponse<PageResponse<GymPackageResponse>> getPackagesList(
-            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "10") int size,
             @RequestParam(value = "keyword", required = false) String keyword,
             @RequestParam(value = "packageType", required = false) String packageType,
-            @RequestParam(value = "status", required = false) String status
+            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "activeOnly", required = false) Boolean activeOnly,
+            @RequestParam(value = "sort", required = false) String sort
     ) {
-        Pageable pageable = PageRequest.of(page - 1, size);
+        if (Boolean.TRUE.equals(activeOnly)) {
+            status = "ACTIVE";
+        }
+        int pageNum = page > 0 ? page - 1 : 0;
+
+        org.springframework.data.domain.Sort jpaSort = org.springframework.data.domain.Sort.unsorted();
+        if (sort != null && !sort.isBlank()) {
+            String[] parts = sort.split(",");
+            String field = parts[0];
+            if ("packageName".equalsIgnoreCase(field)) {
+                field = "name";
+            }
+            String dir = parts.length > 1 ? parts[1] : "asc";
+            jpaSort = "desc".equalsIgnoreCase(dir) ? org.springframework.data.domain.Sort.by(field).descending() : org.springframework.data.domain.Sort.by(field).ascending();
+        }
+
+        Pageable pageable = PageRequest.of(pageNum, size, jpaSort);
         PageResponse<GymPackageResponse> response = gymPackageService.getPackagesList(keyword, packageType, status, pageable);
         return ApiResponse.success("Lấy danh sách gói tập thành công", response);
     }
@@ -63,13 +81,18 @@ public class GymPackageController {
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @Operation(summary = "Admin get list of gym packages with pagination and filtering")
     public ApiResponse<PageResponse<GymPackageResponse>> getPackagesListForAdmin(
-            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "10") int size,
             @RequestParam(value = "keyword", required = false) String keyword,
             @RequestParam(value = "packageType", required = false) String packageType,
-            @RequestParam(value = "status", required = false) String status
+            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "includeInactive", required = false) Boolean includeInactive
     ) {
-        Pageable pageable = PageRequest.of(page - 1, size);
+        if (Boolean.TRUE.equals(includeInactive)) {
+            status = null;
+        }
+        int pageNum = page > 0 ? page - 1 : 0;
+        Pageable pageable = PageRequest.of(pageNum, size);
 
         PageResponse<GymPackageResponse> response = gymPackageService.getPackagesList(
                 keyword,

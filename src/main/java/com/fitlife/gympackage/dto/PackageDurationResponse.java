@@ -18,6 +18,8 @@ public class PackageDurationResponse {
     private String code;
     private String name;
     private Integer months;
+    private BigDecimal price;
+    private BigDecimal discountPrice;
     private BigDecimal discountPercent;
     private String status;
 
