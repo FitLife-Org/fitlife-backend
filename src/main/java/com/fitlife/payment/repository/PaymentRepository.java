@@ -33,12 +33,16 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
               AND (:method IS NULL OR p.paymentMethod = :method)
               AND (:memberId IS NULL OR p.member.id = :memberId)
               AND (:invoiceId IS NULL OR p.invoice.id = :invoiceId)
+              AND (:fromDate IS NULL OR p.createdAt >= :fromDate)
+              AND (:toDate IS NULL OR p.createdAt <= :toDate)
             """)
     Page<Payment> searchAdminPayments(
             @Param("status") PaymentStatus status,
             @Param("method") PaymentMethod method,
             @Param("memberId") Long memberId,
             @Param("invoiceId") Long invoiceId,
+            @Param("fromDate") java.time.LocalDateTime fromDate,
+            @Param("toDate") java.time.LocalDateTime toDate,
             Pageable pageable
     );
 

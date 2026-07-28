@@ -26,4 +26,14 @@ public interface SubscriptionService {
     SubscriptionResponse cancelSubscription(Long subscriptionId);
 
     SubscriptionResponse expireSubscription(Long subscriptionId);
+
+    SubscriptionResponse renewSubscription(Long subscriptionId);
+
+    SubscriptionResponse upgradeSubscription(Long subscriptionId, com.fitlife.subscription.dto.request.UpgradeSubscriptionRequest request);
+
+    SubscriptionResponse changePackageSameTier(Long subscriptionId, com.fitlife.subscription.dto.request.UpgradeSubscriptionRequest request);
+
+    SubscriptionResponse createSubscriptionForMemberByStaff(Long memberId, SubscriptionCreateRequest request);
+
+    SubscriptionResponse updateSubscriptionStatusByAdmin(Long subscriptionId, com.fitlife.subscription.dto.request.SubscriptionStatusUpdateRequest request);
 }

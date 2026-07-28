@@ -7,7 +7,11 @@ import lombok.Setter;
 @Getter
 @Setter
 public class StaffMemberQrCheckInRequest {
-    @NotBlank(message = "QR data is required")
     private String qrData;
+    private String memberQrCode;
     private String reason;
+
+    public String getQrData() {
+        return qrData != null ? qrData : memberQrCode;
+    }
 }

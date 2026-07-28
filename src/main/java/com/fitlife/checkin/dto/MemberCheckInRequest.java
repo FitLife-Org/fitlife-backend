@@ -7,6 +7,10 @@ import lombok.Setter;
 @Getter
 @Setter
 public class MemberCheckInRequest {
-    @NotBlank(message = "QR Token is required")
     private String qrToken;
+    private String qrCodeData;
+
+    public String getQrToken() {
+        return qrToken != null ? qrToken : qrCodeData;
+    }
 }

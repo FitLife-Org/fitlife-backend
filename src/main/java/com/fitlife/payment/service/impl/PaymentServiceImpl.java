@@ -120,13 +120,20 @@ public class PaymentServiceImpl implements PaymentService {
             PaymentMethod method,
             Long memberId,
             Long invoiceId,
+            LocalDate fromDate,
+            LocalDate toDate,
             Pageable pageable
     ) {
+        LocalDateTime start = fromDate != null ? fromDate.atStartOfDay() : null;
+        LocalDateTime end = toDate != null ? toDate.atTime(java.time.LocalTime.MAX) : null;
+
         Page<Payment> paymentPage = paymentRepository.searchAdminPayments(
                 status,
                 method,
                 memberId,
                 invoiceId,
+                start,
+                end,
                 pageable
         );
 
@@ -288,12 +295,67 @@ public class PaymentServiceImpl implements PaymentService {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
-        LocalDate startDate = LocalDate.now();
+        LocalDate startDate = subscription.getStartDate();
+        if (startDate == null || startDate.isBefore(LocalDate.now())) {
+            startDate = LocalDate.now();
+        }
         Integer months = subscription.getPackageDuration().getMonths();
 
         subscription.setStatus(SubscriptionStatus.ACTIVE);
         subscription.setStartDate(startDate);
         subscription.setEndDate(startDate.plusMonths(months));
+
+        if (subscription.getNote() != null && subscription.getNote().startsWith("UPGRADE_FROM_")) {
+            try {
+                Long oldSubId = Long.parseLong(subscription.getNote().substring("UPGRADE_FROM_".length()));
+                subscriptionRepository.findById(oldSubId).ifPresent(oldSub -> {
+                    oldSub.setStatus(SubscriptionStatus.CANCELLED);
+                    subscriptionRepository.save(oldSub);
+                });
+            } catch (Exception ignored) {}
+        }
+    }
+
+    @Override
+    @Transactional
+    public PaymentDetailResponse offlinePayment(com.fitlife.payment.dto.request.OfflinePaymentRequest request) {
+        Subscription subscription = subscriptionRepository.findById(request.getSubscriptionId())
+                .orElseThrow(() -> new AppException(ErrorCode.SUBSCRIPTION_NOT_FOUND, "Subscription not found"));
+
+        if (request.getAmount().compareTo(subscription.getFinalPrice()) < 0) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Paid amount is less than subscription total price");
+        }
+
+        Invoice invoice = invoiceRepository.findBySubscriptionId(subscription.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.INVOICE_NOT_FOUND, "Invoice not found"));
+
+        if (invoice.getStatus() == InvoiceStatus.PAID) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Invoice is already paid");
+        }
+
+        Payment payment = Payment.builder()
+                .paymentCode(generatePaymentCode())
+                .invoice(invoice)
+                .subscription(subscription)
+                .member(subscription.getMember())
+                .amount(request.getAmount())
+                .paymentMethod(PaymentMethod.CASH)
+                .paymentStatus(PaymentStatus.SUCCESS)
+                .paidAt(LocalDateTime.now())
+                .note(request.getNote() != null ? request.getNote() : "Thu tiền mặt tại quầy lễ tân")
+                .confirmedBy(getCurrentUser())
+                .build();
+
+        payment = paymentRepository.save(payment);
+
+        invoice.setStatus(InvoiceStatus.PAID);
+        invoice.setPaidAt(LocalDateTime.now());
+        invoiceRepository.save(invoice);
+
+        activateSubscription(subscription);
+        subscriptionRepository.save(subscription);
+
+        return paymentMapper.toDetailResponse(payment);
     }
 
     private Member getCurrentMember() {

@@ -8,6 +8,7 @@ import lombok.Setter;
 @Setter
 public class VnpayCreateUrlRequest {
 
-    @NotNull(message = "Invoice id is required")
     private Long invoiceId;
+    private Long subscriptionId;
+    private String bankCode;
 }

@@ -13,6 +13,10 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
 
     Page<Subscription> findByMemberId(Long memberId, Pageable pageable);
 
+    java.util.List<Subscription> findByMemberIdOrderByIdDesc(Long memberId);
+
+    java.util.List<Subscription> findByMemberIdAndStatus(Long memberId, SubscriptionStatus status);
+
     Optional<Subscription> findFirstByMemberIdAndStatusOrderByCreatedAtDesc(
             Long memberId,
             SubscriptionStatus status
@@ -23,6 +27,10 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
             SubscriptionStatus status
     );
 
+    boolean existsByGymPackageIdAndStatus(Long gymPackageId, SubscriptionStatus status);
+
+    boolean existsByPackageDurationIdAndStatus(Long packageDurationId, SubscriptionStatus status);
+
     Page<Subscription> findByStatus(SubscriptionStatus status, Pageable pageable);
 
     Page<Subscription> findByGymPackageId(Long gymPackageId, Pageable pageable);
@@ -31,5 +39,10 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
             LocalDate date,
             SubscriptionStatus status,
             Pageable pageable
+    );
+
+    java.util.List<Subscription> findByStatusAndEndDateBefore(
+            SubscriptionStatus status,
+            LocalDate date
     );
 }

@@ -63,4 +63,8 @@ public interface CheckInService {
     AdminCheckInQrResponse regenerateGymQrToken(Long id);
 
     AdminCheckInQrResponse toggleGymQrStatus(Long id, Boolean active);
+
+    List<CheckInResponse> getTodayCheckIns();
+
+    CheckInResponse getLatestCheckIn(String memberUsername);
 }
