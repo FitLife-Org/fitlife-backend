@@ -3,6 +3,7 @@ package com.fitlife.ai.service.impl;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.member.entity.Member;
 import com.fitlife.member.repository.MemberRepository;
+import com.fitlife.member.service.impl.CurrentMemberServiceImpl;
 import com.fitlife.user.entity.User;
 import com.fitlife.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;

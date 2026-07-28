@@ -22,7 +22,6 @@ import com.fitlife.ai.service.AiSnapshotService;
 import com.fitlife.ai.service.AiSuggestionPersistenceService;
 import com.fitlife.ai.service.AiSuggestionResponseService;
 import com.fitlife.ai.service.AiUsageService;
-import com.fitlife.ai.service.CurrentMemberService;
 import com.fitlife.bodymetric.repository.BodyMetricRepository;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
