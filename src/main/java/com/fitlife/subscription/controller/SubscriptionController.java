@@ -55,4 +55,34 @@ public class SubscriptionController {
                 .data(subscriptionService.getMySubscriptionById(id))
                 .build();
     }
+
+    @PostMapping("/{id}/renew")
+    public ApiResponse<SubscriptionResponse> renewSubscription(
+            @PathVariable Long id,
+            @RequestBody(required = false) SubscriptionCreateRequest request
+    ) {
+        return ApiResponse.<SubscriptionResponse>builder()
+                .data(subscriptionService.renewSubscription(id))
+                .build();
+    }
+
+    @PostMapping("/{id}/upgrade")
+    public ApiResponse<SubscriptionResponse> upgradeSubscription(
+            @PathVariable Long id,
+            @Valid @RequestBody com.fitlife.subscription.dto.request.UpgradeSubscriptionRequest request
+    ) {
+        return ApiResponse.<SubscriptionResponse>builder()
+                .data(subscriptionService.upgradeSubscription(id, request))
+                .build();
+    }
+
+    @PostMapping("/{id}/change-package")
+    public ApiResponse<SubscriptionResponse> changePackageSameTier(
+            @PathVariable Long id,
+            @Valid @RequestBody com.fitlife.subscription.dto.request.UpgradeSubscriptionRequest request
+    ) {
+        return ApiResponse.<SubscriptionResponse>builder()
+                .data(subscriptionService.changePackageSameTier(id, request))
+                .build();
+    }
 }

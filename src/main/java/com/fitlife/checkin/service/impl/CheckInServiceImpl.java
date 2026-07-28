@@ -32,6 +32,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import com.fitlife.subscription.repository.SubscriptionRepository;
+import com.fitlife.subscription.entity.Subscription;
+import com.fitlife.subscription.enums.SubscriptionStatus;
+
 import java.util.Optional;
 import java.util.UUID;
 
@@ -45,6 +49,7 @@ public class CheckInServiceImpl implements CheckInService {
     private final CheckInQrRepository checkInQrRepository;
     private final MemberRepository memberRepository;
     private final UserRepository userRepository;
+    private final SubscriptionRepository subscriptionRepository;
     private final CheckInMapper checkInMapper;
 
     // =========================================================================
@@ -55,7 +60,7 @@ public class CheckInServiceImpl implements CheckInService {
     @Transactional
     public CheckInResponse memberCheckIn(MemberCheckInRequest request, String memberUsername) {
         CheckInQr qr = checkInQrRepository.findByTokenAndIsActiveTrue(request.getQrToken().trim())
-                .orElseThrow(() -> new AppException(ErrorCode.INVALID_QR_DATA, "Mã QR phòng tập không tồn tại hoặc đã bị khóa"));
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_REQUEST, "Invalid or expired gym QR code"));
 
         User user = userRepository.findByUsernameOrEmail(memberUsername, memberUsername)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -571,34 +576,81 @@ public class CheckInServiceImpl implements CheckInService {
     }
 
     private Subscription validateAndGetActiveSubscription(Long memberId) {
-        List<Subscription> activeSubscriptions = checkInRepository.findActiveSubscriptionsByMemberId(memberId);
-        if (activeSubscriptions.isEmpty()) {
-            throw new AppException(ErrorCode.NO_ACTIVE_SUBSCRIPTION);
-        }
-
         LocalDate today = LocalDate.now();
-        Optional<Subscription> validSubscription = activeSubscriptions.stream()
-                .filter(s -> !s.getStartDate().isAfter(today) && !s.getEndDate().isBefore(today))
-                .findFirst();
-
-        if (validSubscription.isEmpty()) {
-            throw new AppException(ErrorCode.SUBSCRIPTION_EXPIRED);
+        List<Subscription> memberSubs = subscriptionRepository.findByMemberIdOrderByIdDesc(memberId);
+        if (memberSubs.isEmpty()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "No active subscription found for check-in");
         }
 
-        return validSubscription.get();
+        Subscription latest = memberSubs.get(0);
+
+        if (latest.getStatus() == SubscriptionStatus.ACTIVE && latest.getEndDate().isBefore(today)) {
+            latest.setStatus(SubscriptionStatus.EXPIRED);
+            subscriptionRepository.save(latest);
+        }
+
+        if (latest.getStatus() == SubscriptionStatus.EXPIRED) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Your subscription has expired. Please renew to check in.");
+        }
+
+        if (latest.getStatus() == SubscriptionStatus.SUSPENDED || latest.getStatus() == SubscriptionStatus.PAUSED) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Your subscription is currently suspended");
+        }
+
+        if (latest.getStatus() == SubscriptionStatus.CANCELLED) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Your subscription is currently suspended");
+        }
+
+        if (latest.getStatus() != SubscriptionStatus.ACTIVE) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "No active subscription found for check-in");
+        }
+
+        if (latest.getStartDate().isAfter(today)) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "No active subscription found for check-in");
+        }
+
+        return latest;
     }
 
     private void validateDailyCheckInUniqueness(Long memberId) {
-        LocalDate today = LocalDate.now();
-        LocalDateTime startOfDay = today.atStartOfDay();
-        LocalDateTime endOfDay = today.atTime(LocalTime.MAX);
+        LocalDateTime fiveMinutesAgo = LocalDateTime.now().minusMinutes(5);
+        LocalDateTime now = LocalDateTime.now();
 
-        boolean alreadyCheckedIn = checkInRepository.existsByMemberIdAndCheckInTimeBetweenAndStatusAndDeletedFalse(
-                memberId, startOfDay, endOfDay, CheckInStatus.SUCCESS
+        boolean recentlyCheckedIn = checkInRepository.existsByMemberIdAndCheckInTimeBetweenAndStatusAndDeletedFalse(
+                memberId, fiveMinutesAgo, now, CheckInStatus.SUCCESS
         );
 
-        if (alreadyCheckedIn) {
-            throw new AppException(ErrorCode.ALREADY_CHECKED_IN_TODAY);
+        if (recentlyCheckedIn) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "You have already checked in recently. Please wait 5 minutes.");
         }
+    }
+
+    @Override
+    public List<CheckInResponse> getTodayCheckIns() {
+        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+        LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
+        Page<CheckIn> checkInPage = checkInRepository.searchCheckIns(
+                null, null, startOfDay, endOfDay, null, false, PageRequest.of(0, 1000, Sort.by(Sort.Direction.DESC, "checkInTime"))
+        );
+        return checkInPage.getContent().stream()
+                .map(checkInMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    public CheckInResponse getLatestCheckIn(String memberUsername) {
+        User user = userRepository.findByUsernameOrEmail(memberUsername, memberUsername)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        Member member = memberRepository.findByUserIdAndIsDeletedFalse(user.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_FOUND, "Member profile not found for user"));
+
+        Page<CheckIn> checkInPage = checkInRepository.findByMemberIdAndDeletedFalseOrderByCheckInTimeDesc(
+                member.getId(), PageRequest.of(0, 1)
+        );
+        return checkInPage.getContent().stream()
+                .findFirst()
+                .map(checkInMapper::toResponse)
+                .orElse(null);
     }
 }

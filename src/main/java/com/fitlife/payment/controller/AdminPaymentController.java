@@ -28,6 +28,8 @@ public class AdminPaymentController {
             @RequestParam(required = false) PaymentMethod method,
             @RequestParam(required = false) Long memberId,
             @RequestParam(required = false) Long invoiceId,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate fromDate,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate toDate,
             Pageable pageable
     ) {
         return ApiResponse.<PageResponse<PaymentResponse>>builder()
@@ -36,8 +38,19 @@ public class AdminPaymentController {
                         method,
                         memberId,
                         invoiceId,
+                        fromDate,
+                        toDate,
                         pageable
                 ))
+                .build();
+    }
+
+    @PostMapping("/offline")
+    public ApiResponse<PaymentDetailResponse> offlinePayment(
+            @Valid @RequestBody com.fitlife.payment.dto.request.OfflinePaymentRequest request
+    ) {
+        return ApiResponse.<PaymentDetailResponse>builder()
+                .data(paymentService.offlinePayment(request))
                 .build();
     }
 

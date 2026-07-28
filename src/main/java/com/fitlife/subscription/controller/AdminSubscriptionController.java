@@ -45,4 +45,14 @@ public class AdminSubscriptionController {
                 .data(subscriptionService.expireSubscription(id))
                 .build();
     }
+
+    @PatchMapping("/{id}/status")
+    public ApiResponse<SubscriptionResponse> updateSubscriptionStatus(
+            @PathVariable Long id,
+            @jakarta.validation.Valid @RequestBody com.fitlife.subscription.dto.request.SubscriptionStatusUpdateRequest request
+    ) {
+        return ApiResponse.<SubscriptionResponse>builder()
+                .data(subscriptionService.updateSubscriptionStatusByAdmin(id, request))
+                .build();
+    }
 }

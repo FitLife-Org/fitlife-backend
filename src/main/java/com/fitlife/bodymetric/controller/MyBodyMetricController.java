@@ -5,6 +5,7 @@ import com.fitlife.bodymetric.dto.request.BodyMetricCreateRequest;
 import com.fitlife.bodymetric.service.BodyMetricService;
 import com.fitlife.common.response.ApiResponse;
 import com.fitlife.common.response.PageResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;

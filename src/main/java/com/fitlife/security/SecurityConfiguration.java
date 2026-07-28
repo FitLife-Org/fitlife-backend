@@ -136,10 +136,20 @@ public class SecurityConfiguration {
                                 "/**"
                         ).permitAll()
 
+                        // Member check-in endpoints
+                        .requestMatchers(
+                                HttpMethod.POST, "/check-ins/scan-gym-qr"
+                        ).hasRole("MEMBER")
+                        .requestMatchers(
+                                "/check-ins/me/**"
+                        ).hasRole("MEMBER")
+
                         // Admin / Staff operations
                         .requestMatchers(
                                 "/admin/payments/**",
-                                "/admin/equipment/**"
+                                "/admin/equipment/**",
+                                "/admin/subscriptions/**",
+                                "/staff/**"
                         ).hasAnyRole(
                                 "ADMIN",
                                 "STAFF"

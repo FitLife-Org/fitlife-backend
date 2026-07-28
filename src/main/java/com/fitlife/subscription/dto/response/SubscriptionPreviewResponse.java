@@ -20,4 +20,6 @@ public class SubscriptionPreviewResponse {
     private BigDecimal discountAmount;
     private BigDecimal finalPrice;
     private Integer ptSessionsTotal;
+    private java.time.LocalDate startDate;
+    private java.time.LocalDate endDate;
 }
