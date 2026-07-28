@@ -8,6 +8,8 @@ import lombok.Setter;
 @Setter
 public class RefreshTokenRequest {
 
-    @NotBlank(message = "Refresh token is required")
+    @NotBlank(
+            message = "Refresh token is required"
+    )
     private String refreshToken;
 }

@@ -10,20 +10,29 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 public interface RefreshTokenRepository
-        extends JpaRepository<RefreshToken, Long> {
+        extends JpaRepository<
+        RefreshToken,
+        Long
+        > {
 
-    Optional<RefreshToken> findByTokenHash(String tokenHash);
+    Optional<RefreshToken>
+    findByTokenHash(
+            String tokenHash
+    );
 
     @Modifying
     @Query("""
-            UPDATE RefreshToken r
-            SET r.revoked = true,
-                r.revokedAt = :revokedAt
-            WHERE r.user.id = :userId
-              AND r.revoked = false
+            UPDATE RefreshToken token
+            SET token.revoked = true,
+                token.revokedAt = :revokedAt
+            WHERE token.user.id = :userId
+              AND token.revoked = false
             """)
     int revokeAllByUserId(
-            @Param("userId") Long userId,
-            @Param("revokedAt") LocalDateTime revokedAt
+            @Param("userId")
+            Long userId,
+
+            @Param("revokedAt")
+            LocalDateTime revokedAt
     );
 }

@@ -17,6 +17,7 @@ import com.fitlife.member.enums.MemberStatus;
 import com.fitlife.member.repository.MemberRepository;
 import com.fitlife.security.CustomUserDetails;
 import com.fitlife.security.JwtService;
+import com.fitlife.security.service.CurrentUserService;
 import com.fitlife.user.entity.Role;
 import com.fitlife.user.entity.User;
 import com.fitlife.user.enums.AuthProvider;
@@ -57,6 +58,9 @@ public class AuthServiceImpl implements AuthService {
 
     private final AuthMapper authMapper;
     private final GoogleTokenVerifierService googleTokenVerifierService;
+
+    private final CurrentUserService
+            currentUserService;
 
     // =========================================================
     // REGISTER
@@ -206,79 +210,163 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public AuthResponse login(LoginRequest request) {
-        String identifier = request.getIdentifier()
-                .trim()
-                .toLowerCase();
-
-        /*
-         * Kiểm tra trước authenticationManager để có thể trả
-         * đúng lỗi EMAIL_NOT_VERIFIED thay vì chỉ trả bad credentials.
-         */
-        User existingUser = findUserByIdentifier(identifier);
-
-        validateUserCanLogin(existingUser);
-
-        Authentication authentication =
-                authenticationManager.authenticate(
-                        new UsernamePasswordAuthenticationToken(
-                                identifier,
-                                request.getPassword()
-                        )
+    public AuthResponse login(
+            LoginRequest request
+    ) {
+        String identifier =
+                normalizeIdentifier(
+                        request.getIdentifier()
                 );
 
-        CustomUserDetails userDetails =
-                (CustomUserDetails) authentication.getPrincipal();
+        User existingUser =
+                findUserByIdentifier(
+                        identifier
+                );
 
-        User user = userDetails.getUser();
-
-        String accessToken =
-                jwtService.generateToken(userDetails);
-
-        String refreshToken =
-                refreshTokenService.create(user);
-
-        return authMapper.toAuthResponse(
-                user,
-                accessToken,
-                refreshToken
+        validateUserCanLogin(
+                existingUser
         );
-    }
 
-    private User findUserByIdentifier(String identifier) {
-        return userRepository.findByEmail(identifier)
-                .or(() -> userRepository.findByUsername(identifier))
-                .orElseThrow(() ->
-                        new AppException(
-                                ErrorCode.INVALID_CREDENTIALS
-                        )
-                );
-    }
+        Authentication authentication;
 
-    private void validateUserCanLogin(User user) {
-        if (Boolean.TRUE.equals(user.getIsDeleted())) {
+        try {
+            authentication =
+                    authenticationManager
+                            .authenticate(
+                                    new UsernamePasswordAuthenticationToken(
+                                            identifier,
+                                            request.getPassword()
+                                    )
+                            );
+        } catch (
+                org.springframework.security
+                        .core
+                        .AuthenticationException exception
+        ) {
             throw new AppException(
                     ErrorCode.INVALID_CREDENTIALS
             );
         }
 
-        if (!Boolean.TRUE.equals(user.getEmailVerified())) {
+        Object principal =
+                authentication
+                        .getPrincipal();
+
+        if (
+                !(principal
+                        instanceof CustomUserDetails userDetails)
+        ) {
+            throw new AppException(
+                    ErrorCode.INVALID_CREDENTIALS
+            );
+        }
+
+        User user =
+                userDetails.getUser();
+
+        validateUserCanLogin(user);
+
+        String accessToken =
+                jwtService
+                        .generateToken(
+                                userDetails
+                        );
+
+        String refreshToken =
+                refreshTokenService
+                        .create(user);
+
+        long expiresInSeconds =
+                jwtService
+                        .getExpirationMs()
+                        / 1000L;
+
+        return authMapper
+                .toAuthResponse(
+                        user,
+                        accessToken,
+                        refreshToken,
+                        expiresInSeconds
+                );
+    }
+
+    private User findUserByIdentifier(
+            String identifier
+    ) {
+        return userRepository
+                .findByEmail(identifier)
+                .or(() ->
+                        userRepository
+                                .findByUsername(
+                                        identifier
+                                )
+                )
+                .orElseThrow(() ->
+                        new AppException(
+                                ErrorCode
+                                        .INVALID_CREDENTIALS
+                        )
+                );
+    }
+
+    private void validateUserCanLogin(
+            User user
+    ) {
+        if (
+                user == null
+                        || Boolean.TRUE.equals(
+                        user.getIsDeleted()
+                )
+        ) {
+            throw new AppException(
+                    ErrorCode.INVALID_CREDENTIALS
+            );
+        }
+
+        if (
+                !Boolean.TRUE.equals(
+                        user.getEmailVerified()
+                )
+        ) {
             throw new AppException(
                     ErrorCode.EMAIL_NOT_VERIFIED
             );
         }
 
-        if (user.getStatus() == UserStatus.LOCKED) {
+        if (
+                user.getStatus()
+                        == UserStatus.LOCKED
+        ) {
             throw new AppException(
                     ErrorCode.ACCOUNT_LOCKED
             );
         }
 
-        if (user.getStatus() != UserStatus.ACTIVE) {
+        if (
+                user.getStatus()
+                        != UserStatus.ACTIVE
+        ) {
             throw new AppException(
                     ErrorCode.ACCOUNT_INACTIVE
             );
         }
+    }
+
+    private String normalizeIdentifier(
+            String identifier
+    ) {
+        if (
+                identifier == null
+                        || identifier.isBlank()
+        ) {
+            throw new AppException(
+                    ErrorCode.INVALID_CREDENTIALS
+            );
+        }
+
+        return identifier
+                .trim()
+                .toLowerCase();
     }
 
     // =========================================================
@@ -290,12 +378,20 @@ public class AuthServiceImpl implements AuthService {
     public AuthResponse refreshToken(
             RefreshTokenRequest request
     ) {
-        RefreshToken refreshTokenEntity =
-                refreshTokenService.validate(
-                        request.getRefreshToken()
-                );
+        String rawRefreshToken =
+                request
+                        .getRefreshToken()
+                        .trim();
 
-        User user = refreshTokenEntity.getUser();
+        RefreshToken refreshTokenEntity =
+                refreshTokenService
+                        .validate(
+                                rawRefreshToken
+                        );
+
+        User user =
+                refreshTokenEntity
+                        .getUser();
 
         validateUserCanLogin(user);
 
@@ -303,17 +399,36 @@ public class AuthServiceImpl implements AuthService {
                 new CustomUserDetails(user);
 
         String newAccessToken =
-                jwtService.generateToken(userDetails);
+                jwtService
+                        .generateToken(
+                                userDetails
+                        );
 
         /*
-         * MVP: giữ nguyên refresh token hiện tại.
-         * Sau này có thể bổ sung refresh-token rotation.
+         * Refresh-token rotation:
+         * token cũ bị revoke và tạo token mới.
          */
-        return authMapper.toAuthResponse(
-                user,
-                newAccessToken,
-                request.getRefreshToken()
-        );
+        refreshTokenService
+                .revoke(
+                        rawRefreshToken
+                );
+
+        String newRefreshToken =
+                refreshTokenService
+                        .create(user);
+
+        long expiresInSeconds =
+                jwtService
+                        .getExpirationMs()
+                        / 1000L;
+
+        return authMapper
+                .toAuthResponse(
+                        user,
+                        newAccessToken,
+                        newRefreshToken,
+                        expiresInSeconds
+                );
     }
 
     // =========================================================
@@ -322,25 +437,26 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public void logout(LogoutRequest request) {
-        /*
-         * Logout nên idempotent.
-         * Service revoke có thể bỏ qua nếu token đã revoked
-         * hoặc không còn tồn tại.
-         */
-        refreshTokenService.revoke(
-                request.getRefreshToken()
-        );
+    public void logout(
+            LogoutRequest request
+    ) {
+        refreshTokenService
+                .revoke(
+                        request.getRefreshToken()
+                );
     }
 
     @Override
     @Transactional
     public void logoutAll() {
-        User currentUser = getCurrentUser();
+        Long currentUserId =
+                currentUserService
+                        .getCurrentUserId();
 
-        refreshTokenService.revokeAllByUserId(
-                currentUser.getId()
-        );
+        refreshTokenService
+                .revokeAllByUserId(
+                        currentUserId
+                );
     }
 
     // =========================================================
