@@ -23,134 +23,364 @@ import java.time.LocalDateTime;
 public class EmailVerificationServiceImpl
         implements EmailVerificationService {
 
-    private final EmailVerificationTokenRepository tokenRepository;
-    private final UserRepository userRepository;
-    private final EmailService emailService;
-    private final AuthProperties authProperties;
+    private static final String DEFAULT_DISPLAY_NAME =
+            "bạn";
+
+    private static final String VERIFICATION_EMAIL_SUBJECT =
+            "Xác minh tài khoản FitLife";
+
+    private final EmailVerificationTokenRepository
+            tokenRepository;
+
+    private final UserRepository
+            userRepository;
+
+    private final EmailService
+            emailService;
+
+    private final AuthProperties
+            authProperties;
 
     @Override
-    public void createAndSendVerificationToken(User user) {
-        tokenRepository.deleteAllByUserIdAndUsedFalse(
-                user.getId()
-        );
+    public void createAndSendVerificationToken(
+            User user
+    ) {
+        validateUserForVerification(user);
+
+        LocalDateTime now =
+                LocalDateTime.now();
+
+        /*
+         * Mỗi user chỉ nên có một token chưa sử dụng.
+         */
+        tokenRepository
+                .deleteAllByUserIdAndUsedFalse(
+                        user.getId()
+                );
 
         String rawToken =
-                AuthTokenUtils.generateSecureToken();
+                AuthTokenUtils
+                        .generateSecureToken();
 
         String tokenHash =
-                AuthTokenUtils.hashToken(rawToken);
+                AuthTokenUtils
+                        .hashToken(rawToken);
 
-        EmailVerificationToken token =
-                EmailVerificationToken.builder()
+        EmailVerificationToken verificationToken =
+                EmailVerificationToken
+                        .builder()
                         .user(user)
                         .tokenHash(tokenHash)
                         .expiresAt(
-                                LocalDateTime.now().plusHours(
-                                        authProperties
-                                                .getEmailVerificationExpirationHours()
+                                now.plusHours(
+                                        getExpirationHours()
                                 )
                         )
                         .used(false)
+                        .usedAt(null)
                         .build();
 
-        tokenRepository.save(token);
+        tokenRepository.save(
+                verificationToken
+        );
 
         String verificationLink =
-                authProperties.getFrontendVerificationUrl()
-                        + "?token="
-                        + rawToken;
+                buildVerificationLink(
+                        rawToken
+                );
 
         String displayName =
-                user.getFullName() == null
-                        || user.getFullName().isBlank()
-                        ? "bạn"
-                        : user.getFullName();
+                resolveDisplayName(user);
 
         String htmlContent =
                 buildVerificationEmail(
                         displayName,
-                        verificationLink
+                        verificationLink,
+                        getExpirationHours()
                 );
 
         emailService.sendHtmlMail(
                 user.getEmail(),
-                "Xác minh tài khoản FitLife",
+                VERIFICATION_EMAIL_SUBJECT,
                 htmlContent
         );
     }
 
     @Override
-    public void verifyEmail(String rawToken) {
-        if (rawToken == null || rawToken.isBlank()) {
-            throw new AppException(
-                    ErrorCode.INVALID_EMAIL_VERIFICATION_TOKEN
-            );
-        }
+    public void verifyEmail(
+            String rawToken
+    ) {
+        String normalizedToken =
+                normalizeRawToken(rawToken);
 
         String tokenHash =
-                AuthTokenUtils.hashToken(rawToken);
+                AuthTokenUtils
+                        .hashToken(
+                                normalizedToken
+                        );
 
         EmailVerificationToken verificationToken =
                 tokenRepository
-                        .findByTokenHash(tokenHash)
+                        .findByTokenHash(
+                                tokenHash
+                        )
                         .orElseThrow(() ->
                                 new AppException(
-                                        ErrorCode.INVALID_EMAIL_VERIFICATION_TOKEN
+                                        ErrorCode
+                                                .INVALID_EMAIL_VERIFICATION_TOKEN
                                 )
                         );
 
-        User user = verificationToken.getUser();
+        User user =
+                verificationToken
+                        .getUser();
 
-        if (Boolean.TRUE.equals(user.getEmailVerified())) {
+        validateVerificationUser(user);
+
+        /*
+         * Verify email là operation idempotent.
+         *
+         * Khi user đã được xác minh, gọi lại endpoint vẫn được
+         * coi là thành công thay vì trả lỗi.
+         */
+        if (Boolean.TRUE.equals(
+                user.getEmailVerified()
+        )) {
             return;
         }
 
-        if (Boolean.TRUE.equals(verificationToken.getUsed())) {
+        if (Boolean.TRUE.equals(
+                verificationToken.getUsed()
+        )) {
             throw new AppException(
-                    ErrorCode.EMAIL_VERIFICATION_TOKEN_USED
+                    ErrorCode
+                            .EMAIL_VERIFICATION_TOKEN_USED
             );
         }
 
-        if (verificationToken.getExpiresAt()
-                .isBefore(LocalDateTime.now())) {
+        LocalDateTime now =
+                LocalDateTime.now();
+
+        LocalDateTime expiresAt =
+                verificationToken
+                        .getExpiresAt();
+
+        if (
+                expiresAt == null
+                        || !expiresAt.isAfter(now)
+        ) {
             throw new AppException(
-                    ErrorCode.EMAIL_VERIFICATION_TOKEN_EXPIRED
+                    ErrorCode
+                            .EMAIL_VERIFICATION_TOKEN_EXPIRED
             );
         }
 
         user.setEmailVerified(true);
 
-        if (user.getStatus() == UserStatus.PENDING) {
-            user.setStatus(UserStatus.ACTIVE);
+        if (
+                user.getStatus()
+                        == UserStatus.PENDING
+        ) {
+            user.setStatus(
+                    UserStatus.ACTIVE
+            );
         }
 
         verificationToken.setUsed(true);
-        verificationToken.setUsedAt(LocalDateTime.now());
+        verificationToken.setUsedAt(now);
 
         userRepository.save(user);
-        tokenRepository.save(verificationToken);
+
+        tokenRepository.save(
+                verificationToken
+        );
     }
 
     @Override
-    public void resendVerificationEmail(String email) {
-        User user = userRepository
-                .findByEmail(email)
-                .orElse(null);
+    public void resendVerificationEmail(
+            String email
+    ) {
+        String normalizedEmail =
+                normalizeEmail(email);
 
-        if (user == null) {
+        if (normalizedEmail == null) {
             return;
         }
 
-        if (Boolean.TRUE.equals(user.getEmailVerified())) {
-            return;
+        /*
+         * Không ném USER_NOT_FOUND nhằm tránh lộ email có tồn tại
+         * trong hệ thống hay không.
+         */
+        userRepository
+                .findByEmail(
+                        normalizedEmail
+                )
+                .filter(user ->
+                        !Boolean.TRUE.equals(
+                                user.getIsDeleted()
+                        )
+                )
+                .filter(user ->
+                        !Boolean.TRUE.equals(
+                                user.getEmailVerified()
+                        )
+                )
+                .filter(user ->
+                        user.getStatus()
+                                == UserStatus.PENDING
+                )
+                .ifPresent(
+                        this::createAndSendVerificationToken
+                );
+    }
+
+    private void validateUserForVerification(
+            User user
+    ) {
+        if (
+                user == null
+                        || user.getId() == null
+                        || user.getEmail() == null
+                        || user.getEmail().isBlank()
+        ) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
         }
 
-        createAndSendVerificationToken(user);
+        if (Boolean.TRUE.equals(
+                user.getIsDeleted()
+        )) {
+            throw new AppException(
+                    ErrorCode.ACCOUNT_DELETED
+            );
+        }
+
+        /*
+         * User đã xác minh không cần tạo thêm token.
+         */
+        if (Boolean.TRUE.equals(
+                user.getEmailVerified()
+        )) {
+            return;
+        }
+    }
+
+    private void validateVerificationUser(
+            User user
+    ) {
+        if (
+                user == null
+                        || user.getId() == null
+        ) {
+            throw new AppException(
+                    ErrorCode
+                            .INVALID_EMAIL_VERIFICATION_TOKEN
+            );
+        }
+
+        if (Boolean.TRUE.equals(
+                user.getIsDeleted()
+        )) {
+            throw new AppException(
+                    ErrorCode.ACCOUNT_DELETED
+            );
+        }
+    }
+
+    private String normalizeRawToken(
+            String rawToken
+    ) {
+        if (
+                rawToken == null
+                        || rawToken.isBlank()
+        ) {
+            throw new AppException(
+                    ErrorCode
+                            .INVALID_EMAIL_VERIFICATION_TOKEN
+            );
+        }
+
+        return rawToken.trim();
+    }
+
+    private String normalizeEmail(
+            String email
+    ) {
+        if (
+                email == null
+                        || email.isBlank()
+        ) {
+            return null;
+        }
+
+        return email
+                .trim()
+                .toLowerCase();
+    }
+
+    private String resolveDisplayName(
+            User user
+    ) {
+        if (
+                user.getFullName() == null
+                        || user.getFullName().isBlank()
+        ) {
+            return DEFAULT_DISPLAY_NAME;
+        }
+
+        return user
+                .getFullName()
+                .trim();
+    }
+
+    private long getExpirationHours() {
+        long expirationHours =
+                authProperties
+                        .getEmailVerificationExpirationHours();
+
+        if (expirationHours <= 0) {
+            throw new IllegalStateException(
+                    "Email verification expiration hours must be greater than zero"
+            );
+        }
+
+        return expirationHours;
+    }
+
+    private String buildVerificationLink(
+            String rawToken
+    ) {
+        String frontendVerificationUrl =
+                authProperties
+                        .getFrontendVerificationUrl();
+
+        if (
+                frontendVerificationUrl == null
+                        || frontendVerificationUrl.isBlank()
+        ) {
+            throw new IllegalStateException(
+                    "Frontend verification URL is not configured"
+            );
+        }
+
+        String separator =
+                frontendVerificationUrl
+                        .contains("?")
+                        ? "&"
+                        : "?";
+
+        return frontendVerificationUrl
+                .trim()
+                + separator
+                + "token="
+                + rawToken;
     }
 
     private String buildVerificationEmail(
             String displayName,
-            String verificationLink
+            String verificationLink,
+            long expirationHours
     ) {
         return """
                 <!DOCTYPE html>
@@ -160,6 +390,7 @@ public class EmailVerificationServiceImpl
                     <meta name="viewport"
                           content="width=device-width, initial-scale=1.0">
                 </head>
+
                 <body style="
                     margin:0;
                     padding:0;
@@ -173,6 +404,7 @@ public class EmailVerificationServiceImpl
                         <tr>
                             <td align="center"
                                 style="padding:40px 16px;">
+
                                 <table width="100%%"
                                        cellpadding="0"
                                        cellspacing="0"
@@ -183,6 +415,7 @@ public class EmailVerificationServiceImpl
                                            overflow:hidden;
                                            box-shadow:0 10px 30px rgba(15,23,42,.08);
                                        ">
+
                                     <tr>
                                         <td style="
                                             padding:30px;
@@ -193,6 +426,7 @@ public class EmailVerificationServiceImpl
                                             <h1 style="margin:0;">
                                                 FitLife
                                             </h1>
+
                                             <p style="margin:8px 0 0;">
                                                 Xác minh tài khoản
                                             </p>
@@ -213,7 +447,7 @@ public class EmailVerificationServiceImpl
                                                 Cảm ơn bạn đã đăng ký
                                                 tài khoản FitLife.
                                                 Vui lòng nhấn nút dưới đây
-                                                để xác minh email.
+                                                để xác minh địa chỉ email.
                                             </p>
 
                                             <div style="
@@ -239,7 +473,7 @@ public class EmailVerificationServiceImpl
                                                 line-height:1.7;
                                             ">
                                                 Liên kết có hiệu lực
-                                                trong 24 giờ.
+                                                trong %d giờ.
                                             </p>
 
                                             <p style="
@@ -247,7 +481,7 @@ public class EmailVerificationServiceImpl
                                                 font-size:13px;
                                             ">
                                                 Nếu nút không hoạt động,
-                                                sao chép liên kết sau:
+                                                hãy sao chép liên kết sau:
                                             </p>
 
                                             <p style="
@@ -285,6 +519,7 @@ public class EmailVerificationServiceImpl
                 """.formatted(
                 displayName,
                 verificationLink,
+                expirationHours,
                 verificationLink
         );
     }

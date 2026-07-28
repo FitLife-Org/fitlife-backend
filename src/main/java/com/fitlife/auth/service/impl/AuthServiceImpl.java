@@ -64,44 +64,71 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public AuthResponse register(RegisterRequest request) {
+    public AuthResponse register(
+            RegisterRequest request
+    ) {
         validateRegisterRequest(request);
 
-        Role memberRole = roleRepository.findByCode(DEFAULT_MEMBER_ROLE)
-                .orElseThrow(() ->
-                        new AppException(ErrorCode.ROLE_NOT_FOUND)
+        String username =
+                request.getUsername()
+                        .trim()
+                        .toLowerCase();
+
+        String email =
+                request.getEmail()
+                        .trim()
+                        .toLowerCase();
+
+        String fullName =
+                request.getFullName()
+                        .trim();
+
+        String phone =
+                normalizeNullable(
+                        request.getPhone()
                 );
 
-        User user = User.builder()
-                .username(request.getUsername().trim().toLowerCase())
-                .email(request.getEmail().trim().toLowerCase())
-                .passwordHash(
-                        passwordEncoder.encode(request.getPassword())
-                )
-                .fullName(request.getFullName())
-                .phone(normalizeNullable(request.getPhone()))
+        Role memberRole =
+                roleRepository
+                        .findByCode(DEFAULT_MEMBER_ROLE)
+                        .orElseThrow(() ->
+                                new AppException(
+                                        ErrorCode.ROLE_NOT_FOUND
+                                )
+                        );
 
-                // Chưa verify nên chưa cho login.
-                .status(UserStatus.PENDING)
-                .authProvider(AuthProvider.LOCAL)
-                .providerId(null)
-                .emailVerified(false)
-                .isDeleted(false)
-                .roles(new HashSet<>())
-                .build();
+        User user =
+                User.builder()
+                        .username(username)
+                        .email(email)
+                        .passwordHash(
+                                passwordEncoder.encode(
+                                        request.getPassword()
+                                )
+                        )
+                        .fullName(fullName)
+                        .phone(phone)
+                        .status(UserStatus.PENDING)
+                        .authProvider(AuthProvider.LOCAL)
+                        .providerId(null)
+                        .emailVerified(false)
+                        .isDeleted(false)
+                        .roles(new HashSet<>())
+                        .build();
 
         user.getRoles().add(memberRole);
 
-        User savedUser = userRepository.save(user);
+        User savedUser =
+                userRepository.save(user);
 
-        createMemberProfileForRegisteredUser(savedUser);
+        createMemberProfileForRegisteredUser(
+                savedUser
+        );
 
-        /*
-         * Sinh verification token và gửi email.
-         * Không sinh access token ở bước register.
-         */
         emailVerificationService
-                .createAndSendVerificationToken(savedUser);
+                .createAndSendVerificationToken(
+                        savedUser
+                );
 
         return authMapper.toAuthResponse(
                 savedUser,
@@ -128,25 +155,32 @@ public class AuthServiceImpl implements AuthService {
                         .trim()
                         .toLowerCase();
 
-        if (userRepository.existsByEmail(email)) {
-            throw new AppException(
-                    ErrorCode.EMAIL_ALREADY_EXISTS
-            );
-        }
-
-        if (userRepository.existsByUsername(username)) {
-            throw new AppException(
-                    ErrorCode.USERNAME_ALREADY_EXISTS
-            );
-        }
-
         String phone =
                 normalizeNullable(
                         request.getPhone()
                 );
 
-        if (phone != null
-                && userRepository.existsByPhone(phone)) {
+        if (userRepository.existsByEmail(
+                email
+        )) {
+            throw new AppException(
+                    ErrorCode.EMAIL_ALREADY_EXISTS
+            );
+        }
+
+        if (userRepository.existsByUsername(
+                username
+        )) {
+            throw new AppException(
+                    ErrorCode.USERNAME_ALREADY_EXISTS
+            );
+        }
+
+        if (
+                phone != null
+                        && userRepository
+                        .existsByPhone(phone)
+        ) {
             throw new AppException(
                     ErrorCode.PHONE_ALREADY_EXISTS
             );
@@ -315,8 +349,11 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public void verifyEmail(String token) {
-        emailVerificationService.verifyEmail(token);
+    public void verifyEmail(
+            String token
+    ) {
+        emailVerificationService
+                .verifyEmail(token);
     }
 
     @Override
@@ -324,9 +361,10 @@ public class AuthServiceImpl implements AuthService {
     public void resendVerificationEmail(
             ResendVerificationEmailRequest request
     ) {
-        emailVerificationService.resendVerificationEmail(
-                request.getEmail().trim().toLowerCase()
-        );
+        emailVerificationService
+                .resendVerificationEmail(
+                        request.getEmail()
+                );
     }
 
     // =========================================================
@@ -396,46 +434,69 @@ public class AuthServiceImpl implements AuthService {
     public void resetPassword(
             ResetPasswordRequest request
     ) {
-        validatePasswordConfirmation(
-                request.getNewPassword(),
-                request.getConfirmPassword()
-        );
-
-        User user = userRepository
-                .findByEmail(
-                        request.getEmail()
-                                .trim()
-                                .toLowerCase()
-                )
-                .orElseThrow(() ->
-                        new AppException(
-                                ErrorCode.USER_NOT_FOUND
+        if (
+                !request.getNewPassword()
+                        .equals(
+                                request.getConfirmPassword()
                         )
-                );
+        ) {
+            throw new AppException(
+                    ErrorCode
+                            .PASSWORD_CONFIRM_NOT_MATCH
+            );
+        }
 
-        if (user.getResetToken() == null
-                || !user.getResetToken()
-                .equals(request.getOtp())) {
+        String email =
+                request.getEmail()
+                        .trim()
+                        .toLowerCase();
+
+        User user =
+                userRepository
+                        .findByEmail(email)
+                        .orElseThrow(() ->
+                                new AppException(
+                                        ErrorCode
+                                                .RESET_TOKEN_INVALID
+                                )
+                        );
+
+        if (
+                user.getResetToken() == null
+                        || !user.getResetToken()
+                        .equals(
+                                request.getOtp()
+                        )
+        ) {
             throw new AppException(
                     ErrorCode.OTP_INVALID
             );
         }
 
-        if (user.getResetTokenExpiry() == null
-                || user.getResetTokenExpiry()
-                .isBefore(LocalDateTime.now())) {
+        LocalDateTime resetTokenExpiry =
+                user.getResetTokenExpiry();
+
+        if (
+                resetTokenExpiry == null
+                        || !resetTokenExpiry.isAfter(
+                        LocalDateTime.now()
+                )
+        ) {
             throw new AppException(
                     ErrorCode.OTP_EXPIRED
             );
         }
 
-        if (user.getPasswordHash() != null
-                && passwordEncoder.matches(
-                request.getNewPassword(),
-                user.getPasswordHash()
-        )) {
+        if (
+                user.getPasswordHash() != null
+                        && passwordEncoder.matches(
+                        request.getNewPassword(),
+                        user.getPasswordHash()
+                )
+        ) {
             throw new AppException(
-                    ErrorCode.NEW_PASSWORD_SAME_AS_OLD
+                    ErrorCode
+                            .NEW_PASSWORD_SAME_AS_OLD
             );
         }
 
@@ -450,9 +511,10 @@ public class AuthServiceImpl implements AuthService {
 
         userRepository.save(user);
 
-        refreshTokenService.revokeAllByUserId(
-                user.getId()
-        );
+        refreshTokenService
+                .revokeAllByUserId(
+                        user.getId()
+                );
     }
 
     // =========================================================
@@ -650,34 +712,44 @@ public class AuthServiceImpl implements AuthService {
     private void createMemberProfileForRegisteredUser(
             User user
     ) {
-        if (user == null || user.getId() == null) {
+        if (
+                user == null
+                        || user.getId() == null
+        ) {
             return;
         }
 
-        if (memberRepository.existsByUserId(
-                user.getId()
-        )) {
-            return;
-        }
-
-        Member member = Member.builder()
-                .user(user)
-                .memberCode(
-                        generateMemberCode(
-                                user.getId()
-                        )
+        if (
+                memberRepository.existsByUserId(
+                        user.getId()
                 )
-                .gender(null)
-                .dateOfBirth(null)
-                .address(null)
-                .emergencyContactName(null)
-                .emergencyContactPhone(null)
-                .joinDate(LocalDate.now())
-                .fitnessGoal(null)
-                .healthNote(null)
-                .status(MemberStatus.ACTIVE)
-                .isDeleted(false)
-                .build();
+        ) {
+            return;
+        }
+
+        Member member =
+                Member.builder()
+                        .user(user)
+                        .memberCode(
+                                generateMemberCode(
+                                        user.getId()
+                                )
+                        )
+                        .gender(null)
+                        .dateOfBirth(null)
+                        .address(null)
+                        .emergencyContactName(null)
+                        .emergencyContactPhone(null)
+                        .joinDate(
+                                LocalDate.now()
+                        )
+                        .fitnessGoal(null)
+                        .healthNote(null)
+                        .status(
+                                MemberStatus.ACTIVE
+                        )
+                        .isDeleted(false)
+                        .build();
 
         memberRepository.save(member);
     }
