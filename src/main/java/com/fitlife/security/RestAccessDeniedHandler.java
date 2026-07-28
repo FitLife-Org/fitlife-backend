@@ -27,6 +27,11 @@ public class RestAccessDeniedHandler
             HttpServletResponse response,
             AccessDeniedException exception
     ) throws IOException {
+
+        if (response.isCommitted()) {
+            return;
+        }
+
         ErrorCode errorCode =
                 ErrorCode.FORBIDDEN;
 
@@ -37,7 +42,9 @@ public class RestAccessDeniedHandler
                 );
 
         response.setStatus(
-                errorCode.getHttpStatus().value()
+                errorCode
+                        .getHttpStatus()
+                        .value()
         );
 
         response.setCharacterEncoding(
@@ -46,6 +53,16 @@ public class RestAccessDeniedHandler
 
         response.setContentType(
                 MediaType.APPLICATION_JSON_VALUE
+        );
+
+        response.setHeader(
+                "Cache-Control",
+                "no-store"
+        );
+
+        response.setHeader(
+                "Pragma",
+                "no-cache"
         );
 
         objectMapper.writeValue(

@@ -27,6 +27,11 @@ public class RestAuthenticationEntryPoint
             HttpServletResponse response,
             AuthenticationException exception
     ) throws IOException {
+
+        if (response.isCommitted()) {
+            return;
+        }
+
         ErrorCode errorCode =
                 ErrorCode.UNAUTHENTICATED;
 
@@ -37,7 +42,9 @@ public class RestAuthenticationEntryPoint
                 );
 
         response.setStatus(
-                errorCode.getHttpStatus().value()
+                errorCode
+                        .getHttpStatus()
+                        .value()
         );
 
         response.setCharacterEncoding(
@@ -46,6 +53,16 @@ public class RestAuthenticationEntryPoint
 
         response.setContentType(
                 MediaType.APPLICATION_JSON_VALUE
+        );
+
+        response.setHeader(
+                "Cache-Control",
+                "no-store"
+        );
+
+        response.setHeader(
+                "Pragma",
+                "no-cache"
         );
 
         objectMapper.writeValue(

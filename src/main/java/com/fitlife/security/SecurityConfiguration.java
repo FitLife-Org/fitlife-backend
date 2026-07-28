@@ -24,22 +24,19 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfiguration {
 
-    private final JwtAuthenticationFilter
-            jwtAuthFilter;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    private final AuthenticationProvider
-            authenticationProvider;
+    private final AuthenticationProvider authenticationProvider;
 
-    private final RestAuthenticationEntryPoint
-            authenticationEntryPoint;
+    private final RestAuthenticationEntryPoint authenticationEntryPoint;
 
-    private final RestAccessDeniedHandler
-            accessDeniedHandler;
+    private final RestAccessDeniedHandler accessDeniedHandler;
 
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http
     ) throws Exception {
+
         http
                 .csrf(AbstractHttpConfigurer::disable)
 
@@ -67,7 +64,27 @@ public class SecurityConfiguration {
 
                 .authorizeHttpRequests(auth -> auth
 
-                        // Swagger / OpenAPI
+                        // =====================================================
+                        // CORS PREFLIGHT
+                        // =====================================================
+
+                        .requestMatchers(
+                                HttpMethod.OPTIONS,
+                                "/**"
+                        ).permitAll()
+
+                        // =====================================================
+                        // COMMON PUBLIC
+                        // =====================================================
+
+                        .requestMatchers(
+                                "/error"
+                        ).permitAll()
+
+                        /*
+                         * Swagger hiện giữ public để phục vụ local/demo.
+                         * Sang Foundation 04 sẽ chuyển theo profile.
+                         */
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
@@ -76,20 +93,10 @@ public class SecurityConfiguration {
                                 "/webjars/**"
                         ).permitAll()
 
-                        // Common public
-                        .requestMatchers(
-                                "/error"
-                        ).permitAll()
+                        // =====================================================
+                        // AUTH PUBLIC
+                        // =====================================================
 
-                        /*
-                         * Chỉ permit /test/** ở local/dev.
-                         * Không nên public khi deploy thật.
-                         */
-                        .requestMatchers(
-                                "/test/**"
-                        ).permitAll()
-
-                        // Auth public
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/auth/register",
@@ -107,8 +114,7 @@ public class SecurityConfiguration {
                         ).permitAll()
 
                         /*
-                         * Logout nên có token để xác định
-                         * phiên đăng nhập hiện tại.
+                         * Logout cần người dùng đã đăng nhập.
                          */
                         .requestMatchers(
                                 HttpMethod.POST,
@@ -116,121 +122,233 @@ public class SecurityConfiguration {
                                 "/auth/logout-all"
                         ).authenticated()
 
-                        // VNPay callback
+                        // =====================================================
+                        // VNPAY PUBLIC CALLBACK
+                        // =====================================================
+
+                        /*
+                         * Callback được public nhưng service bắt buộc phải:
+                         * - kiểm tra checksum;
+                         * - kiểm tra amount;
+                         * - xử lý idempotent.
+                         */
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/payments/vnpay/return",
                                 "/payments/vnpay/ipn"
                         ).permitAll()
 
-                        // Public packages
+                        // =====================================================
+                        // PUBLIC PACKAGE CATALOG
+                        // =====================================================
+
                         .requestMatchers(
                                 HttpMethod.GET,
+                                "/gym-packages",
                                 "/gym-packages/**",
+                                "/package-durations",
                                 "/package-durations/**"
                         ).permitAll()
 
-                        // CORS preflight
-                        .requestMatchers(
-                                HttpMethod.OPTIONS,
-                                "/**"
-                        ).permitAll()
+                        // =====================================================
+                        // ADMIN — MUST COME BEFORE GENERIC ROUTES
+                        // =====================================================
 
-                        // Member check-in endpoints
                         .requestMatchers(
-                                HttpMethod.POST, "/check-ins/scan-gym-qr"
+                                "/admin/**"
+                        ).hasRole("ADMIN")
+
+                        // =====================================================
+                        // STAFF
+                        // =====================================================
+
+                        .requestMatchers(
+                                "/staff/**"
+                        ).hasAnyRole(
+                                "STAFF",
+                                "ADMIN"
+                        )
+
+                        // =====================================================
+                        // TRAINER
+                        // =====================================================
+
+                        /*
+                         * Các API nghiệp vụ trainer.
+                         * Admin có thể được phép hỗ trợ kiểm tra khi cần.
+                         */
+                        .requestMatchers(
+                                "/trainer/**"
+                        ).hasAnyRole(
+                                "TRAINER",
+                                "ADMIN"
+                        )
+
+                        /*
+                         * Hồ sơ trainer hiện tại:
+                         * PUT /trainers/me
+                         * GET /trainers/me
+                         */
+                        .requestMatchers(
+                                "/trainers/me/**",
+                                "/trainers/me"
+                        ).hasRole("TRAINER")
+
+                        /*
+                         * Danh sách trainer hiện tại có GET /trainers.
+                         * Cho phép authenticated để Member có thể xem.
+                         */
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/trainers",
+                                "/trainers/**"
+                        ).authenticated()
+
+                        // =====================================================
+                        // MEMBER SELF-SERVICE
+                        // =====================================================
+
+                        .requestMatchers(
+                                "/members/me",
+                                "/members/me/**"
                         ).hasRole("MEMBER")
+
                         .requestMatchers(
+                                "/body-metrics/me",
+                                "/body-metrics/me/**"
+                        ).hasRole("MEMBER")
+
+                        .requestMatchers(
+                                "/ai/suggestions",
+                                "/ai/suggestions/**"
+                        ).hasRole("MEMBER")
+
+                        /*
+                         * Workout self-service.
+                         *
+                         * Trainer route bắt đầu bằng /trainer/**
+                         * Admin route bắt đầu bằng /admin/**
+                         * nên đã được match phía trên.
+                         */
+                        .requestMatchers(
+                                "/workout-plans",
+                                "/workout-plans/**"
+                        ).hasRole("MEMBER")
+
+                        /*
+                         * Nutrition self-service.
+                         */
+                        .requestMatchers(
+                                "/nutrition-plans",
+                                "/nutrition-plans/**"
+                        ).hasRole("MEMBER")
+
+                        // =====================================================
+                        // MEMBER SUBSCRIPTION / PAYMENT / INVOICE
+                        // =====================================================
+
+                        .requestMatchers(
+                                "/subscriptions",
+                                "/subscriptions/**"
+                        ).hasRole("MEMBER")
+
+                        /*
+                         * Callback VNPay đã được permit phía trên.
+                         * Các route payment còn lại dành cho Member.
+                         */
+                        .requestMatchers(
+                                "/payments",
+                                "/payments/**"
+                        ).hasRole("MEMBER")
+
+                        .requestMatchers(
+                                "/invoices",
+                                "/invoices/**"
+                        ).hasRole("MEMBER")
+
+                        // =====================================================
+                        // CHECK-IN
+                        // =====================================================
+
+                        /*
+                         * Member quét QR phòng gym.
+                         */
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/check-ins/scan-gym-qr"
+                        ).hasRole("MEMBER")
+
+                        .requestMatchers(
+                                "/check-ins/me",
                                 "/check-ins/me/**"
                         ).hasRole("MEMBER")
 
-                        // Admin / Staff operations
-                        .requestMatchers(
-                                "/admin/payments/**",
-                                "/admin/equipment/**",
-                                "/admin/subscriptions/**",
-                                "/staff/**"
-                        ).hasAnyRole(
-                                "ADMIN",
-                                "STAFF"
-                        )
-
-                        .requestMatchers(
-                                "/check-ins/**"
-                        ).hasAnyRole(
-                                "ADMIN",
-                                "STAFF"
-                        )
-
-                        // Trainer APIs
-                        .requestMatchers(
-                                "/trainer/**"
-                        ).hasRole("TRAINER")
-
-                        // Member self-service check-in
+                        /*
+                         * Route cũ/member flow hiện tại.
+                         */
                         .requestMatchers(
                                 "/member/check-ins/**",
                                 "/member/check-outs/**"
                         ).hasRole("MEMBER")
 
-                        // Member AI
-                        .requestMatchers(
-                                "/ai/suggestions/**"
-                        ).hasRole("MEMBER")
-
-                        // AI knowledge administration
-                        .requestMatchers(
-                                "/admin/ai/knowledge/**"
-                        ).hasRole("ADMIN")
-
-                        // Member payments
-                        .requestMatchers(
-                                "/payments/**"
-                        ).hasRole("MEMBER")
-
-                        // Member subscriptions/invoices
-                        .requestMatchers(
-                                "/subscriptions/**",
-                                "/invoices/**"
-                        ).hasRole("MEMBER")
-
-                        // Member health and plans
-                        .requestMatchers(
-                                "/body-metrics/me/**",
-                                "/members/me/**"
-                        ).hasRole("MEMBER")
-
                         /*
-                         * Workout/Nutrition hiện có một số API
-                         * dùng chung hoặc còn nhận memberId.
-                         * Tạm giới hạn authenticated và dùng
-                         * @PreAuthorize tại controller/service.
-                         *
-                         * Sau khi refactor self-service, nên đổi
-                         * toàn bộ member route sang hasRole MEMBER.
+                         * Các route /check-ins còn lại là vận hành.
                          */
                         .requestMatchers(
-                                "/workout-plans/**",
-                                "/nutrition-plans/**"
-                        ).authenticated()
+                                "/check-ins",
+                                "/check-ins/**"
+                        ).hasAnyRole(
+                                "STAFF",
+                                "ADMIN"
+                        )
 
-                        // Admin APIs còn lại
-                        .requestMatchers(
-                                "/admin/**"
-                        ).hasRole("ADMIN")
+                        // =====================================================
+                        // USER PROFILE
+                        // =====================================================
 
-                        // User profile chung
                         .requestMatchers(
+                                "/users/me",
                                 "/users/me/**"
                         ).authenticated()
 
-                        // Equipment public list
+                        // =====================================================
+                        // EQUIPMENT
+                        // =====================================================
+
+                        /*
+                         * Danh sách thiết bị cho user đã đăng nhập.
+                         * CRUD admin đã được chặn bởi /admin/** phía trên.
+                         */
                         .requestMatchers(
                                 HttpMethod.GET,
+                                "/equipment",
                                 "/equipment/**"
                         ).authenticated()
 
-                        // Default deny-by-authentication
+                        // =====================================================
+                        // TEST ENDPOINTS
+                        // =====================================================
+
+                        /*
+                         * Không public /test/**.
+                         *
+                         * Nếu còn endpoint test trong source, chỉ Admin mới gọi
+                         * được. Foundation 04 sẽ tách hẳn theo Spring profile.
+                         */
+                        .requestMatchers(
+                                "/test/**"
+                        ).hasRole("ADMIN")
+
+                        // =====================================================
+                        // FALLBACK
+                        // =====================================================
+
+                        /*
+                         * Endpoint không được định nghĩa rõ vẫn phải đăng nhập.
+                         *
+                         * Role và ownership chi tiết phải tiếp tục được bảo vệ
+                         * bằng @PreAuthorize và kiểm tra trong service.
+                         */
                         .anyRequest()
                         .authenticated()
                 )
@@ -240,7 +358,7 @@ public class SecurityConfiguration {
                 )
 
                 .addFilterBefore(
-                        jwtAuthFilter,
+                        jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class
                 );
 
@@ -248,8 +366,7 @@ public class SecurityConfiguration {
     }
 
     @Bean
-    public CorsConfigurationSource
-    corsConfigurationSource() {
+    public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration =
                 new CorsConfiguration();
 
@@ -277,7 +394,9 @@ public class SecurityConfiguration {
                 List.of(
                         "Authorization",
                         "Content-Type",
-                        "Accept"
+                        "Accept",
+                        "Origin",
+                        "X-Requested-With"
                 )
         );
 
@@ -288,6 +407,7 @@ public class SecurityConfiguration {
         );
 
         configuration.setAllowCredentials(true);
+
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source =

@@ -27,6 +27,7 @@ import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.member.entity.Member;
 import com.fitlife.member.enums.FitnessGoal;
+import com.fitlife.member.service.CurrentMemberService;
 import com.fitlife.user.entity.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
