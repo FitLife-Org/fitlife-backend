@@ -7,8 +7,6 @@ import com.fitlife.ai.dto.response.AiSuggestionResponse;
 import com.fitlife.ai.entity.AiFeedback;
 import com.fitlife.ai.entity.AiPlanItem;
 import com.fitlife.ai.entity.AiSuggestion;
-import com.fitlife.common.exception.AppException;
-import com.fitlife.common.exception.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

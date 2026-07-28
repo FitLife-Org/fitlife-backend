@@ -3,7 +3,6 @@ package com.fitlife.ai.service.impl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fitlife.ai.config.GeminiProperties;
 import com.fitlife.common.exception.AppException;
-import com.fitlife.common.exception.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
