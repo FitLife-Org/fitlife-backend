@@ -1,0 +1,862 @@
+### ============================================================
+### FITLIFE — AUTH API TEST
+### Dùng với IntelliJ HTTP Client
+### Base URL đã bao gồm context-path /api/v1
+### ============================================================
+
+@baseUrl = http://localhost:8080/api/v1
+@contentType = application/json
+
+### ------------------------------------------------------------
+### DỮ LIỆU TEST
+### Nên đổi số cuối email/username sau mỗi lần register
+### ------------------------------------------------------------
+
+@testEmail = auth.member.01@fitlife.local
+@testUsername = authmember01
+@testPassword = Test@123456
+@newPassword = NewTest@123456
+
+### Token sẽ được tự động lưu sau khi login
+@memberToken = {{memberToken}}
+@refreshToken = {{refreshToken}}
+
+### Copy token xác thực từ email hoặc Mailtrap
+@verificationToken = PASTE_VERIFICATION_TOKEN_HERE
+
+### Copy OTP 6 số từ email hoặc Mailtrap
+@resetOtp = 000000
+
+### Google ID Token nếu test Google Login
+@googleIdToken = PASTE_GOOGLE_ID_TOKEN_HERE
+
+
+### ============================================================
+### 0. HEALTH CHECK TÙY CHỌN
+### ============================================================
+
+### Kiểm tra backend đang chạy
+GET {{baseUrl}}/swagger-ui/index.html
+
+
+### ============================================================
+### 1. REGISTER
+### ============================================================
+
+### AUTH-01 — Đăng ký thành công
+POST {{baseUrl}}/auth/register
+Content-Type: {{contentType}}
+
+{
+  "username": "{{testUsername}}",
+  "email": "{{testEmail}}",
+  "password": "{{testPassword}}",
+  "confirmPassword": "{{testPassword}}",
+  "fullName": "Auth Test Member",
+  "phone": "0912345678"
+}
+
+> {%
+    client.test("Register trả về 200 hoặc 201", function () {
+        client.assert(
+            response.status === 200 || response.status === 201,
+            "Expected 200/201, actual: " + response.status
+        );
+    });
+
+    client.test("Response có message", function () {
+        client.assert(
+            response.body.message !== undefined,
+            "Response phải có message"
+        );
+    });
+%}
+
+
+### AUTH-01-N01 — Email trùng
+POST {{baseUrl}}/auth/register
+Content-Type: {{contentType}}
+
+{
+  "username": "different_username_01",
+  "email": "{{testEmail}}",
+  "password": "{{testPassword}}",
+  "confirmPassword": "{{testPassword}}",
+  "fullName": "Duplicate Email Test",
+  "phone": "0912345679"
+}
+
+
+### AUTH-01-N02 — Username trùng
+POST {{baseUrl}}/auth/register
+Content-Type: {{contentType}}
+
+{
+  "username": "{{testUsername}}",
+  "email": "different.email.01@fitlife.local",
+  "password": "{{testPassword}}",
+  "confirmPassword": "{{testPassword}}",
+  "fullName": "Duplicate Username Test",
+  "phone": "0912345680"
+}
+
+
+### AUTH-01-N03 — Email sai định dạng
+POST {{baseUrl}}/auth/register
+Content-Type: {{contentType}}
+
+{
+  "username": "invalidemail01",
+  "email": "invalid-email",
+  "password": "{{testPassword}}",
+  "confirmPassword": "{{testPassword}}",
+  "fullName": "Invalid Email Test",
+  "phone": "0912345681"
+}
+
+
+### AUTH-01-N04 — Username quá ngắn
+POST {{baseUrl}}/auth/register
+Content-Type: {{contentType}}
+
+{
+  "username": "abc",
+  "email": "short.username@fitlife.local",
+  "password": "{{testPassword}}",
+  "confirmPassword": "{{testPassword}}",
+  "fullName": "Short Username",
+  "phone": "0912345682"
+}
+
+
+### AUTH-01-N05 — Username chứa ký tự không hợp lệ
+POST {{baseUrl}}/auth/register
+Content-Type: {{contentType}}
+
+{
+  "username": "invalid username!",
+  "email": "invalid.username@fitlife.local",
+  "password": "{{testPassword}}",
+  "confirmPassword": "{{testPassword}}",
+  "fullName": "Invalid Username",
+  "phone": "0912345683"
+}
+
+
+### AUTH-01-N06 — Mật khẩu yếu
+POST {{baseUrl}}/auth/register
+Content-Type: {{contentType}}
+
+{
+  "username": "weakpassword01",
+  "email": "weak.password@fitlife.local",
+  "password": "123",
+  "confirmPassword": "123",
+  "fullName": "Weak Password",
+  "phone": "0912345684"
+}
+
+
+### AUTH-01-N07 — Password và confirmPassword không khớp
+POST {{baseUrl}}/auth/register
+Content-Type: {{contentType}}
+
+{
+  "username": "mismatchpassword01",
+  "email": "mismatch.password@fitlife.local",
+  "password": "{{testPassword}}",
+  "confirmPassword": "Different@123",
+  "fullName": "Mismatch Password",
+  "phone": "0912345685"
+}
+
+
+### AUTH-01-N08 — Số điện thoại sai định dạng
+POST {{baseUrl}}/auth/register
+Content-Type: {{contentType}}
+
+{
+  "username": "invalidphone01",
+  "email": "invalid.phone@fitlife.local",
+  "password": "{{testPassword}}",
+  "confirmPassword": "{{testPassword}}",
+  "fullName": "Invalid Phone",
+  "phone": "123"
+}
+
+
+### AUTH-01-N09 — Thiếu fullName
+POST {{baseUrl}}/auth/register
+Content-Type: {{contentType}}
+
+{
+  "username": "missingfullname01",
+  "email": "missing.fullname@fitlife.local",
+  "password": "{{testPassword}}",
+  "confirmPassword": "{{testPassword}}",
+  "fullName": "",
+  "phone": "0912345686"
+}
+
+
+### ============================================================
+### 2. VERIFY EMAIL
+### Controller thật:
+### GET /auth/verify-email?token=...
+### ============================================================
+
+### AUTH-02 — Xác thực email thành công
+GET {{baseUrl}}/auth/verify-email?token={{verificationToken}}
+Accept: application/json
+
+> {%
+    client.test("Verify email thành công", function () {
+        client.assert(
+            response.status === 200,
+            "Expected 200, actual: " + response.status
+        );
+    });
+%}
+
+
+### AUTH-02-N01 — Token xác thực sai
+GET {{baseUrl}}/auth/verify-email?token=invalid-verification-token
+Accept: application/json
+
+
+### AUTH-02-N02 — Không truyền token
+GET {{baseUrl}}/auth/verify-email
+Accept: application/json
+
+
+### AUTH-03 — Gửi lại email xác thực
+POST {{baseUrl}}/auth/resend-verification-email
+Content-Type: {{contentType}}
+
+{
+  "email": "{{testEmail}}"
+}
+
+
+### AUTH-03-N01 — Email sai định dạng
+POST {{baseUrl}}/auth/resend-verification-email
+Content-Type: {{contentType}}
+
+{
+  "email": "invalid-email"
+}
+
+
+### AUTH-03-N02 — Email không tồn tại
+POST {{baseUrl}}/auth/resend-verification-email
+Content-Type: {{contentType}}
+
+{
+  "email": "not-found@fitlife.local"
+}
+
+
+### ============================================================
+### 3. LOGIN
+### LoginRequest dùng field "identifier"
+### Có thể nhập email hoặc username
+### ============================================================
+
+### AUTH-04 — Login bằng email
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "identifier": "{{testEmail}}",
+  "password": "{{testPassword}}"
+}
+
+> {%
+    client.test("Login bằng email thành công", function () {
+        client.assert(
+            response.status === 200,
+            "Expected 200, actual: " + response.status
+        );
+    });
+
+    client.test("Response có accessToken", function () {
+        client.assert(
+            response.body.result !== undefined,
+            "Response không có result"
+        );
+
+        client.assert(
+            response.body.result.accessToken !== undefined,
+            "Response không có accessToken"
+        );
+    });
+
+    if (
+        response.body &&
+        response.body.result &&
+        response.body.result.accessToken
+    ) {
+        client.global.set(
+            "memberToken",
+            response.body.result.accessToken
+        );
+    }
+
+    if (
+        response.body &&
+        response.body.result &&
+        response.body.result.refreshToken
+    ) {
+        client.global.set(
+            "refreshToken",
+            response.body.result.refreshToken
+        );
+    }
+%}
+
+
+### AUTH-04-B — Login bằng username
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "identifier": "{{testUsername}}",
+  "password": "{{testPassword}}"
+}
+
+> {%
+    if (
+        response.body &&
+        response.body.result &&
+        response.body.result.accessToken
+    ) {
+        client.global.set(
+            "memberToken",
+            response.body.result.accessToken
+        );
+    }
+
+    if (
+        response.body &&
+        response.body.result &&
+        response.body.result.refreshToken
+    ) {
+        client.global.set(
+            "refreshToken",
+            response.body.result.refreshToken
+        );
+    }
+%}
+
+
+### AUTH-04-N01 — Sai mật khẩu
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "identifier": "{{testEmail}}",
+  "password": "WrongPassword@123"
+}
+
+
+### AUTH-04-N02 — User không tồn tại
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "identifier": "not-found@fitlife.local",
+  "password": "{{testPassword}}"
+}
+
+
+### AUTH-04-N03 — Thiếu identifier
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "identifier": "",
+  "password": "{{testPassword}}"
+}
+
+
+### AUTH-04-N04 — Thiếu password
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "identifier": "{{testEmail}}",
+  "password": ""
+}
+
+
+### AUTH-04-N05 — Login tài khoản chưa xác thực
+### Tạo một tài khoản mới nhưng chưa verify rồi thay dữ liệu dưới đây
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "identifier": "unverified.member@fitlife.local",
+  "password": "{{testPassword}}"
+}
+
+
+### AUTH-04-N06 — Login tài khoản LOCKED
+### Cần Admin chuyển account status thành LOCKED trước
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "identifier": "{{testEmail}}",
+  "password": "{{testPassword}}"
+}
+
+
+### AUTH-04-N07 — Login tài khoản INACTIVE
+### Cần Admin chuyển account status thành INACTIVE trước
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "identifier": "{{testEmail}}",
+  "password": "{{testPassword}}"
+}
+
+
+### ============================================================
+### 4. GET CURRENT USER
+### ============================================================
+
+### USER-01 — Lấy thông tin tài khoản hiện tại
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+> {%
+    client.test("Get current user thành công", function () {
+        client.assert(
+            response.status === 200,
+            "Expected 200, actual: " + response.status
+        );
+    });
+
+    client.test("Response có thông tin user", function () {
+        client.assert(
+            response.body.result !== undefined,
+            "Response không có result"
+        );
+    });
+%}
+
+
+### USER-01-N01 — Không có token
+GET {{baseUrl}}/users/me
+Accept: application/json
+
+
+### USER-01-N02 — Token sai
+GET {{baseUrl}}/users/me
+Authorization: Bearer invalid-token
+Accept: application/json
+
+
+### USER-01-N03 — Token không có Bearer
+GET {{baseUrl}}/users/me
+Authorization: {{memberToken}}
+Accept: application/json
+
+
+### ============================================================
+### 5. REFRESH TOKEN
+### ============================================================
+
+### AUTH-05 — Refresh token thành công
+POST {{baseUrl}}/auth/refresh-token
+Content-Type: {{contentType}}
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+> {%
+    client.test("Refresh token thành công", function () {
+        client.assert(
+            response.status === 200,
+            "Expected 200, actual: " + response.status
+        );
+    });
+
+    if (
+        response.body &&
+        response.body.result &&
+        response.body.result.accessToken
+    ) {
+        client.global.set(
+            "memberToken",
+            response.body.result.accessToken
+        );
+    }
+
+    if (
+        response.body &&
+        response.body.result &&
+        response.body.result.refreshToken
+    ) {
+        client.global.set(
+            "refreshToken",
+            response.body.result.refreshToken
+        );
+    }
+%}
+
+
+### AUTH-05-N01 — Refresh token sai
+POST {{baseUrl}}/auth/refresh-token
+Content-Type: {{contentType}}
+
+{
+  "refreshToken": "invalid-refresh-token"
+}
+
+
+### AUTH-05-N02 — Refresh token rỗng
+POST {{baseUrl}}/auth/refresh-token
+Content-Type: {{contentType}}
+
+{
+  "refreshToken": ""
+}
+
+
+### ============================================================
+### 6. CHANGE PASSWORD
+### ChangePasswordRequest dùng field "confirmPassword"
+### ============================================================
+
+### USER-02 — Đổi mật khẩu thành công
+PUT {{baseUrl}}/users/me/change-password
+Authorization: Bearer {{memberToken}}
+Content-Type: {{contentType}}
+
+{
+  "currentPassword": "{{testPassword}}",
+  "newPassword": "{{newPassword}}",
+  "confirmPassword": "{{newPassword}}"
+}
+
+> {%
+    client.test("Change password thành công", function () {
+        client.assert(
+            response.status === 200,
+            "Expected 200, actual: " + response.status
+        );
+    });
+%}
+
+
+### USER-02-N01 — Sai mật khẩu hiện tại
+PUT {{baseUrl}}/users/me/change-password
+Authorization: Bearer {{memberToken}}
+Content-Type: {{contentType}}
+
+{
+  "currentPassword": "WrongPassword@123",
+  "newPassword": "{{newPassword}}",
+  "confirmPassword": "{{newPassword}}"
+}
+
+
+### USER-02-N02 — Password mới không khớp confirm
+PUT {{baseUrl}}/users/me/change-password
+Authorization: Bearer {{memberToken}}
+Content-Type: {{contentType}}
+
+{
+  "currentPassword": "{{testPassword}}",
+  "newPassword": "{{newPassword}}",
+  "confirmPassword": "DifferentNewPassword@123"
+}
+
+
+### USER-02-N03 — Password mới quá ngắn
+PUT {{baseUrl}}/users/me/change-password
+Authorization: Bearer {{memberToken}}
+Content-Type: {{contentType}}
+
+{
+  "currentPassword": "{{testPassword}}",
+  "newPassword": "123",
+  "confirmPassword": "123"
+}
+
+
+### USER-02-N04 — Không có access token
+PUT {{baseUrl}}/users/me/change-password
+Content-Type: {{contentType}}
+
+{
+  "currentPassword": "{{testPassword}}",
+  "newPassword": "{{newPassword}}",
+  "confirmPassword": "{{newPassword}}"
+}
+
+
+### ============================================================
+### 7. LOGIN SAU KHI ĐỔI PASSWORD
+### Chỉ chạy sau khi USER-02 thành công
+### ============================================================
+
+### AUTH-06 — Login bằng mật khẩu mới
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "identifier": "{{testEmail}}",
+  "password": "{{newPassword}}"
+}
+
+> {%
+    if (
+        response.body &&
+        response.body.result &&
+        response.body.result.accessToken
+    ) {
+        client.global.set(
+            "memberToken",
+            response.body.result.accessToken
+        );
+    }
+
+    if (
+        response.body &&
+        response.body.result &&
+        response.body.result.refreshToken
+    ) {
+        client.global.set(
+            "refreshToken",
+            response.body.result.refreshToken
+        );
+    }
+%}
+
+
+### ============================================================
+### 8. FORGOT PASSWORD
+### ============================================================
+
+### AUTH-07 — Gửi OTP quên mật khẩu
+POST {{baseUrl}}/auth/forgot-password
+Content-Type: {{contentType}}
+
+{
+  "email": "{{testEmail}}"
+}
+
+> {%
+    client.test("Forgot password trả response thành công", function () {
+        client.assert(
+            response.status === 200,
+            "Expected 200, actual: " + response.status
+        );
+    });
+%}
+
+
+### AUTH-07-N01 — Email sai định dạng
+POST {{baseUrl}}/auth/forgot-password
+Content-Type: {{contentType}}
+
+{
+  "email": "invalid-email"
+}
+
+
+### AUTH-07-N02 — Email không tồn tại
+POST {{baseUrl}}/auth/forgot-password
+Content-Type: {{contentType}}
+
+{
+  "email": "not-found@fitlife.local"
+}
+
+
+### ============================================================
+### 9. RESET PASSWORD
+### Copy OTP 6 số từ email/Mailtrap vào @resetOtp
+### ============================================================
+
+### AUTH-08 — Reset password thành công
+POST {{baseUrl}}/auth/reset-password
+Content-Type: {{contentType}}
+
+{
+  "email": "{{testEmail}}",
+  "otp": "{{resetOtp}}",
+  "newPassword": "{{testPassword}}",
+  "confirmPassword": "{{testPassword}}"
+}
+
+
+### AUTH-08-N01 — OTP sai
+POST {{baseUrl}}/auth/reset-password
+Content-Type: {{contentType}}
+
+{
+  "email": "{{testEmail}}",
+  "otp": "000000",
+  "newPassword": "{{testPassword}}",
+  "confirmPassword": "{{testPassword}}"
+}
+
+
+### AUTH-08-N02 — OTP không đủ 6 số
+POST {{baseUrl}}/auth/reset-password
+Content-Type: {{contentType}}
+
+{
+  "email": "{{testEmail}}",
+  "otp": "123",
+  "newPassword": "{{testPassword}}",
+  "confirmPassword": "{{testPassword}}"
+}
+
+
+### AUTH-08-N03 — Password không khớp
+POST {{baseUrl}}/auth/reset-password
+Content-Type: {{contentType}}
+
+{
+  "email": "{{testEmail}}",
+  "otp": "{{resetOtp}}",
+  "newPassword": "{{testPassword}}",
+  "confirmPassword": "Different@123"
+}
+
+
+### AUTH-08-N04 — Password mới yếu
+POST {{baseUrl}}/auth/reset-password
+Content-Type: {{contentType}}
+
+{
+  "email": "{{testEmail}}",
+  "otp": "{{resetOtp}}",
+  "newPassword": "123",
+  "confirmPassword": "123"
+}
+
+
+### ============================================================
+### 10. GOOGLE LOGIN
+### Chỉ chạy khi có Google ID Token thật
+### ============================================================
+
+### AUTH-09 — Google Login
+POST {{baseUrl}}/auth/google-login
+Content-Type: {{contentType}}
+
+{
+  "idToken": "{{googleIdToken}}"
+}
+
+> {%
+    if (
+        response.body &&
+        response.body.result &&
+        response.body.result.accessToken
+    ) {
+        client.global.set(
+            "memberToken",
+            response.body.result.accessToken
+        );
+    }
+
+    if (
+        response.body &&
+        response.body.result &&
+        response.body.result.refreshToken
+    ) {
+        client.global.set(
+            "refreshToken",
+            response.body.result.refreshToken
+        );
+    }
+%}
+
+
+### AUTH-09-N01 — Google ID Token sai
+POST {{baseUrl}}/auth/google-login
+Content-Type: {{contentType}}
+
+{
+  "idToken": "invalid-google-id-token"
+}
+
+
+### ============================================================
+### 11. LOGOUT
+### LogoutRequest cần refreshToken
+### ============================================================
+
+### AUTH-10 — Logout thiết bị hiện tại
+POST {{baseUrl}}/auth/logout
+Content-Type: {{contentType}}
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+> {%
+    client.test("Logout thành công", function () {
+        client.assert(
+            response.status === 200,
+            "Expected 200, actual: " + response.status
+        );
+    });
+%}
+
+
+### AUTH-10-N01 — Logout bằng refresh token sai
+POST {{baseUrl}}/auth/logout
+Content-Type: {{contentType}}
+
+{
+  "refreshToken": "invalid-refresh-token"
+}
+
+
+### AUTH-10-N02 — Logout bằng refresh token rỗng
+POST {{baseUrl}}/auth/logout
+Content-Type: {{contentType}}
+
+{
+  "refreshToken": ""
+}
+
+
+### ============================================================
+### 12. KIỂM TRA REFRESH TOKEN SAU LOGOUT
+### Mong đợi refresh token đã bị thu hồi
+### ============================================================
+
+### AUTH-11 — Refresh lại sau logout
+POST {{baseUrl}}/auth/refresh-token
+Content-Type: {{contentType}}
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+
+### ============================================================
+### 13. LOGOUT ALL DEVICES
+### Cần access token
+### ============================================================
+
+### AUTH-12 — Logout toàn bộ thiết bị
+POST {{baseUrl}}/auth/logout-all
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+
+### AUTH-12-N01 — Logout all không có token
+POST {{baseUrl}}/auth/logout-all
+Accept: application/json
