@@ -154,6 +154,24 @@ public class SecurityConfiguration {
                         ).permitAll()
 
                         // =====================================================
+                        // PUBLIC WEBSITE
+                        // =====================================================
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/public/home",
+                                "/public/packages",
+                                "/public/packages/**",
+                                "/public/trainers",
+                                "/public/trainers/**"
+                        ).permitAll()
+
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/public/contact-requests"
+                        ).permitAll()
+
+                        // =====================================================
                         // ADMIN — MUST COME BEFORE GENERIC ROUTES
                         // =====================================================
 
