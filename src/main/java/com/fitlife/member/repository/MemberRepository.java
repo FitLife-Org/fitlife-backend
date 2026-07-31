@@ -10,40 +10,68 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 
-public interface MemberRepository extends JpaRepository<Member, Long> {
+public interface MemberRepository
+        extends JpaRepository<Member, Long> {
 
-    Optional<Member> findByUserIdAndIsDeletedFalse(Long userId);
-
-    Optional<Member> findByMemberCodeAndIsDeletedFalse(String memberCode);
-
-    Optional<Member> findByUserId(Long userId);
-
-    Optional<Member> findByMemberCode(String memberCode);
-
-    boolean existsByUserId(Long userId);
-
-    boolean existsByMemberCode(String memberCode);
-
-    @Query("""
-        SELECT m
-        FROM Member m
-        JOIN m.user u
-        WHERE m.isDeleted = false
-          AND (:status IS NULL OR m.status = :status)
-          AND (
-                :keyword IS NULL OR :keyword = ''
-                OR LOWER(m.memberCode) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                OR LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                OR u.phone LIKE CONCAT('%', :keyword, '%')
-          )
-    """)
-    Page<Member> searchMembers(
-            @Param("keyword") String keyword,
-            @Param("status") MemberStatus status,
-            Pageable pageable
+    Optional<Member>
+    findByUserIdAndIsDeletedFalse(
+            Long userId
     );
 
+    Optional<Member>
+    findByMemberCodeAndIsDeletedFalse(
+            String memberCode
+    );
 
+    Optional<Member>
+    findByUserId(
+            Long userId
+    );
+
+    Optional<Member>
+    findByMemberCode(
+            String memberCode
+    );
+
+    boolean existsByUserId(
+            Long userId
+    );
+
+    boolean existsByMemberCode(
+            String memberCode
+    );
+
+    @Query("""
+            SELECT m
+            FROM Member m
+            JOIN m.user u
+            WHERE m.isDeleted = false
+              AND (
+                    :status IS NULL
+                    OR m.status = :status
+              )
+              AND (
+                    :keyword IS NULL
+                    OR :keyword = ''
+                    OR LOWER(m.memberCode)
+                        LIKE LOWER(CONCAT('%', :keyword, '%'))
+                    OR LOWER(u.username)
+                        LIKE LOWER(CONCAT('%', :keyword, '%'))
+                    OR LOWER(u.fullName)
+                        LIKE LOWER(CONCAT('%', :keyword, '%'))
+                    OR LOWER(u.email)
+                        LIKE LOWER(CONCAT('%', :keyword, '%'))
+                    OR u.phone
+                        LIKE CONCAT('%', :keyword, '%')
+              )
+            """)
+    Page<Member> searchMembers(
+            @Param("keyword")
+            String keyword,
+
+            @Param("status")
+            MemberStatus status,
+
+            Pageable pageable
+    );
 }

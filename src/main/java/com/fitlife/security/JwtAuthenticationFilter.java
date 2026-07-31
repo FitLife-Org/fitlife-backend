@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -19,12 +20,17 @@ import java.io.IOException;
 
 @Component
 @RequiredArgsConstructor
-public class JwtAuthenticationFilter extends OncePerRequestFilter {
+public class JwtAuthenticationFilter
+        extends OncePerRequestFilter {
 
-    private static final String AUTHORIZATION_HEADER = "Authorization";
-    private static final String BEARER_PREFIX = "Bearer ";
+    private static final String AUTHORIZATION_HEADER =
+            "Authorization";
+
+    private static final String BEARER_PREFIX =
+            "Bearer ";
 
     private final JwtService jwtService;
+
     private final UserDetailsService userDetailsService;
 
     @Override
@@ -34,45 +40,85 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
-        String authHeader =
-                request.getHeader(AUTHORIZATION_HEADER);
+        String authorizationHeader =
+                request.getHeader(
+                        AUTHORIZATION_HEADER
+                );
 
-        if (authHeader == null
-                || !authHeader.startsWith(BEARER_PREFIX)) {
-            filterChain.doFilter(request, response);
+        if (!containsBearerToken(
+                authorizationHeader
+        )) {
+            filterChain.doFilter(
+                    request,
+                    response
+            );
+
             return;
         }
 
-        String jwt = authHeader
-                .substring(BEARER_PREFIX.length())
-                .trim();
+        String token =
+                extractBearerToken(
+                        authorizationHeader
+                );
 
-        if (jwt.isBlank()) {
-            filterChain.doFilter(request, response);
+        if (token.isBlank()) {
+            SecurityContextHolder.clearContext();
+
+            filterChain.doFilter(
+                    request,
+                    response
+            );
+
             return;
         }
 
         try {
-            authenticateRequestIfValid(jwt, request);
-        } catch (JwtException
-                 | IllegalArgumentException
-                 | org.springframework.security.core.AuthenticationException exception) {
-
+            authenticateIfNecessary(
+                    token,
+                    request
+            );
+        } catch (
+                JwtException
+                | IllegalArgumentException
+                | AuthenticationException exception
+        ) {
             /*
-             * Không để authentication cũ tồn tại nếu token lỗi.
+             * Không trả response trực tiếp tại filter.
              *
-             * Không trả response trực tiếp ở đây để Security xử lý:
-             * - public endpoint vẫn có thể tiếp tục;
-             * - protected endpoint sẽ trả 401 qua AuthenticationEntryPoint.
+             * Public endpoint vẫn tiếp tục chạy.
+             * Protected endpoint sẽ được Security trả 401 thông qua
+             * RestAuthenticationEntryPoint.
              */
             SecurityContextHolder.clearContext();
         }
 
-        filterChain.doFilter(request, response);
+        filterChain.doFilter(
+                request,
+                response
+        );
     }
 
-    private void authenticateRequestIfValid(
-            String jwt,
+    private boolean containsBearerToken(
+            String authorizationHeader
+    ) {
+        return authorizationHeader != null
+                && authorizationHeader.startsWith(
+                BEARER_PREFIX
+        );
+    }
+
+    private String extractBearerToken(
+            String authorizationHeader
+    ) {
+        return authorizationHeader
+                .substring(
+                        BEARER_PREFIX.length()
+                )
+                .trim();
+    }
+
+    private void authenticateIfNecessary(
+            String token,
             HttpServletRequest request
     ) {
         if (SecurityContextHolder
@@ -81,33 +127,57 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        String username = jwtService.extractUsername(jwt);
+        String principal =
+                jwtService.extractUsername(
+                        token
+                );
 
-        if (username == null || username.isBlank()) {
+        if (principal == null
+                || principal.isBlank()) {
             return;
         }
 
         UserDetails userDetails =
-                userDetailsService.loadUserByUsername(username);
+                userDetailsService
+                        .loadUserByUsername(
+                                principal
+                        );
 
-        if (!jwtService.isTokenValid(jwt, userDetails)) {
+        if (!jwtService.isTokenValid(
+                token,
+                userDetails
+        )) {
             return;
         }
 
-        UsernamePasswordAuthenticationToken authenticationToken =
+        /*
+         * isEnabled/isAccountNonLocked được CustomUserDetails kiểm tra.
+         * Token hợp lệ nhưng tài khoản đã bị khóa/inactive thì không đặt
+         * Authentication vào SecurityContext.
+         */
+        if (!userDetails.isEnabled()
+                || !userDetails.isAccountNonLocked()
+                || !userDetails.isAccountNonExpired()
+                || !userDetails.isCredentialsNonExpired()) {
+            return;
+        }
+
+        UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(
                         userDetails,
                         null,
                         userDetails.getAuthorities()
                 );
 
-        authenticationToken.setDetails(
+        authentication.setDetails(
                 new WebAuthenticationDetailsSource()
                         .buildDetails(request)
         );
 
         SecurityContextHolder
                 .getContext()
-                .setAuthentication(authenticationToken);
+                .setAuthentication(
+                        authentication
+                );
     }
 }

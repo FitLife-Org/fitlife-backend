@@ -19,6 +19,7 @@ import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.common.response.PageResponse;
 import com.fitlife.member.entity.Member;
+import com.fitlife.member.service.CurrentMemberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

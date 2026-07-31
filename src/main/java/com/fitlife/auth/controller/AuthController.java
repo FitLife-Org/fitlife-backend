@@ -45,11 +45,10 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    @Operation(
-            summary = "Login by email or username"
-    )
     public ApiResponse<AuthResponse> login(
-            @Valid @RequestBody LoginRequest request
+            @Valid
+            @RequestBody
+            LoginRequest request
     ) {
         AuthResponse response =
                 authService.login(request);
@@ -77,9 +76,6 @@ public class AuthController {
     }
 
     @PostMapping("/refresh-token")
-    @Operation(
-            summary = "Generate a new access token"
-    )
     public ApiResponse<AuthResponse> refreshToken(
             @Valid
             @RequestBody
@@ -95,9 +91,6 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    @Operation(
-            summary = "Logout current device"
-    )
     public ApiResponse<Void> logout(
             @Valid
             @RequestBody
@@ -112,9 +105,6 @@ public class AuthController {
     }
 
     @PostMapping("/logout-all")
-    @Operation(
-            summary = "Logout all devices"
-    )
     public ApiResponse<Void> logoutAll() {
         authService.logoutAll();
 

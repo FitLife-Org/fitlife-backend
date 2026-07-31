@@ -22,7 +22,11 @@ public class AuthResponse {
     @Builder.Default
     private String tokenType = "Bearer";
 
+    private Long expiresIn;
+
     private Long userId;
+
+    private String username;
 
     private String email;
 

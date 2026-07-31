@@ -15,23 +15,46 @@ public interface AuthMapper {
     default AuthResponse toAuthResponse(
             User user,
             String accessToken,
-            String refreshToken
+            String refreshToken,
+            Long expiresInSeconds
     ) {
-        Set<String> roles = user.getRoles() == null
-                ? Collections.emptySet()
-                : user.getRoles()
-                .stream()
-                .map(Role::getCode)
-                .collect(Collectors.toSet());
+        Set<String> roles =
+                user.getRoles() == null
+                        ? Collections.emptySet()
+                        : user.getRoles()
+                        .stream()
+                        .map(Role::getCode)
+                        .collect(
+                                Collectors.toSet()
+                        );
 
-        return AuthResponse.builder()
+        return AuthResponse
+                .builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .tokenType("Bearer")
+                .expiresIn(expiresInSeconds)
                 .userId(user.getId())
+                .username(user.getUsername())
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .roles(roles)
                 .build();
+    }
+
+    /**
+     * Giữ tương thích tạm cho code cũ.
+     */
+    default AuthResponse toAuthResponse(
+            User user,
+            String accessToken,
+            String refreshToken
+    ) {
+        return toAuthResponse(
+                user,
+                accessToken,
+                refreshToken,
+                null
+        );
     }
 }

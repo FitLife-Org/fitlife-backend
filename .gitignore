@@ -1,21 +1,21 @@
 # ==========================================
-# FitLife Project - .gitignore
+# FitLife Backend
 # ==========================================
 
-# 1. Compiled class file / build output
+# Build output
 *.class
 target/
 out/
 build/
 
-# 2. Maven wrapper / Maven temporary files
+# Maven
 .mvn/wrapper/maven-wrapper.jar
 *.releaseBackup
 *.versionBackup
 *.next
 release.properties
 
-# 3. IDE specific files
+# IDE
 .idea/
 *.iml
 *.iws
@@ -24,36 +24,40 @@ release.properties
 .settings/
 .vscode/
 
-# 4. OS generated files
+# OS
 .DS_Store
 Thumbs.db
 
-# 5. Logs
+# Logs
 *.log
 logs/
 
-# 6. Environment variables / secrets
+# Environment variables
 .env
 .env.*
 !.env.example
 
-# 7. Spring Boot local config / secrets
+# Local Spring configurations
 src/main/resources/application-local.yml
 src/main/resources/application-secrets.yml
 src/main/resources/application-dev-local.yml
 src/main/resources/application-prod-local.yml
 
-# 8. HTTP client private environment
+# HTTP private variables
 http-client.private.env.json
 http-requests/http-client.private.env.json
 
-# 9. Uploaded files / local storage
+# Upload/local storage
 uploads/
 storage/
 tmp/
 temp/
 
-# 10. Node / Frontend if placed in same repository
+# Test reports
+surefire-reports/
+failsafe-reports/
+
+# Frontend if placed in same repository
 node_modules/
 dist/
 coverage/

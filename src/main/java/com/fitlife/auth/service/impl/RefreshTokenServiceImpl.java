@@ -20,87 +20,217 @@ import java.time.LocalDateTime;
 public class RefreshTokenServiceImpl
         implements RefreshTokenService {
 
-    private final RefreshTokenRepository refreshTokenRepository;
-    private final AuthProperties authProperties;
+    private final RefreshTokenRepository
+            refreshTokenRepository;
+
+    private final AuthProperties
+            authProperties;
 
     @Override
-    public String create(User user) {
-        String rawToken = AuthTokenUtils.generateSecureToken();
-        String tokenHash = AuthTokenUtils.hashToken(rawToken);
+    public String create(
+            User user
+    ) {
+        validateUser(user);
 
-        RefreshToken refreshToken = RefreshToken.builder()
-                .user(user)
-                .tokenHash(tokenHash)
-                .expiresAt(
-                        LocalDateTime.now().plusDays(
-                                authProperties.getRefreshTokenExpirationDays()
+        long expirationDays =
+                authProperties
+                        .getRefreshTokenExpirationDays();
+
+        if (expirationDays <= 0) {
+            throw new IllegalStateException(
+                    "Refresh token expiration days must be greater than zero"
+            );
+        }
+
+        String rawToken =
+                AuthTokenUtils
+                        .generateSecureToken();
+
+        String tokenHash =
+                AuthTokenUtils
+                        .hashToken(rawToken);
+
+        LocalDateTime now =
+                LocalDateTime.now();
+
+        RefreshToken refreshToken =
+                RefreshToken
+                        .builder()
+                        .user(user)
+                        .tokenHash(tokenHash)
+                        .expiresAt(
+                                now.plusDays(
+                                        expirationDays
+                                )
                         )
-                )
-                .revoked(false)
-                .build();
+                        .revoked(false)
+                        .revokedAt(null)
+                        .build();
 
-        refreshTokenRepository.save(refreshToken);
+        refreshTokenRepository.save(
+                refreshToken
+        );
 
         return rawToken;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public RefreshToken validate(String rawToken) {
-        String tokenHash = AuthTokenUtils.hashToken(rawToken);
+    public RefreshToken validate(
+            String rawToken
+    ) {
+        String normalizedToken =
+                normalizeRawToken(rawToken);
 
-        RefreshToken refreshToken = refreshTokenRepository
-                .findByTokenHash(tokenHash)
-                .orElseThrow(() ->
-                        new AppException(ErrorCode.INVALID_REFRESH_TOKEN)
-                );
+        String tokenHash =
+                AuthTokenUtils
+                        .hashToken(
+                                normalizedToken
+                        );
 
-        if (Boolean.TRUE.equals(refreshToken.getRevoked())) {
-            throw new AppException(ErrorCode.REFRESH_TOKEN_REVOKED);
+        RefreshToken refreshToken =
+                refreshTokenRepository
+                        .findByTokenHash(
+                                tokenHash
+                        )
+                        .orElseThrow(() ->
+                                new AppException(
+                                        ErrorCode
+                                                .INVALID_REFRESH_TOKEN
+                                )
+                        );
+
+        if (Boolean.TRUE.equals(
+                refreshToken.getRevoked()
+        )) {
+            throw new AppException(
+                    ErrorCode
+                            .REFRESH_TOKEN_REVOKED
+            );
         }
 
-        if (refreshToken.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new AppException(ErrorCode.REFRESH_TOKEN_EXPIRED);
+        LocalDateTime expiresAt =
+                refreshToken.getExpiresAt();
+
+        if (
+                expiresAt == null
+                        || !expiresAt.isAfter(
+                        LocalDateTime.now()
+                )
+        ) {
+            throw new AppException(
+                    ErrorCode
+                            .REFRESH_TOKEN_EXPIRED
+            );
+        }
+
+        if (
+                refreshToken.getUser() == null
+                        || refreshToken
+                        .getUser()
+                        .getId() == null
+        ) {
+            throw new AppException(
+                    ErrorCode
+                            .INVALID_REFRESH_TOKEN
+            );
         }
 
         return refreshToken;
     }
 
     @Override
-    public void revoke(String rawToken) {
-        if (rawToken == null || rawToken.isBlank()) {
+    public void revoke(
+            String rawToken
+    ) {
+        if (
+                rawToken == null
+                        || rawToken.isBlank()
+        ) {
             return;
         }
 
-        String tokenHash = AuthTokenUtils.hashToken(rawToken);
+        String tokenHash =
+                AuthTokenUtils
+                        .hashToken(
+                                rawToken.trim()
+                        );
 
-        RefreshToken refreshToken = refreshTokenRepository
-                .findByTokenHash(tokenHash)
-                .orElse(null);
+        RefreshToken refreshToken =
+                refreshTokenRepository
+                        .findByTokenHash(
+                                tokenHash
+                        )
+                        .orElse(null);
 
         /*
          * Logout idempotent:
-         * token không tồn tại vẫn trả thành công.
+         * token không tồn tại hoặc đã revoke vẫn coi là thành công.
          */
-        if (refreshToken == null) {
-            return;
-        }
-
-        if (Boolean.TRUE.equals(refreshToken.getRevoked())) {
+        if (
+                refreshToken == null
+                        || Boolean.TRUE.equals(
+                        refreshToken.getRevoked()
+                )
+        ) {
             return;
         }
 
         refreshToken.setRevoked(true);
-        refreshToken.setRevokedAt(LocalDateTime.now());
 
-        refreshTokenRepository.save(refreshToken);
+        refreshToken.setRevokedAt(
+                LocalDateTime.now()
+        );
+
+        refreshTokenRepository.save(
+                refreshToken
+        );
     }
 
     @Override
-    public void revokeAllByUserId(Long userId) {
-        refreshTokenRepository.revokeAllByUserId(
-                userId,
-                LocalDateTime.now()
-        );
+    public void revokeAllByUserId(
+            Long userId
+    ) {
+        if (userId == null) {
+            throw new AppException(
+                    ErrorCode.UNAUTHENTICATED
+            );
+        }
+
+        refreshTokenRepository
+                .revokeAllByUserId(
+                        userId,
+                        LocalDateTime.now()
+                );
+    }
+
+    private String normalizeRawToken(
+            String rawToken
+    ) {
+        if (
+                rawToken == null
+                        || rawToken.isBlank()
+        ) {
+            throw new AppException(
+                    ErrorCode
+                            .INVALID_REFRESH_TOKEN
+            );
+        }
+
+        return rawToken.trim();
+    }
+
+    private void validateUser(
+            User user
+    ) {
+        if (
+                user == null
+                        || user.getId() == null
+        ) {
+            throw new AppException(
+                    ErrorCode
+                            .INVALID_REFRESH_TOKEN
+            );
+        }
     }
 }

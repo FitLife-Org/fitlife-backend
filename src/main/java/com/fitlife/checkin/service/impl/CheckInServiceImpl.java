@@ -33,7 +33,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import com.fitlife.subscription.repository.SubscriptionRepository;
-import com.fitlife.subscription.entity.Subscription;
 import com.fitlife.subscription.enums.SubscriptionStatus;
 
 import java.util.Optional;

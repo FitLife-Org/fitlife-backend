@@ -20,6 +20,10 @@ public class RegisterRequest {
             max = 50,
             message = "Username must be between 4 and 50 characters"
     )
+    @Pattern(
+            regexp = "^[a-zA-Z0-9._]+$",
+            message = "Username may only contain letters, numbers, dots and underscores"
+    )
     private String username;
 
     @NotBlank(
@@ -27,6 +31,10 @@ public class RegisterRequest {
     )
     @Email(
             message = "Email is invalid"
+    )
+    @Size(
+            max = 150,
+            message = "Email must not exceed 150 characters"
     )
     private String email;
 
@@ -48,14 +56,15 @@ public class RegisterRequest {
             message = "Full name is required"
     )
     @Size(
+            min = 2,
             max = 100,
-            message = "Full name must not exceed 100 characters"
+            message = "Full name must be between 2 and 100 characters"
     )
     private String fullName;
 
-    @Size(
-            max = 20,
-            message = "Phone must not exceed 20 characters"
+    @Pattern(
+            regexp = "^$|^(0|\\+84)[0-9]{9}$",
+            message = "Phone number is invalid"
     )
     private String phone;
 }

@@ -17,6 +17,7 @@ import com.fitlife.member.enums.MemberStatus;
 import com.fitlife.member.repository.MemberRepository;
 import com.fitlife.security.CustomUserDetails;
 import com.fitlife.security.JwtService;
+import com.fitlife.security.service.CurrentUserService;
 import com.fitlife.user.entity.Role;
 import com.fitlife.user.entity.User;
 import com.fitlife.user.enums.AuthProvider;
@@ -58,50 +59,80 @@ public class AuthServiceImpl implements AuthService {
     private final AuthMapper authMapper;
     private final GoogleTokenVerifierService googleTokenVerifierService;
 
+    private final CurrentUserService
+            currentUserService;
+
     // =========================================================
     // REGISTER
     // =========================================================
 
     @Override
     @Transactional
-    public AuthResponse register(RegisterRequest request) {
+    public AuthResponse register(
+            RegisterRequest request
+    ) {
         validateRegisterRequest(request);
 
-        Role memberRole = roleRepository.findByCode(DEFAULT_MEMBER_ROLE)
-                .orElseThrow(() ->
-                        new AppException(ErrorCode.ROLE_NOT_FOUND)
+        String username =
+                request.getUsername()
+                        .trim()
+                        .toLowerCase();
+
+        String email =
+                request.getEmail()
+                        .trim()
+                        .toLowerCase();
+
+        String fullName =
+                request.getFullName()
+                        .trim();
+
+        String phone =
+                normalizeNullable(
+                        request.getPhone()
                 );
 
-        User user = User.builder()
-                .username(request.getUsername().trim().toLowerCase())
-                .email(request.getEmail().trim().toLowerCase())
-                .passwordHash(
-                        passwordEncoder.encode(request.getPassword())
-                )
-                .fullName(request.getFullName())
-                .phone(normalizeNullable(request.getPhone()))
+        Role memberRole =
+                roleRepository
+                        .findByCode(DEFAULT_MEMBER_ROLE)
+                        .orElseThrow(() ->
+                                new AppException(
+                                        ErrorCode.ROLE_NOT_FOUND
+                                )
+                        );
 
-                // Chưa verify nên chưa cho login.
-                .status(UserStatus.PENDING)
-                .authProvider(AuthProvider.LOCAL)
-                .providerId(null)
-                .emailVerified(false)
-                .isDeleted(false)
-                .roles(new HashSet<>())
-                .build();
+        User user =
+                User.builder()
+                        .username(username)
+                        .email(email)
+                        .passwordHash(
+                                passwordEncoder.encode(
+                                        request.getPassword()
+                                )
+                        )
+                        .fullName(fullName)
+                        .phone(phone)
+                        .status(UserStatus.PENDING)
+                        .authProvider(AuthProvider.LOCAL)
+                        .providerId(null)
+                        .emailVerified(false)
+                        .isDeleted(false)
+                        .roles(new HashSet<>())
+                        .build();
 
         user.getRoles().add(memberRole);
 
-        User savedUser = userRepository.save(user);
+        User savedUser =
+                userRepository.save(user);
 
-        createMemberProfileForRegisteredUser(savedUser);
+        createMemberProfileForRegisteredUser(
+                savedUser
+        );
 
-        /*
-         * Sinh verification token và gửi email.
-         * Không sinh access token ở bước register.
-         */
         emailVerificationService
-                .createAndSendVerificationToken(savedUser);
+                .createAndSendVerificationToken(
+                        savedUser
+                );
 
         return authMapper.toAuthResponse(
                 savedUser,
@@ -128,25 +159,32 @@ public class AuthServiceImpl implements AuthService {
                         .trim()
                         .toLowerCase();
 
-        if (userRepository.existsByEmail(email)) {
-            throw new AppException(
-                    ErrorCode.EMAIL_ALREADY_EXISTS
-            );
-        }
-
-        if (userRepository.existsByUsername(username)) {
-            throw new AppException(
-                    ErrorCode.USERNAME_ALREADY_EXISTS
-            );
-        }
-
         String phone =
                 normalizeNullable(
                         request.getPhone()
                 );
 
-        if (phone != null
-                && userRepository.existsByPhone(phone)) {
+        if (userRepository.existsByEmail(
+                email
+        )) {
+            throw new AppException(
+                    ErrorCode.EMAIL_ALREADY_EXISTS
+            );
+        }
+
+        if (userRepository.existsByUsername(
+                username
+        )) {
+            throw new AppException(
+                    ErrorCode.USERNAME_ALREADY_EXISTS
+            );
+        }
+
+        if (
+                phone != null
+                        && userRepository
+                        .existsByPhone(phone)
+        ) {
             throw new AppException(
                     ErrorCode.PHONE_ALREADY_EXISTS
             );
@@ -172,79 +210,163 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public AuthResponse login(LoginRequest request) {
-        String identifier = request.getIdentifier()
-                .trim()
-                .toLowerCase();
-
-        /*
-         * Kiểm tra trước authenticationManager để có thể trả
-         * đúng lỗi EMAIL_NOT_VERIFIED thay vì chỉ trả bad credentials.
-         */
-        User existingUser = findUserByIdentifier(identifier);
-
-        validateUserCanLogin(existingUser);
-
-        Authentication authentication =
-                authenticationManager.authenticate(
-                        new UsernamePasswordAuthenticationToken(
-                                identifier,
-                                request.getPassword()
-                        )
+    public AuthResponse login(
+            LoginRequest request
+    ) {
+        String identifier =
+                normalizeIdentifier(
+                        request.getIdentifier()
                 );
 
-        CustomUserDetails userDetails =
-                (CustomUserDetails) authentication.getPrincipal();
+        User existingUser =
+                findUserByIdentifier(
+                        identifier
+                );
 
-        User user = userDetails.getUser();
-
-        String accessToken =
-                jwtService.generateToken(userDetails);
-
-        String refreshToken =
-                refreshTokenService.create(user);
-
-        return authMapper.toAuthResponse(
-                user,
-                accessToken,
-                refreshToken
+        validateUserCanLogin(
+                existingUser
         );
-    }
 
-    private User findUserByIdentifier(String identifier) {
-        return userRepository.findByEmail(identifier)
-                .or(() -> userRepository.findByUsername(identifier))
-                .orElseThrow(() ->
-                        new AppException(
-                                ErrorCode.INVALID_CREDENTIALS
-                        )
-                );
-    }
+        Authentication authentication;
 
-    private void validateUserCanLogin(User user) {
-        if (Boolean.TRUE.equals(user.getIsDeleted())) {
+        try {
+            authentication =
+                    authenticationManager
+                            .authenticate(
+                                    new UsernamePasswordAuthenticationToken(
+                                            identifier,
+                                            request.getPassword()
+                                    )
+                            );
+        } catch (
+                org.springframework.security
+                        .core
+                        .AuthenticationException exception
+        ) {
             throw new AppException(
                     ErrorCode.INVALID_CREDENTIALS
             );
         }
 
-        if (!Boolean.TRUE.equals(user.getEmailVerified())) {
+        Object principal =
+                authentication
+                        .getPrincipal();
+
+        if (
+                !(principal
+                        instanceof CustomUserDetails userDetails)
+        ) {
+            throw new AppException(
+                    ErrorCode.INVALID_CREDENTIALS
+            );
+        }
+
+        User user =
+                userDetails.getUser();
+
+        validateUserCanLogin(user);
+
+        String accessToken =
+                jwtService
+                        .generateToken(
+                                userDetails
+                        );
+
+        String refreshToken =
+                refreshTokenService
+                        .create(user);
+
+        long expiresInSeconds =
+                jwtService
+                        .getExpirationMs()
+                        / 1000L;
+
+        return authMapper
+                .toAuthResponse(
+                        user,
+                        accessToken,
+                        refreshToken,
+                        expiresInSeconds
+                );
+    }
+
+    private User findUserByIdentifier(
+            String identifier
+    ) {
+        return userRepository
+                .findByEmail(identifier)
+                .or(() ->
+                        userRepository
+                                .findByUsername(
+                                        identifier
+                                )
+                )
+                .orElseThrow(() ->
+                        new AppException(
+                                ErrorCode
+                                        .INVALID_CREDENTIALS
+                        )
+                );
+    }
+
+    private void validateUserCanLogin(
+            User user
+    ) {
+        if (
+                user == null
+                        || Boolean.TRUE.equals(
+                        user.getIsDeleted()
+                )
+        ) {
+            throw new AppException(
+                    ErrorCode.INVALID_CREDENTIALS
+            );
+        }
+
+        if (
+                !Boolean.TRUE.equals(
+                        user.getEmailVerified()
+                )
+        ) {
             throw new AppException(
                     ErrorCode.EMAIL_NOT_VERIFIED
             );
         }
 
-        if (user.getStatus() == UserStatus.LOCKED) {
+        if (
+                user.getStatus()
+                        == UserStatus.LOCKED
+        ) {
             throw new AppException(
                     ErrorCode.ACCOUNT_LOCKED
             );
         }
 
-        if (user.getStatus() != UserStatus.ACTIVE) {
+        if (
+                user.getStatus()
+                        != UserStatus.ACTIVE
+        ) {
             throw new AppException(
                     ErrorCode.ACCOUNT_INACTIVE
             );
         }
+    }
+
+    private String normalizeIdentifier(
+            String identifier
+    ) {
+        if (
+                identifier == null
+                        || identifier.isBlank()
+        ) {
+            throw new AppException(
+                    ErrorCode.INVALID_CREDENTIALS
+            );
+        }
+
+        return identifier
+                .trim()
+                .toLowerCase();
     }
 
     // =========================================================
@@ -256,12 +378,20 @@ public class AuthServiceImpl implements AuthService {
     public AuthResponse refreshToken(
             RefreshTokenRequest request
     ) {
-        RefreshToken refreshTokenEntity =
-                refreshTokenService.validate(
-                        request.getRefreshToken()
-                );
+        String rawRefreshToken =
+                request
+                        .getRefreshToken()
+                        .trim();
 
-        User user = refreshTokenEntity.getUser();
+        RefreshToken refreshTokenEntity =
+                refreshTokenService
+                        .validate(
+                                rawRefreshToken
+                        );
+
+        User user =
+                refreshTokenEntity
+                        .getUser();
 
         validateUserCanLogin(user);
 
@@ -269,17 +399,36 @@ public class AuthServiceImpl implements AuthService {
                 new CustomUserDetails(user);
 
         String newAccessToken =
-                jwtService.generateToken(userDetails);
+                jwtService
+                        .generateToken(
+                                userDetails
+                        );
 
         /*
-         * MVP: giữ nguyên refresh token hiện tại.
-         * Sau này có thể bổ sung refresh-token rotation.
+         * Refresh-token rotation:
+         * token cũ bị revoke và tạo token mới.
          */
-        return authMapper.toAuthResponse(
-                user,
-                newAccessToken,
-                request.getRefreshToken()
-        );
+        refreshTokenService
+                .revoke(
+                        rawRefreshToken
+                );
+
+        String newRefreshToken =
+                refreshTokenService
+                        .create(user);
+
+        long expiresInSeconds =
+                jwtService
+                        .getExpirationMs()
+                        / 1000L;
+
+        return authMapper
+                .toAuthResponse(
+                        user,
+                        newAccessToken,
+                        newRefreshToken,
+                        expiresInSeconds
+                );
     }
 
     // =========================================================
@@ -288,25 +437,26 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public void logout(LogoutRequest request) {
-        /*
-         * Logout nên idempotent.
-         * Service revoke có thể bỏ qua nếu token đã revoked
-         * hoặc không còn tồn tại.
-         */
-        refreshTokenService.revoke(
-                request.getRefreshToken()
-        );
+    public void logout(
+            LogoutRequest request
+    ) {
+        refreshTokenService
+                .revoke(
+                        request.getRefreshToken()
+                );
     }
 
     @Override
     @Transactional
     public void logoutAll() {
-        User currentUser = getCurrentUser();
+        Long currentUserId =
+                currentUserService
+                        .getCurrentUserId();
 
-        refreshTokenService.revokeAllByUserId(
-                currentUser.getId()
-        );
+        refreshTokenService
+                .revokeAllByUserId(
+                        currentUserId
+                );
     }
 
     // =========================================================
@@ -315,8 +465,11 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public void verifyEmail(String token) {
-        emailVerificationService.verifyEmail(token);
+    public void verifyEmail(
+            String token
+    ) {
+        emailVerificationService
+                .verifyEmail(token);
     }
 
     @Override
@@ -324,9 +477,10 @@ public class AuthServiceImpl implements AuthService {
     public void resendVerificationEmail(
             ResendVerificationEmailRequest request
     ) {
-        emailVerificationService.resendVerificationEmail(
-                request.getEmail().trim().toLowerCase()
-        );
+        emailVerificationService
+                .resendVerificationEmail(
+                        request.getEmail()
+                );
     }
 
     // =========================================================
@@ -396,46 +550,69 @@ public class AuthServiceImpl implements AuthService {
     public void resetPassword(
             ResetPasswordRequest request
     ) {
-        validatePasswordConfirmation(
-                request.getNewPassword(),
-                request.getConfirmPassword()
-        );
-
-        User user = userRepository
-                .findByEmail(
-                        request.getEmail()
-                                .trim()
-                                .toLowerCase()
-                )
-                .orElseThrow(() ->
-                        new AppException(
-                                ErrorCode.USER_NOT_FOUND
+        if (
+                !request.getNewPassword()
+                        .equals(
+                                request.getConfirmPassword()
                         )
-                );
+        ) {
+            throw new AppException(
+                    ErrorCode
+                            .PASSWORD_CONFIRM_NOT_MATCH
+            );
+        }
 
-        if (user.getResetToken() == null
-                || !user.getResetToken()
-                .equals(request.getOtp())) {
+        String email =
+                request.getEmail()
+                        .trim()
+                        .toLowerCase();
+
+        User user =
+                userRepository
+                        .findByEmail(email)
+                        .orElseThrow(() ->
+                                new AppException(
+                                        ErrorCode
+                                                .RESET_TOKEN_INVALID
+                                )
+                        );
+
+        if (
+                user.getResetToken() == null
+                        || !user.getResetToken()
+                        .equals(
+                                request.getOtp()
+                        )
+        ) {
             throw new AppException(
                     ErrorCode.OTP_INVALID
             );
         }
 
-        if (user.getResetTokenExpiry() == null
-                || user.getResetTokenExpiry()
-                .isBefore(LocalDateTime.now())) {
+        LocalDateTime resetTokenExpiry =
+                user.getResetTokenExpiry();
+
+        if (
+                resetTokenExpiry == null
+                        || !resetTokenExpiry.isAfter(
+                        LocalDateTime.now()
+                )
+        ) {
             throw new AppException(
                     ErrorCode.OTP_EXPIRED
             );
         }
 
-        if (user.getPasswordHash() != null
-                && passwordEncoder.matches(
-                request.getNewPassword(),
-                user.getPasswordHash()
-        )) {
+        if (
+                user.getPasswordHash() != null
+                        && passwordEncoder.matches(
+                        request.getNewPassword(),
+                        user.getPasswordHash()
+                )
+        ) {
             throw new AppException(
-                    ErrorCode.NEW_PASSWORD_SAME_AS_OLD
+                    ErrorCode
+                            .NEW_PASSWORD_SAME_AS_OLD
             );
         }
 
@@ -450,9 +627,10 @@ public class AuthServiceImpl implements AuthService {
 
         userRepository.save(user);
 
-        refreshTokenService.revokeAllByUserId(
-                user.getId()
-        );
+        refreshTokenService
+                .revokeAllByUserId(
+                        user.getId()
+                );
     }
 
     // =========================================================
@@ -650,34 +828,44 @@ public class AuthServiceImpl implements AuthService {
     private void createMemberProfileForRegisteredUser(
             User user
     ) {
-        if (user == null || user.getId() == null) {
+        if (
+                user == null
+                        || user.getId() == null
+        ) {
             return;
         }
 
-        if (memberRepository.existsByUserId(
-                user.getId()
-        )) {
-            return;
-        }
-
-        Member member = Member.builder()
-                .user(user)
-                .memberCode(
-                        generateMemberCode(
-                                user.getId()
-                        )
+        if (
+                memberRepository.existsByUserId(
+                        user.getId()
                 )
-                .gender(null)
-                .dateOfBirth(null)
-                .address(null)
-                .emergencyContactName(null)
-                .emergencyContactPhone(null)
-                .joinDate(LocalDate.now())
-                .fitnessGoal(null)
-                .healthNote(null)
-                .status(MemberStatus.ACTIVE)
-                .isDeleted(false)
-                .build();
+        ) {
+            return;
+        }
+
+        Member member =
+                Member.builder()
+                        .user(user)
+                        .memberCode(
+                                generateMemberCode(
+                                        user.getId()
+                                )
+                        )
+                        .gender(null)
+                        .dateOfBirth(null)
+                        .address(null)
+                        .emergencyContactName(null)
+                        .emergencyContactPhone(null)
+                        .joinDate(
+                                LocalDate.now()
+                        )
+                        .fitnessGoal(null)
+                        .healthNote(null)
+                        .status(
+                                MemberStatus.ACTIVE
+                        )
+                        .isDeleted(false)
+                        .build();
 
         memberRepository.save(member);
     }
