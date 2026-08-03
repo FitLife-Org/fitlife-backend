@@ -9,73 +9,189 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface PaymentMapper {
 
-    @Mapping(target = "invoiceId", expression = "java(resolveInvoiceId(payment))")
-    @Mapping(target = "invoiceCode", expression = "java(resolveInvoiceCode(payment))")
-    @Mapping(target = "subscriptionId", expression = "java(resolveSubscriptionId(payment))")
-    @Mapping(target = "memberId", expression = "java(resolveMemberId(payment))")
-    PaymentResponse toResponse(Payment payment);
+    @Mapping(
+            target = "invoiceId",
+            expression = "java(resolveInvoiceId(payment))"
+    )
+    @Mapping(
+            target = "invoiceCode",
+            expression = "java(resolveInvoiceCode(payment))"
+    )
+    @Mapping(
+            target = "subscriptionId",
+            expression = "java(resolveSubscriptionId(payment))"
+    )
+    @Mapping(
+            target = "memberId",
+            expression = "java(resolveMemberId(payment))"
+    )
+    @Mapping(
+            target = "refundedById",
+            expression = "java(resolveRefundedById(payment))"
+    )
+    @Mapping(
+            target = "refundedByName",
+            expression = "java(resolveRefundedByName(payment))"
+    )
+    PaymentResponse toResponse(
+            Payment payment
+    );
 
-    @Mapping(target = "invoiceId", expression = "java(resolveInvoiceId(payment))")
-    @Mapping(target = "invoiceCode", expression = "java(resolveInvoiceCode(payment))")
-    @Mapping(target = "subscriptionId", expression = "java(resolveSubscriptionId(payment))")
-    @Mapping(target = "memberId", expression = "java(resolveMemberId(payment))")
-    @Mapping(target = "memberCode", expression = "java(resolveMemberCode(payment))")
-    @Mapping(target = "memberName", expression = "java(resolveMemberName(payment))")
-    @Mapping(target = "confirmedById", expression = "java(resolveConfirmedById(payment))")
-    @Mapping(target = "confirmedByName", expression = "java(resolveConfirmedByName(payment))")
-    PaymentDetailResponse toDetailResponse(Payment payment);
+    @Mapping(
+            target = "invoiceId",
+            expression = "java(resolveInvoiceId(payment))"
+    )
+    @Mapping(
+            target = "invoiceCode",
+            expression = "java(resolveInvoiceCode(payment))"
+    )
+    @Mapping(
+            target = "subscriptionId",
+            expression = "java(resolveSubscriptionId(payment))"
+    )
+    @Mapping(
+            target = "memberId",
+            expression = "java(resolveMemberId(payment))"
+    )
+    @Mapping(
+            target = "memberCode",
+            expression = "java(resolveMemberCode(payment))"
+    )
+    @Mapping(
+            target = "memberName",
+            expression = "java(resolveMemberName(payment))"
+    )
+    @Mapping(
+            target = "confirmedById",
+            expression = "java(resolveConfirmedById(payment))"
+    )
+    @Mapping(
+            target = "confirmedByName",
+            expression = "java(resolveConfirmedByName(payment))"
+    )
+    @Mapping(
+            target = "refundedById",
+            expression = "java(resolveRefundedById(payment))"
+    )
+    @Mapping(
+            target = "refundedByName",
+            expression = "java(resolveRefundedByName(payment))"
+    )
+    PaymentDetailResponse toDetailResponse(
+            Payment payment
+    );
 
-    default Long resolveInvoiceId(Payment payment) {
-        return payment != null && payment.getInvoice() != null
+    default Long resolveInvoiceId(
+            Payment payment
+    ) {
+        return payment != null &&
+                payment.getInvoice() != null
                 ? payment.getInvoice().getId()
                 : null;
     }
 
-    default String resolveInvoiceCode(Payment payment) {
-        return payment != null && payment.getInvoice() != null
-                ? payment.getInvoice().getInvoiceCode()
+    default String resolveInvoiceCode(
+            Payment payment
+    ) {
+        return payment != null &&
+                payment.getInvoice() != null
+                ? payment
+                .getInvoice()
+                .getInvoiceCode()
                 : null;
     }
 
-    default Long resolveSubscriptionId(Payment payment) {
-        return payment != null && payment.getSubscription() != null
-                ? payment.getSubscription().getId()
+    default Long resolveSubscriptionId(
+            Payment payment
+    ) {
+        return payment != null &&
+                payment.getSubscription() != null
+                ? payment
+                .getSubscription()
+                .getId()
                 : null;
     }
 
-    default Long resolveMemberId(Payment payment) {
-        return payment != null && payment.getMember() != null
-                ? payment.getMember().getId()
+    default Long resolveMemberId(
+            Payment payment
+    ) {
+        return payment != null &&
+                payment.getMember() != null
+                ? payment
+                .getMember()
+                .getId()
                 : null;
     }
 
-    default String resolveMemberCode(Payment payment) {
-        return payment != null && payment.getMember() != null
-                ? payment.getMember().getMemberCode()
+    default String resolveMemberCode(
+            Payment payment
+    ) {
+        return payment != null &&
+                payment.getMember() != null
+                ? payment
+                .getMember()
+                .getMemberCode()
                 : null;
     }
 
-    default String resolveMemberName(Payment payment) {
-        if (payment == null || payment.getMember() == null) {
+    default String resolveMemberName(
+            Payment payment
+    ) {
+        if (
+                payment == null ||
+                        payment.getMember() == null ||
+                        payment.getMember().getUser() == null
+        ) {
             return null;
         }
 
-        if (payment.getMember().getUser() != null) {
-            return payment.getMember().getUser().getFullName();
-        }
-
-        return null;
+        return payment
+                .getMember()
+                .getUser()
+                .getFullName();
     }
 
-    default Long resolveConfirmedById(Payment payment) {
-        return payment != null && payment.getConfirmedBy() != null
-                ? payment.getConfirmedBy().getId()
+    default Long resolveConfirmedById(
+            Payment payment
+    ) {
+        return payment != null &&
+                payment.getConfirmedBy() != null
+                ? payment
+                .getConfirmedBy()
+                .getId()
                 : null;
     }
 
-    default String resolveConfirmedByName(Payment payment) {
-        return payment != null && payment.getConfirmedBy() != null
-                ? payment.getConfirmedBy().getFullName()
+    default String resolveConfirmedByName(
+            Payment payment
+    ) {
+        return payment != null &&
+                payment.getConfirmedBy() != null
+                ? payment
+                .getConfirmedBy()
+                .getFullName()
+                : null;
+    }
+
+    default Long resolveRefundedById(
+            Payment payment
+    ) {
+        return payment != null &&
+                payment.getRefundedBy() != null
+                ? payment
+                .getRefundedBy()
+                .getId()
+                : null;
+    }
+
+    default String resolveRefundedByName(
+            Payment payment
+    ) {
+        return payment != null &&
+                payment.getRefundedBy() != null
+                ? payment
+                .getRefundedBy()
+                .getFullName()
                 : null;
     }
 }
