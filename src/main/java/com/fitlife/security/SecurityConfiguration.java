@@ -185,6 +185,12 @@ public class SecurityConfiguration {
                         ).hasAnyRole("ADMIN", "STAFF")
 
                         .requestMatchers(
+                                HttpMethod.GET,
+                                "/admin/subscriptions",
+                                "/admin/subscriptions/**"
+                        ).hasAnyRole("ADMIN", "STAFF")
+
+                        .requestMatchers(
                                 "/admin/**"
                         ).hasRole("ADMIN")
 

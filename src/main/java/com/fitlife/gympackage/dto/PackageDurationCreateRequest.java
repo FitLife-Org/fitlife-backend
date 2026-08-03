@@ -32,5 +32,7 @@ public class PackageDurationCreateRequest {
     private BigDecimal price;
     private BigDecimal discountPrice;
 
+    private Long gymPackageId;
+
     private String status;
 }

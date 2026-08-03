@@ -21,6 +21,8 @@ public class PackageDurationResponse {
     private BigDecimal price;
     private BigDecimal discountPrice;
     private BigDecimal discountPercent;
+    private Long gymPackageId;
+    private String gymPackageName;
     private String status;
 
     @JsonFormat(pattern = "dd/MM/yyyy HH:mm:ss")

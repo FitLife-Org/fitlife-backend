@@ -188,7 +188,12 @@ public class GymPackageServiceImpl implements GymPackageService {
         GymPackage pkg = gymPackageRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.PACKAGE_NOT_FOUND, "Package not found"));
 
-        pkg.setStatus(request.getStatus().toUpperCase());
+        String status = request.getStatus();
+        if (status == null || status.isBlank()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Trạng thái không được để trống");
+        }
+
+        pkg.setStatus(status.toUpperCase());
         GymPackage saved = gymPackageRepository.save(pkg);
         return gymPackageMapper.toResponse(saved);
     }
@@ -199,9 +204,12 @@ public class GymPackageServiceImpl implements GymPackageService {
         GymPackage pkg = gymPackageRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.PACKAGE_NOT_FOUND, "Package not found"));
 
-        boolean hasActive = subscriptionRepository.existsByGymPackageIdAndStatus(id, SubscriptionStatus.ACTIVE);
-        if (hasActive) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Cannot delete package with active subscriptions");
+        boolean hasActiveOrPending = subscriptionRepository.existsByGymPackageIdAndStatus(id, SubscriptionStatus.ACTIVE)
+                || subscriptionRepository.existsByGymPackageIdAndStatus(id, SubscriptionStatus.PENDING_PAYMENT)
+                || subscriptionRepository.existsByGymPackageIdAndStatus(id, SubscriptionStatus.PAUSED)
+                || subscriptionRepository.existsByGymPackageIdAndStatus(id, SubscriptionStatus.SUSPENDED);
+        if (hasActiveOrPending) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Không thể xóa gói tập đang có người đăng ký hoạt động hoặc chờ thanh toán");
         }
 
         pkg.setIsDeleted(true);

@@ -11,6 +11,8 @@ import org.mapstruct.MappingTarget;
 @Mapper(componentModel = "spring")
 public interface PackageDurationMapper {
 
+    @Mapping(target = "gymPackageId", source = "gymPackage.id")
+    @Mapping(target = "gymPackageName", source = "gymPackage.name")
     PackageDurationResponse toResponse(PackageDuration entity);
 
     @Mapping(target = "id", ignore = true)

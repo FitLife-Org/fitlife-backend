@@ -25,7 +25,7 @@ public class PackageDurationController {
 
     private final PackageDurationService packageDurationService;
 
-    @GetMapping("/package-durations")
+    @GetMapping({"/package-durations", "/package-durations/active"})
     @Operation(summary = "Get list of active package durations")
     public ApiResponse<List<PackageDurationResponse>> getActiveDurationsList() {
         List<PackageDurationResponse> response = packageDurationService.getActiveDurationsList();
@@ -59,7 +59,7 @@ public class PackageDurationController {
         return ApiResponse.created("Tạo thời hạn thành công", response);
     }
 
-    @PutMapping("/admin/package-durations/{id}")
+    @RequestMapping(value = "/admin/package-durations/{id}", method = {RequestMethod.PUT, RequestMethod.PATCH})
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Update a package duration")
     public ApiResponse<PackageDurationResponse> updateDuration(

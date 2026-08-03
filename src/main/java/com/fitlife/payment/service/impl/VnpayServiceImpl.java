@@ -5,6 +5,7 @@ import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.subscription.entity.Subscription;
 import com.fitlife.subscription.enums.SubscriptionStatus;
 import com.fitlife.subscription.repository.SubscriptionRepository;
+import com.fitlife.subscription.service.SubscriptionService;
 import com.fitlife.invoice.entity.Invoice;
 import com.fitlife.invoice.enums.InvoiceStatus;
 import com.fitlife.invoice.repository.InvoiceRepository;
@@ -39,6 +40,7 @@ public class VnpayServiceImpl implements VnpayService {
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
     private final SubscriptionRepository subscriptionRepository;
+    private final SubscriptionService subscriptionService;
 
     private static final DateTimeFormatter VNP_DATE_FORMAT =
             DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
@@ -258,8 +260,7 @@ public class VnpayServiceImpl implements VnpayService {
         Subscription subscription = invoice.getSubscription();
 
         if (subscription != null) {
-            activateSubscription(subscription);
-            subscriptionRepository.save(subscription);
+            subscriptionService.activateSubscriptionAfterPayment(subscription.getId());
         }
 
         paymentRepository.save(payment);
@@ -278,23 +279,6 @@ public class VnpayServiceImpl implements VnpayService {
         payment.setGatewayMessage("VNPay payment failed");
 
         paymentRepository.save(payment);
-    }
-
-    private void activateSubscription(Subscription subscription) {
-        if (subscription.getStatus() == SubscriptionStatus.ACTIVE) {
-            return;
-        }
-
-        LocalDate startDate = LocalDate.now();
-
-        subscription.setStatus(SubscriptionStatus.ACTIVE);
-        subscription.setStartDate(startDate);
-
-        if (subscription.getPackageDuration() != null) {
-            subscription.setEndDate(
-                    startDate.plusMonths(subscription.getPackageDuration().getMonths())
-            );
-        }
     }
 
     private String buildFrontendRedirect(String status, String code, Long paymentId) {
