@@ -35,14 +35,14 @@ public class SubscriptionController {
                 .build();
     }
 
-    @GetMapping("/my")
+    @GetMapping({"/my", "/me"})
     public ApiResponse<?> getMySubscriptions(Pageable pageable) {
         return ApiResponse.builder()
                 .data(subscriptionService.getMySubscriptions(pageable))
                 .build();
     }
 
-    @GetMapping("/my/active")
+    @GetMapping({"/my/active", "/me/active"})
     public ApiResponse<SubscriptionResponse> getMyActiveSubscription() {
         return ApiResponse.<SubscriptionResponse>builder()
                 .data(subscriptionService.getMyActiveSubscription())

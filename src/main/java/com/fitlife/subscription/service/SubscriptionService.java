@@ -36,4 +36,6 @@ public interface SubscriptionService {
     SubscriptionResponse createSubscriptionForMemberByStaff(Long memberId, SubscriptionCreateRequest request);
 
     SubscriptionResponse updateSubscriptionStatusByAdmin(Long subscriptionId, com.fitlife.subscription.dto.request.SubscriptionStatusUpdateRequest request);
+
+    void activateSubscriptionAfterPayment(Long subscriptionId);
 }

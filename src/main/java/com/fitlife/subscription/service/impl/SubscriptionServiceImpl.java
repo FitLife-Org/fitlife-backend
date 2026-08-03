@@ -652,4 +652,51 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         return memberRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_FOUND));
     }
+
+    @Override
+    @Transactional
+    public void activateSubscriptionAfterPayment(Long subscriptionId) {
+        Subscription subscription = subscriptionRepository.findById(subscriptionId)
+                .orElseThrow(() -> new AppException(ErrorCode.SUBSCRIPTION_NOT_FOUND, "Subscription not found"));
+
+        if (subscription.getStatus() == SubscriptionStatus.ACTIVE) {
+            return;
+        }
+
+        SubscriptionStatus oldStatus = subscription.getStatus();
+        LocalDate startDate = LocalDate.now();
+
+        subscription.setStatus(SubscriptionStatus.ACTIVE);
+        if (subscription.getStartDate() == null) {
+            subscription.setStartDate(startDate);
+            if (subscription.getPackageDuration() != null) {
+                subscription.setEndDate(
+                        startDate.plusMonths(subscription.getPackageDuration().getMonths())
+                );
+            }
+        }
+
+        subscriptionRepository.save(subscription);
+        logHistory(subscription, oldStatus, SubscriptionStatus.ACTIVE, "PAYMENT_ACTIVATED", "Subscription activated via payment success");
+
+        // Handle replacement for UPGRADE
+        String note = subscription.getNote();
+        if (note != null && note.startsWith("UPGRADE_FROM_")) {
+            try {
+                String oldSubIdStr = note.substring("UPGRADE_FROM_".length()).trim();
+                Long oldSubId = Long.parseLong(oldSubIdStr);
+                subscriptionRepository.findById(oldSubId).ifPresent(oldSub -> {
+                    if (oldSub.getStatus() == SubscriptionStatus.ACTIVE) {
+                        SubscriptionStatus oldSubPrevStatus = oldSub.getStatus();
+                        oldSub.setStatus(SubscriptionStatus.CANCELLED);
+                        oldSub.setNote("Upgraded to subscription " + subscription.getId());
+                        subscriptionRepository.save(oldSub);
+                        logHistory(oldSub, oldSubPrevStatus, SubscriptionStatus.CANCELLED, "UPGRADE_REPLACE", "Cancelled due to upgrade to " + subscription.getId());
+                    }
+                });
+            } catch (Exception e) {
+                // Ignore parsing errors
+            }
+        }
+    }
 }
