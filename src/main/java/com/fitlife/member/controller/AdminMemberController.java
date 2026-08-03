@@ -25,12 +25,12 @@ public class AdminMemberController {
 
     @GetMapping
     public ResponseEntity<PageResponse<MemberSummaryResponse>> getAllMembers(
-            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "10") int size,
             @RequestParam(value = "keyword", required = false) String keyword,
             @RequestParam(value = "status", required = false) MemberStatus status
     ) {
-        Pageable pageable = PageRequest.of(page - 1, size);
+        Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(memberService.getAllMembersForAdmin(keyword, status, pageable));
     }
 
