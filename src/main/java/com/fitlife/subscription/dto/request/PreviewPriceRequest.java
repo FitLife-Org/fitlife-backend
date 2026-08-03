@@ -1,4 +1,4 @@
-package com.fitlife.subscription.dto;
+package com.fitlife.subscription.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;

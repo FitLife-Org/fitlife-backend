@@ -38,5 +38,13 @@ public class PaymentResponse {
 
     private String note;
 
+    private LocalDateTime refundedAt;
+
+    private Long refundedById;
+
+    private String refundedByName;
+
+    private String refundReason;
+
     private LocalDateTime createdAt;
 }

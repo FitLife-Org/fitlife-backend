@@ -50,6 +50,14 @@ public class PaymentDetailResponse {
 
     private LocalDateTime cancelledAt;
 
+    private LocalDateTime refundedAt;
+
+    private Long refundedById;
+
+    private String refundedByName;
+
+    private String refundReason;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
