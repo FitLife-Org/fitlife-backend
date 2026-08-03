@@ -242,4 +242,69 @@ public class EquipmentManagmentServiceImpl implements EquipmentManagmentService 
                     dto.setDaysToNextMaintenance((int) ChronoUnit.DAYS.between(today, m.getMaintenanceDate()));
                 });
     }
+
+    @Override
+    @Transactional
+    public MaintenanceScheduleResponse reportBroken(String code, EquipmentReportBrokenRequest request) {
+        EquipmentManagment eq = equipmentRepository.findByEquipmentCodeAndIsDeletedFalse(code)
+                .orElseThrow(() -> new AppException(ErrorCode.EQUIPMENT_NOT_FOUND));
+
+        eq.setStatus(EquipmentManagmentStatus.MAINTENANCE);
+        equipmentRepository.save(eq);
+
+        EquipmentManagmentMaintenance maintenance = EquipmentManagmentMaintenance.builder()
+                .equipment(eq)
+                .maintenanceDate(LocalDate.now())
+                .maintenanceType("REPAIR")
+                .description(request.getDescription())
+                .cost(BigDecimal.ZERO)
+                .status(MaintenanceStatus.SCHEDULED)
+                .build();
+
+        EquipmentManagmentMaintenance saved = maintenanceRepository.save(maintenance);
+        return equipmentMapper.toMaintenanceResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public EquipmentManagmentResponse updateEquipmentArea(String code, EquipmentAreaUpdateRequest request) {
+        EquipmentManagment eq = equipmentRepository.findByEquipmentCodeAndIsDeletedFalse(code)
+                .orElseThrow(() -> new AppException(ErrorCode.EQUIPMENT_NOT_FOUND));
+
+        eq.setArea(request.getArea());
+        EquipmentManagment saved = equipmentRepository.save(eq);
+
+        EquipmentManagmentResponse response = equipmentMapper.toResponse(saved);
+        enrichMaintenanceDates(response, saved);
+        return response;
+    }
+
+    @Override
+    @Transactional
+    public EquipmentManagmentResponse retireEquipment(String code) {
+        EquipmentManagment eq = equipmentRepository.findByEquipmentCodeAndIsDeletedFalse(code)
+                .orElseThrow(() -> new AppException(ErrorCode.EQUIPMENT_NOT_FOUND));
+
+        eq.setStatus(EquipmentManagmentStatus.INACTIVE);
+        EquipmentManagment saved = equipmentRepository.save(eq);
+
+        EquipmentManagmentResponse response = equipmentMapper.toResponse(saved);
+        enrichMaintenanceDates(response, saved);
+        return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MaintenanceScheduleResponse> getEquipmentHistory(String code) {
+        if (!equipmentRepository.existsByEquipmentCodeAndIsDeletedFalse(code)) {
+            throw new AppException(ErrorCode.EQUIPMENT_NOT_FOUND);
+        }
+
+        List<EquipmentManagmentMaintenance> history = maintenanceRepository
+                .findByEquipmentEquipmentCodeOrderByMaintenanceDateDesc(code);
+
+        return history.stream()
+                .map(equipmentMapper::toMaintenanceResponse)
+                .collect(java.util.stream.Collectors.toList());
+    }
 }
