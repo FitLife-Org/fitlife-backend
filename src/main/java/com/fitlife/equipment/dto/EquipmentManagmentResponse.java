@@ -20,6 +20,14 @@ public class EquipmentManagmentResponse {
     private String area;
     private String status; // ACTIVE, MAINTENANCE, INACTIVE
 
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate purchaseDate;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate warrantyExpiry;
+
+    private String description;
+
     @JsonFormat(pattern = "dd/MM/yyyy")
     private LocalDate lastMaintenance;
 

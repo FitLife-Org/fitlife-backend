@@ -20,4 +20,6 @@ public interface EquipmentManagmentService {
     MaintenanceScheduleResponse createMaintenanceSchedule(String code, MaintenanceCreateRequest request);
 
     PageResponse<MaintenanceScheduleResponse> getMaintenanceSchedules(Pageable pageable);
+
+    MaintenanceScheduleResponse completeMaintenanceSchedule(Long id);
 }

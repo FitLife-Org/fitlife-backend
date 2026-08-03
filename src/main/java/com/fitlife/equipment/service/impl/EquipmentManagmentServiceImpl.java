@@ -210,6 +210,22 @@ public class EquipmentManagmentServiceImpl implements EquipmentManagmentService 
         return PageResponse.from(pageResult, equipmentMapper::toMaintenanceResponse);
     }
 
+    @Override
+    @Transactional
+    public MaintenanceScheduleResponse completeMaintenanceSchedule(Long id) {
+        EquipmentManagmentMaintenance maintenance = maintenanceRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_REQUEST, "Không tìm thấy phiếu bảo trì"));
+
+        maintenance.setStatus(MaintenanceStatus.COMPLETED);
+
+        EquipmentManagment eq = maintenance.getEquipment();
+        eq.setStatus(EquipmentManagmentStatus.AVAILABLE);
+        equipmentRepository.save(eq);
+
+        EquipmentManagmentMaintenance saved = maintenanceRepository.save(maintenance);
+        return equipmentMapper.toMaintenanceResponse(saved);
+    }
+
     private void enrichMaintenanceDates(EquipmentManagmentResponse dto, EquipmentManagment eq) {
         List<EquipmentManagmentMaintenance> completed = maintenanceRepository.findByEquipmentIdAndStatusOrderByMaintenanceDateDesc(eq.getId(), MaintenanceStatus.COMPLETED);
         if (!completed.isEmpty()) {

@@ -26,14 +26,14 @@ public class EquipmentManagmentController {
     @GetMapping("/equipment")
     @Operation(summary = "Get list of equipment with filtering and pagination")
     public ApiResponse<PageResponse<EquipmentManagmentResponse>> getEquipmentList(
-            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "10") int size,
             @RequestParam(value = "keyword", required = false) String keyword,
             @RequestParam(value = "category", required = false) String category,
             @RequestParam(value = "status", required = false) String status,
             @RequestParam(value = "area", required = false) String area
     ) {
-        Pageable pageable = PageRequest.of(page - 1, size);
+        Pageable pageable = PageRequest.of(page, size);
         PageResponse<EquipmentManagmentResponse> response = equipmentService.getEquipmentList(keyword, category, status, area, pageable);
         return ApiResponse.success("Lấy danh sách thiết bị thành công", response);
     }
@@ -96,11 +96,20 @@ public class EquipmentManagmentController {
     @GetMapping("/admin/equipment/maintenance-schedules")
     @Operation(summary = "Get list of all maintenance schedules")
     public ApiResponse<PageResponse<MaintenanceScheduleResponse>> getMaintenanceSchedules(
-            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "10") int size
     ) {
-        Pageable pageable = PageRequest.of(page - 1, size);
+        Pageable pageable = PageRequest.of(page, size);
         PageResponse<MaintenanceScheduleResponse> response = equipmentService.getMaintenanceSchedules(pageable);
         return ApiResponse.success("Lấy danh sách lịch bảo trì thành công", response);
+    }
+
+    @PatchMapping("/admin/equipment/maintenance-schedules/{id}/complete")
+    @Operation(summary = "Complete maintenance schedule")
+    public ApiResponse<MaintenanceScheduleResponse> completeMaintenanceSchedule(
+            @PathVariable("id") Long id
+    ) {
+        MaintenanceScheduleResponse response = equipmentService.completeMaintenanceSchedule(id);
+        return ApiResponse.success("Hoàn thành phiếu bảo trì thành công", response);
     }
 }

@@ -84,6 +84,11 @@ public class SecurityConfiguration {
                                 "/error"
                         ).permitAll()
 
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/uploads/**"
+                        ).permitAll()
+
                         /*
                          * Swagger hiện giữ public để phục vụ local/demo.
                          * Sang Foundation 04 sẽ chuyển theo profile.
@@ -156,6 +161,10 @@ public class SecurityConfiguration {
                         // =====================================================
                         // ADMIN — MUST COME BEFORE GENERIC ROUTES
                         // =====================================================
+
+                        .requestMatchers(
+                                "/admin/equipment/**"
+                        ).hasAnyRole("ADMIN", "STAFF")
 
                         .requestMatchers(
                                 "/admin/**"
