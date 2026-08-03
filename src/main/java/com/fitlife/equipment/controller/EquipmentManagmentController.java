@@ -112,4 +112,46 @@ public class EquipmentManagmentController {
         MaintenanceScheduleResponse response = equipmentService.completeMaintenanceSchedule(id);
         return ApiResponse.success("Hoàn thành phiếu bảo trì thành công", response);
     }
+
+    @PostMapping("/staff/equipment/{id}/report-broken")
+    @Operation(summary = "Report equipment as broken and create a repair schedule")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    public ApiResponse<MaintenanceScheduleResponse> reportBroken(
+            @PathVariable("id") String code,
+            @Valid @RequestBody EquipmentReportBrokenRequest request
+    ) {
+        MaintenanceScheduleResponse response = equipmentService.reportBroken(code, request);
+        return ApiResponse.success("Báo hỏng thiết bị thành công", response);
+    }
+
+    @PatchMapping("/admin/equipment/{id}/area")
+    @Operation(summary = "Update equipment area")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<EquipmentManagmentResponse> updateEquipmentArea(
+            @PathVariable("id") String code,
+            @Valid @RequestBody EquipmentAreaUpdateRequest request
+    ) {
+        EquipmentManagmentResponse response = equipmentService.updateEquipmentArea(code, request);
+        return ApiResponse.success("Cập nhật khu vực thiết bị thành công", response);
+    }
+
+    @PostMapping("/admin/equipment/{id}/retire")
+    @Operation(summary = "Retire equipment")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<EquipmentManagmentResponse> retireEquipment(
+            @PathVariable("id") String code
+    ) {
+        EquipmentManagmentResponse response = equipmentService.retireEquipment(code);
+        return ApiResponse.success("Ngừng hoạt động thiết bị thành công", response);
+    }
+
+    @GetMapping("/admin/equipment/{id}/history")
+    @Operation(summary = "Get equipment maintenance history")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<java.util.List<MaintenanceScheduleResponse>> getEquipmentHistory(
+            @PathVariable("id") String code
+    ) {
+        java.util.List<MaintenanceScheduleResponse> response = equipmentService.getEquipmentHistory(code);
+        return ApiResponse.success("Lấy lịch sử thiết bị thành công", response);
+    }
 }
