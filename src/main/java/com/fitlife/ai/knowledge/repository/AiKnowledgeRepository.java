@@ -1,78 +1,53 @@
 package com.fitlife.ai.knowledge.repository;
 
 import com.fitlife.ai.knowledge.entity.AiKnowledge;
-import com.fitlife.ai.knowledge.enums.AiKnowledgeCategory;
 import com.fitlife.ai.knowledge.enums.AiKnowledgeIndexStatus;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.util.List;
 import java.util.Optional;
 
 public interface AiKnowledgeRepository
-        extends JpaRepository<AiKnowledge, Long> {
+        extends
+        JpaRepository<AiKnowledge, Long>,
+        JpaSpecificationExecutor<AiKnowledge> {
+
+    Optional<AiKnowledge> findByIdAndDeletedFalse(
+            Long id
+    );
+
+    Optional<AiKnowledge> findByCodeIgnoreCaseAndDeletedFalse(
+            String code
+    );
 
     boolean existsByCodeIgnoreCaseAndDeletedFalse(
             String code
     );
 
-    Optional<AiKnowledge>
-    findByIdAndDeletedFalse(
+    boolean existsByCodeIgnoreCaseAndIdNotAndDeletedFalse(
+            String code,
             Long id
     );
 
     List<AiKnowledge>
-    findAllByDeletedFalseAndActiveTrueOrderByIdAsc();
+    findByActiveTrueAndDeletedFalseOrderByUpdatedAtDesc();
 
-    default List<AiKnowledge>
-    findAllByDeletedFalseAndActiveTrue() {
-        return findAllByDeletedFalseAndActiveTrueOrderByIdAsc();
-    }
+    List<AiKnowledge>
+    findByActiveTrueAndDeletedFalseAndIndexStatusNotOrderByUpdatedAtAsc(
+            AiKnowledgeIndexStatus indexStatus
+    );
 
-    @Query("""
-            SELECT k
-            FROM AiKnowledge k
-            WHERE k.deleted = false
-              AND (
-                    :keyword IS NULL
-                    OR LOWER(k.code)
-                        LIKE LOWER(
-                            CONCAT('%', :keyword, '%')
-                        )
-                    OR LOWER(k.title)
-                        LIKE LOWER(
-                            CONCAT('%', :keyword, '%')
-                        )
-              )
-              AND (
-                    :category IS NULL
-                    OR k.category = :category
-              )
-              AND (
-                    :indexStatus IS NULL
-                    OR k.indexStatus = :indexStatus
-              )
-              AND (
-                    :active IS NULL
-                    OR k.active = :active
-              )
-            """)
-    Page<AiKnowledge> search(
-            @Param("keyword")
-            String keyword,
+    List<AiKnowledge>
+    findByDeletedFalseAndIndexStatusOrderByUpdatedAtAsc(
+            AiKnowledgeIndexStatus indexStatus
+    );
 
-            @Param("category")
-            AiKnowledgeCategory category,
+    long countByDeletedFalse();
 
-            @Param("indexStatus")
-            AiKnowledgeIndexStatus indexStatus,
+    long countByActiveTrueAndDeletedFalse();
 
-            @Param("active")
-            Boolean active,
-
-            Pageable pageable
+    long countByDeletedFalseAndIndexStatus(
+            AiKnowledgeIndexStatus indexStatus
     );
 }

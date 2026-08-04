@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -23,8 +24,17 @@ public class AiKnowledgePersistenceServiceImpl
 
     private static final int MAX_INDEX_ERROR_LENGTH = 500;
 
+    private static final String DEFAULT_LANGUAGE = "vi";
+
+    private static final String ENGLISH_LANGUAGE = "en";
+
     private final AiKnowledgeRepository repository;
+
     private final AiKnowledgeMapper mapper;
+
+    // =====================================================
+    // CREATE
+    // =====================================================
 
     @Override
     @Transactional(
@@ -33,59 +43,87 @@ public class AiKnowledgePersistenceServiceImpl
     public AiKnowledge createPending(
             AiKnowledgeCreateRequest request
     ) {
-        if (request == null
-                || request.code() == null
-                || request.code().isBlank()) {
+        validateCreateRequest(request);
+
+        String normalizedCode =
+                normalizeCode(
+                        request.code()
+                );
+
+        validateCodeAvailableForCreate(
+                normalizedCode
+        );
+
+        AiKnowledge knowledge =
+                mapper.toEntity(request);
+
+        if (knowledge == null) {
             throw new AppException(
                     ErrorCode.INVALID_REQUEST
             );
         }
 
-        String normalizedCode =
-                normalizeCode(request.code());
-
-        if (repository
-                .existsByCodeIgnoreCaseAndDeletedFalse(
-                        normalizedCode
-                )) {
-            throw new AppException(
-                    ErrorCode.AI_KNOWLEDGE_CODE_EXISTS
-            );
-        }
-
-        AiKnowledge knowledge =
-                mapper.toEntity(request);
-
         /*
-         * Mapper có thể giữ nguyên code từ request,
-         * vì vậy phải gán lại code đã chuẩn hóa.
+         * Không tin hoàn toàn dữ liệu từ mapper.
+         * Các field nghiệp vụ quan trọng được chuẩn hóa lại.
          */
-        knowledge.setCode(normalizedCode);
-        knowledge.setIndexStatus(
-                AiKnowledgeIndexStatus.PENDING
+        knowledge.setCode(
+                normalizedCode
         );
-        knowledge.setQdrantPointId(null);
-        knowledge.setIndexedAt(null);
-        knowledge.setIndexError(null);
-        knowledge.setDeleted(false);
 
-        if (knowledge.getActive() == null) {
-            knowledge.setActive(true);
-        }
+        knowledge.setTitle(
+                normalizeRequiredText(
+                        knowledge.getTitle()
+                )
+        );
 
-        if (knowledge.getLanguage() == null
-                || knowledge.getLanguage().isBlank()) {
-            knowledge.setLanguage("vi");
-        } else {
-            knowledge.setLanguage(
-                    normalizeLanguage(
-                            knowledge.getLanguage()
-                    )
-            );
-        }
+        knowledge.setContent(
+                normalizeRequiredText(
+                        knowledge.getContent()
+                )
+        );
 
-        return repository.save(knowledge);
+        knowledge.setGoal(
+                normalizeOptionalBusinessValue(
+                        knowledge.getGoal()
+                )
+        );
+
+        knowledge.setExperienceLevel(
+                normalizeOptionalBusinessValue(
+                        knowledge.getExperienceLevel()
+                )
+        );
+
+        knowledge.setLanguage(
+                normalizeLanguage(
+                        knowledge.getLanguage()
+                )
+        );
+
+        knowledge.setActive(
+                knowledge.getActive() == null
+                        ? Boolean.TRUE
+                        : knowledge.getActive()
+        );
+
+        knowledge.setDeleted(
+                Boolean.FALSE
+        );
+
+        resetIndexMetadata(
+                knowledge,
+                false
+        );
+
+        return repository.save(
+                knowledge
+        );
     }
+
+    // =====================================================
+    // UPDATE
+    // =====================================================
 
     @Override
     @Transactional(
@@ -106,37 +144,92 @@ public class AiKnowledgePersistenceServiceImpl
         AiKnowledge knowledge =
                 required(id);
 
+        /*
+         * Giữ lại code hiện tại để kiểm tra trường hợp
+         * mapper/update request có hỗ trợ thay đổi code.
+         */
+        String previousCode =
+                knowledge.getCode();
+
         mapper.update(
                 knowledge,
                 request
         );
 
-        /*
-         * Nội dung thay đổi thì vector cũ không còn
-         * phản ánh chính xác knowledge hiện tại.
-         *
-         * Giữ qdrantPointId để upsert ghi đè đúng
-         * point cũ, nhưng đưa trạng thái về PENDING.
-         */
-        knowledge.setIndexStatus(
-                AiKnowledgeIndexStatus.PENDING
-        );
-        knowledge.setIndexedAt(null);
-        knowledge.setIndexError(null);
-
-        if (knowledge.getLanguage() == null
-                || knowledge.getLanguage().isBlank()) {
-            knowledge.setLanguage("vi");
+        if (knowledge.getCode() == null
+                || knowledge.getCode().isBlank()) {
+            knowledge.setCode(
+                    previousCode
+            );
         } else {
-            knowledge.setLanguage(
-                    normalizeLanguage(
-                            knowledge.getLanguage()
-                    )
+            String normalizedCode =
+                    normalizeCode(
+                            knowledge.getCode()
+                    );
+
+            validateCodeAvailableForUpdate(
+                    normalizedCode,
+                    id
+            );
+
+            knowledge.setCode(
+                    normalizedCode
             );
         }
 
-        return repository.save(knowledge);
+        knowledge.setTitle(
+                normalizeRequiredText(
+                        knowledge.getTitle()
+                )
+        );
+
+        knowledge.setContent(
+                normalizeRequiredText(
+                        knowledge.getContent()
+                )
+        );
+
+        knowledge.setGoal(
+                normalizeOptionalBusinessValue(
+                        knowledge.getGoal()
+                )
+        );
+
+        knowledge.setExperienceLevel(
+                normalizeOptionalBusinessValue(
+                        knowledge.getExperienceLevel()
+                )
+        );
+
+        knowledge.setLanguage(
+                normalizeLanguage(
+                        knowledge.getLanguage()
+                )
+        );
+
+        if (knowledge.getActive() == null) {
+            knowledge.setActive(
+                    Boolean.TRUE
+            );
+        }
+
+        /*
+         * Giữ qdrantPointId cũ để lần reindex tiếp theo
+         * upsert ghi đè đúng point, không tạo vector trùng.
+         */
+        resetIndexMetadata(
+                knowledge,
+                true
+        );
+
+        return repository.save(
+                knowledge
+        );
     }
+
+    // =====================================================
+    // CHANGE ACTIVE STATUS
+    // =====================================================
 
     @Override
     @Transactional(
@@ -151,22 +244,39 @@ public class AiKnowledgePersistenceServiceImpl
         AiKnowledge knowledge =
                 required(id);
 
-        knowledge.setActive(active);
+        knowledge.setActive(
+                active
+        );
+
+        /*
+         * Cả hai trường hợp đều chuyển về PENDING:
+         *
+         * active=true:
+         * → IndexService sẽ index/reindex.
+         *
+         * active=false:
+         * → IndexService sẽ xóa point và gọi markUnindexed().
+         */
         knowledge.setIndexStatus(
                 AiKnowledgeIndexStatus.PENDING
         );
-        knowledge.setIndexedAt(null);
-        knowledge.setIndexError(null);
 
-        /*
-         * Khi bật lại, giữ pointId hiện tại để
-         * Qdrant upsert cập nhật đúng point.
-         *
-         * Khi tắt, IndexService sẽ xóa point rồi gọi
-         * markUnindexed() để xóa pointId khỏi MySQL.
-         */
-        return repository.save(knowledge);
+        knowledge.setIndexedAt(
+                null
+        );
+
+        knowledge.setIndexError(
+                null
+        );
+
+        return repository.save(
+                knowledge
+        );
     }
+
+    // =====================================================
+    // MARK INDEXED
+    // =====================================================
 
     @Override
     @Transactional(
@@ -178,29 +288,49 @@ public class AiKnowledgePersistenceServiceImpl
     ) {
         validateId(id);
 
-        if (pointId == null
-                || pointId.isBlank()) {
+        String normalizedPointId =
+                normalizeRequiredText(
+                        pointId
+                );
+
+        AiKnowledge knowledge =
+                required(id);
+
+        /*
+         * Knowledge inactive không nên được đánh dấu INDEXED.
+         */
+        if (!Boolean.TRUE.equals(
+                knowledge.getActive()
+        )) {
             throw new AppException(
                     ErrorCode.INVALID_REQUEST
             );
         }
 
-        AiKnowledge knowledge =
-                required(id);
-
         knowledge.setQdrantPointId(
-                pointId.trim()
+                normalizedPointId
         );
+
         knowledge.setIndexStatus(
                 AiKnowledgeIndexStatus.INDEXED
         );
+
         knowledge.setIndexedAt(
                 LocalDateTime.now()
         );
-        knowledge.setIndexError(null);
 
-        return repository.save(knowledge);
+        knowledge.setIndexError(
+                null
+        );
+
+        return repository.save(
+                knowledge
+        );
     }
+
+    // =====================================================
+    // MARK FAILED
+    // =====================================================
 
     @Override
     @Transactional(
@@ -218,21 +348,35 @@ public class AiKnowledgePersistenceServiceImpl
         knowledge.setIndexStatus(
                 AiKnowledgeIndexStatus.FAILED
         );
+
         knowledge.setIndexError(
-                normalizeErrorMessage(message)
+                normalizeErrorMessage(
+                        message
+                )
         );
 
         /*
-         * indexedAt phải null vì lần index hiện tại lỗi.
-         *
-         * Không xóa qdrantPointId tại đây vì point cũ
-         * có thể vẫn tồn tại trong Qdrant. Khi reindex
-         * thành công, upsert sẽ cập nhật cùng point ID.
+         * Lần index hiện tại không thành công.
          */
-        knowledge.setIndexedAt(null);
+        knowledge.setIndexedAt(
+                null
+        );
 
-        return repository.save(knowledge);
+        /*
+         * Không xóa qdrantPointId:
+         * - point cũ có thể vẫn tồn tại;
+         * - reindex sẽ upsert ghi đè đúng point;
+         * - tránh tạo point trùng.
+         */
+
+        return repository.save(
+                knowledge
+        );
     }
+
+    // =====================================================
+    // MARK UNINDEXED
+    // =====================================================
 
     @Override
     @Transactional(
@@ -249,12 +393,27 @@ public class AiKnowledgePersistenceServiceImpl
         knowledge.setIndexStatus(
                 AiKnowledgeIndexStatus.PENDING
         );
-        knowledge.setQdrantPointId(null);
-        knowledge.setIndexedAt(null);
-        knowledge.setIndexError(null);
 
-        return repository.save(knowledge);
+        knowledge.setQdrantPointId(
+                null
+        );
+
+        knowledge.setIndexedAt(
+                null
+        );
+
+        knowledge.setIndexError(
+                null
+        );
+
+        return repository.save(
+                knowledge
+        );
     }
+
+    // =====================================================
+    // SOFT DELETE
+    // =====================================================
 
     @Override
     @Transactional(
@@ -268,35 +427,74 @@ public class AiKnowledgePersistenceServiceImpl
         AiKnowledge knowledge =
                 required(id);
 
-        knowledge.setDeleted(true);
-        knowledge.setActive(false);
+        knowledge.setDeleted(
+                Boolean.TRUE
+        );
+
+        knowledge.setActive(
+                Boolean.FALSE
+        );
 
         /*
-         * Bình thường point đã được IndexService xóa
-         * trước khi softDelete. Xóa metadata còn lại
-         * để DB không báo INDEXED sai trạng thái.
+         * Thông thường IndexService đã xóa point trước khi
+         * method này được gọi.
+         *
+         * Metadata vẫn phải được dọn để DB không báo sai
+         * knowledge đang INDEXED.
          */
         knowledge.setIndexStatus(
                 AiKnowledgeIndexStatus.PENDING
         );
-        knowledge.setQdrantPointId(null);
-        knowledge.setIndexedAt(null);
-        knowledge.setIndexError(null);
 
-        return repository.save(knowledge);
+        knowledge.setQdrantPointId(
+                null
+        );
+
+        knowledge.setIndexedAt(
+                null
+        );
+
+        knowledge.setIndexError(
+                null
+        );
+
+        return repository.save(
+                knowledge
+        );
     }
+
+    // =====================================================
+    // ENTITY LOOKUP
+    // =====================================================
 
     private AiKnowledge required(
             Long id
     ) {
         return repository
-                .findByIdAndDeletedFalse(id)
+                .findByIdAndDeletedFalse(
+                        id
+                )
                 .orElseThrow(() ->
                         new AppException(
-                                ErrorCode
-                                        .AI_KNOWLEDGE_NOT_FOUND
+                                ErrorCode.AI_KNOWLEDGE_NOT_FOUND
                         )
                 );
+    }
+
+    // =====================================================
+    // VALIDATION
+    // =====================================================
+
+    private void validateCreateRequest(
+            AiKnowledgeCreateRequest request
+    ) {
+        if (request == null
+                || request.code() == null
+                || request.code().isBlank()) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
     }
 
     private void validateId(
@@ -309,23 +507,134 @@ public class AiKnowledgePersistenceServiceImpl
         }
     }
 
+    private void validateCodeAvailableForCreate(
+            String code
+    ) {
+        if (
+                repository
+                        .existsByCodeIgnoreCaseAndDeletedFalse(
+                                code
+                        )
+        ) {
+            throw new AppException(
+                    ErrorCode.AI_KNOWLEDGE_CODE_EXISTS
+            );
+        }
+    }
+
+    private void validateCodeAvailableForUpdate(
+            String code,
+            Long id
+    ) {
+        if (
+                repository
+                        .existsByCodeIgnoreCaseAndIdNotAndDeletedFalse(
+                                code,
+                                id
+                        )
+        ) {
+            throw new AppException(
+                    ErrorCode.AI_KNOWLEDGE_CODE_EXISTS
+            );
+        }
+    }
+
+    // =====================================================
+    // INDEX METADATA
+    // =====================================================
+
+    private void resetIndexMetadata(
+            AiKnowledge knowledge,
+            boolean preservePointId
+    ) {
+        knowledge.setIndexStatus(
+                AiKnowledgeIndexStatus.PENDING
+        );
+
+        knowledge.setIndexedAt(
+                null
+        );
+
+        knowledge.setIndexError(
+                null
+        );
+
+        if (!preservePointId) {
+            knowledge.setQdrantPointId(
+                    null
+            );
+        }
+    }
+
+    // =====================================================
+    // NORMALIZATION
+    // =====================================================
+
     private String normalizeCode(
             String code
     ) {
-        return code.trim()
-                .toUpperCase();
+        return normalizeRequiredText(
+                code
+        ).toUpperCase(
+                Locale.ROOT
+        );
     }
 
     private String normalizeLanguage(
             String language
     ) {
+        if (language == null
+                || language.isBlank()) {
+            return DEFAULT_LANGUAGE;
+        }
+
         String normalized =
                 language.trim()
-                        .toLowerCase();
+                        .toLowerCase(
+                                Locale.ROOT
+                        );
 
-        return "en".equals(normalized)
-                ? "en"
-                : "vi";
+        if (
+                DEFAULT_LANGUAGE.equals(
+                        normalized
+                ) ||
+                        ENGLISH_LANGUAGE.equals(
+                                normalized
+                        )
+        ) {
+            return normalized;
+        }
+
+        throw new AppException(
+                ErrorCode.INVALID_REQUEST
+        );
+    }
+
+    private String normalizeRequiredText(
+            String value
+    ) {
+        if (value == null
+                || value.isBlank()) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        return value.trim();
+    }
+
+    private String normalizeOptionalBusinessValue(
+            String value
+    ) {
+        if (value == null
+                || value.isBlank()) {
+            return null;
+        }
+
+        return value.trim()
+                .toUpperCase(
+                        Locale.ROOT
+                );
     }
 
     private String normalizeErrorMessage(
