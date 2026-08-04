@@ -1,0 +1,201 @@
+### =====================================================
+### AI MODULE - FULL PLAN SMOKE TEST
+### =====================================================
+
+@baseUrl = http://localhost:8080/api/v1
+
+
+
+### ID gợi ý được lưu sau khi tạo thành công
+@aiSuggestionId = 1
+
+
+#########################################################
+### 1. KIỂM TRA BODY METRIC TRƯỚC KHI GỌI AI
+#########################################################
+
+GET {{baseUrl}}/body-metrics/me/latest
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+###
+
+#########################################################
+### 2. TẠO FULL PLAN
+#########################################################
+
+POST {{baseUrl}}/ai/suggestions/full-plan
+Authorization: Bearer {{memberToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "goal": "LOSE_WEIGHT",
+  "experienceLevel": "BEGINNER",
+  "activityLevel": "MODERATE",
+  "workoutDaysPerWeek": 4,
+  "workoutDurationMinutes": 60,
+  "mealsPerDay": 3,
+  "preferredLanguage": "vi",
+  "userNote": "Muốn giảm mỡ bụng, giữ cơ và ưu tiên kế hoạch dễ thực hiện"
+}
+
+> {%
+    client.test("Create full plan thành công", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+
+        client.assert(
+            response.body.data,
+            "Missing AI suggestion data"
+        );
+
+        client.assert(
+            response.body.data.id,
+            "Missing suggestion id"
+        );
+
+        client.global.set(
+            "aiSuggestionId",
+            response.body.data.id
+        );
+    });
+%}
+
+###
+
+#########################################################
+### 3. DANH SÁCH GỢI Ý CỦA MEMBER
+#########################################################
+
+GET {{baseUrl}}/ai/suggestions/my?page=0&size=10
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+###
+
+#########################################################
+### 4. CHI TIẾT GỢI Ý
+#########################################################
+
+GET {{baseUrl}}/ai/suggestions/{{aiSuggestionId}}
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+###
+
+#########################################################
+### 5. GỬI FEEDBACK
+#########################################################
+
+POST {{baseUrl}}/ai/suggestions/{{aiSuggestionId}}/feedback
+Authorization: Bearer {{memberToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "rating": 5,
+  "comment": "Kế hoạch phù hợp và dễ hiểu"
+}
+
+###
+
+#########################################################
+### 6. APPLY WORKOUT PLAN
+#########################################################
+
+POST {{baseUrl}}/ai/suggestions/{{aiSuggestionId}}/apply-workout-plan
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+###
+
+#########################################################
+### 7. APPLY NUTRITION PLAN
+#########################################################
+
+POST {{baseUrl}}/ai/suggestions/{{aiSuggestionId}}/apply-nutrition-plan
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+###
+
+#########################################################
+### 8. KIỂM TRA WORKOUT PLAN ĐÃ APPLY
+#########################################################
+
+GET {{baseUrl}}/workout-plans/me/active
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+###
+
+#########################################################
+### 9. KIỂM TRA NUTRITION PLAN ĐÃ APPLY
+#########################################################
+
+GET {{baseUrl}}/nutrition-plans/me/active
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+###
+
+#########################################################
+### NEGATIVE TEST
+#########################################################
+
+### 10. Không có token
+### Expected: 401
+POST {{baseUrl}}/ai/suggestions/full-plan
+Content-Type: application/json
+Accept: application/json
+
+{
+  "goal": "LOSE_WEIGHT",
+  "experienceLevel": "BEGINNER",
+  "activityLevel": "MODERATE",
+  "workoutDaysPerWeek": 4,
+  "workoutDurationMinutes": 60,
+  "mealsPerDay": 3,
+  "preferredLanguage": "vi"
+}
+
+###
+
+### 11. Số ngày tập không hợp lệ
+### Expected: 400
+POST {{baseUrl}}/ai/suggestions/full-plan
+Authorization: Bearer {{memberToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "goal": "LOSE_WEIGHT",
+  "experienceLevel": "BEGINNER",
+  "activityLevel": "MODERATE",
+  "workoutDaysPerWeek": 1,
+  "workoutDurationMinutes": 60,
+  "mealsPerDay": 3,
+  "preferredLanguage": "vi"
+}
+
+###
+
+### 12. Ngôn ngữ không hỗ trợ
+### Expected: 400
+POST {{baseUrl}}/ai/suggestions/full-plan
+Authorization: Bearer {{memberToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "goal": "LOSE_WEIGHT",
+  "experienceLevel": "BEGINNER",
+  "activityLevel": "MODERATE",
+  "workoutDaysPerWeek": 4,
+  "workoutDurationMinutes": 60,
+  "mealsPerDay": 3,
+  "preferredLanguage": "fr"
+}

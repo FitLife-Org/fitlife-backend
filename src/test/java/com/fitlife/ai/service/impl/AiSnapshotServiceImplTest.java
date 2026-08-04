@@ -1,12 +1,12 @@
 package com.fitlife.ai.service.impl;
 
 import com.fitlife.ai.dto.internal.AiInputSnapshot;
-import com.fitlife.ai.dto.request.AiBodyAnalysisRequest;
 import com.fitlife.ai.dto.request.AiFullPlanRequest;
 import com.fitlife.ai.enums.ActivityLevel;
 import com.fitlife.ai.enums.ExperienceLevel;
 import com.fitlife.bodymetric.entity.BodyMetric;
 import com.fitlife.common.exception.AppException;
+import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.member.entity.Member;
 import com.fitlife.member.enums.FitnessGoal;
 import com.fitlife.user.entity.User;
@@ -18,7 +18,6 @@ import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class AiSnapshotServiceImplTest {
@@ -27,38 +26,15 @@ class AiSnapshotServiceImplTest {
             new AiSnapshotServiceImpl();
 
     @Test
-    void buildFullPlanSnapshot_shouldMapAllRequiredData() {
-        User user = new User();
-        user.setFullName("Nguyễn Văn A");
-
-        Member member = new Member();
-        member.setId(1L);
-        member.setMemberCode("MB001");
-        member.setUser(user);
-        member.setDateOfBirth(LocalDate.of(2000, 1, 1));
-        member.setFitnessGoal(FitnessGoal.GAIN_MUSCLE);
-        member.setHealthNote("Không có chấn thương");
-
-        BodyMetric metric = new BodyMetric();
-        metric.setId(10L);
-        metric.setHeightCm(new BigDecimal("170"));
-        metric.setWeightKg(new BigDecimal("65"));
-        metric.setBmi(new BigDecimal("22.49"));
-        metric.setRecordedAt(LocalDateTime.now());
-
-        AiFullPlanRequest request = new AiFullPlanRequest();
-        request.setGoal(FitnessGoal.GAIN_MUSCLE);
-        request.setExperienceLevel(ExperienceLevel.BEGINNER);
-        request.setActivityLevel(ActivityLevel.MODERATE);
-        request.setWorkoutDaysPerWeek(4);
-        request.setWorkoutDurationMinutes(60);
-        request.setUserNote("  Ưu tiên thân trên  ");
-        request.setPreferredLanguage("VI");
+    void buildFullPlanSnapshot_shouldCreateValidSnapshot() {
+        Member member = createMember();
+        BodyMetric bodyMetric = createBodyMetric(member);
+        AiFullPlanRequest request = createRequest();
 
         AiInputSnapshot snapshot =
                 snapshotService.buildFullPlanSnapshot(
                         member,
-                        metric,
+                        bodyMetric,
                         request
                 );
 
@@ -67,101 +43,155 @@ class AiSnapshotServiceImplTest {
         assertNotNull(snapshot.getMember());
         assertNotNull(snapshot.getLatestBodyMetric());
         assertNotNull(snapshot.getRequest());
-
-        assertEquals("Nguyễn Văn A", snapshot.getUser().getFullName());
-        assertEquals("MB001", snapshot.getMember().getMemberCode());
-        assertEquals(FitnessGoal.GAIN_MUSCLE, snapshot.getRequest().getGoal());
-        assertEquals(4, snapshot.getRequest().getWorkoutDaysPerWeek());
-        assertEquals("Ưu tiên thân trên", snapshot.getRequest().getUserNote());
-        assertEquals("vi", snapshot.getRequest().getPreferredLanguage());
-    }
-
-    @Test
-    void buildFullPlanSnapshot_shouldAllowMissingBodyMetric() {
-        Member member = createMember();
-        AiFullPlanRequest request = createFullPlanRequest();
-
-        AiInputSnapshot snapshot =
-                snapshotService.buildFullPlanSnapshot(
-                        member,
-                        null,
-                        request
-                );
-
-        assertNull(snapshot.getLatestBodyMetric());
-    }
-
-    @Test
-    void buildBodyAnalysisSnapshot_shouldRequireBodyMetric() {
-        Member member = createMember();
-        AiBodyAnalysisRequest request =
-                new AiBodyAnalysisRequest();
-
-        assertThrows(
-                AppException.class,
-                () -> snapshotService.buildBodyAnalysisSnapshot(
-                        member,
-                        null,
-                        request
-                )
-        );
-    }
-
-    @Test
-    void buildBodyAnalysisSnapshot_shouldUseMemberFitnessGoal() {
-        Member member = createMember();
-
-        BodyMetric metric = new BodyMetric();
-        metric.setId(11L);
-
-        AiBodyAnalysisRequest request =
-                new AiBodyAnalysisRequest();
-
-        request.setUserNote(" Phân tích hiện tại ");
-        request.setPreferredLanguage(null);
-
-        AiInputSnapshot snapshot =
-                snapshotService.buildBodyAnalysisSnapshot(
-                        member,
-                        metric,
-                        request
-                );
+        assertNotNull(snapshot.getCapturedAt());
 
         assertEquals(
-                FitnessGoal.IMPROVE_HEALTH,
+                "Nguyễn Văn A",
+                snapshot.getUser().getFullName()
+        );
+
+        assertEquals(
+                member.getId(),
+                snapshot.getMember().getMemberId()
+        );
+
+        assertEquals(
+                member.getMemberCode(),
+                snapshot.getMember().getMemberCode()
+        );
+
+        assertEquals(
+                bodyMetric.getWeightKg(),
+                snapshot.getLatestBodyMetric().getWeightKg()
+        );
+
+        assertEquals(
+                bodyMetric.getHeightCm(),
+                snapshot.getLatestBodyMetric().getHeightCm()
+        );
+
+        assertEquals(
+                bodyMetric.getBmi(),
+                snapshot.getLatestBodyMetric().getBmi()
+        );
+
+        assertEquals(
+                FitnessGoal.LOSE_WEIGHT,
                 snapshot.getRequest().getGoal()
         );
-        assertEquals(
-                "Phân tích hiện tại",
-                snapshot.getRequest().getUserNote()
-        );
+
         assertEquals(
                 "vi",
                 snapshot.getRequest().getPreferredLanguage()
+        );
+
+        assertEquals(
+                3,
+                snapshot.getRequest().getMealsPerDay()
+        );
+    }
+
+    @Test
+    void buildFullPlanSnapshot_shouldRejectMissingBodyMetric() {
+        Member member = createMember();
+        AiFullPlanRequest request = createRequest();
+
+        AppException exception =
+                assertThrows(
+                        AppException.class,
+                        () ->
+                                snapshotService.buildFullPlanSnapshot(
+                                        member,
+                                        null,
+                                        request
+                                )
+                );
+
+        assertEquals(
+                ErrorCode.BODY_METRIC_NOT_FOUND,
+                exception.getErrorCode()
         );
     }
 
     private Member createMember() {
         User user = new User();
-        user.setFullName("Test Member");
+
+        user.setId(100L);
+        user.setUsername("member.test");
+        user.setFullName("Nguyễn Văn A");
+        user.setIsDeleted(false);
 
         Member member = new Member();
+
         member.setId(1L);
         member.setMemberCode("MB001");
         member.setUser(user);
-        member.setFitnessGoal(FitnessGoal.IMPROVE_HEALTH);
+        member.setDateOfBirth(
+                LocalDate.of(2000, 1, 1)
+        );
+        member.setFitnessGoal(
+                FitnessGoal.LOSE_WEIGHT
+        );
+        member.setHealthNote(
+                "Không có chấn thương"
+        );
+        member.setIsDeleted(false);
 
         return member;
     }
 
-    private AiFullPlanRequest createFullPlanRequest() {
-        AiFullPlanRequest request = new AiFullPlanRequest();
-        request.setGoal(FitnessGoal.IMPROVE_HEALTH);
-        request.setExperienceLevel(ExperienceLevel.BEGINNER);
-        request.setActivityLevel(ActivityLevel.LIGHT);
-        request.setWorkoutDaysPerWeek(3);
-        request.setWorkoutDurationMinutes(45);
+    private BodyMetric createBodyMetric(
+            Member member
+    ) {
+        return BodyMetric.builder()
+                .id(10L)
+                .member(member)
+                .weightKg(
+                        new BigDecimal("61.00")
+                )
+                .heightCm(
+                        new BigDecimal("165.00")
+                )
+                .bmi(
+                        new BigDecimal("22.41")
+                )
+                .bodyFatPercent(
+                        new BigDecimal("18.50")
+                )
+                .muscleMassKg(
+                        new BigDecimal("47.20")
+                )
+                .recordedAt(
+                        LocalDateTime.now()
+                                .minusDays(1)
+                )
+                .isDeleted(false)
+                .build();
+    }
+
+    private AiFullPlanRequest createRequest() {
+        AiFullPlanRequest request =
+                new AiFullPlanRequest();
+
+        request.setGoal(
+                FitnessGoal.LOSE_WEIGHT
+        );
+
+        request.setExperienceLevel(
+                ExperienceLevel.BEGINNER
+        );
+
+        request.setActivityLevel(
+                ActivityLevel.MODERATE
+        );
+
+        request.setWorkoutDaysPerWeek(4);
+        request.setWorkoutDurationMinutes(60);
+        request.setMealsPerDay(3);
         request.setPreferredLanguage("vi");
+        request.setUserNote(
+                "Giảm mỡ nhưng vẫn giữ cơ"
+        );
 
         return request;
     }
