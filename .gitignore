@@ -45,7 +45,7 @@ src/main/resources/application-prod-local.yml
 
 # HTTP private variables
 http-client.private.env.json
-http-requests/http-client.private.env.json
+http-requests/00_Setup/http-client.private.env.json
 
 # Upload/local storage
 uploads/

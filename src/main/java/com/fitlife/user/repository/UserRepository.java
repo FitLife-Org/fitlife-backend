@@ -22,6 +22,10 @@ public interface UserRepository
             String username
     );
 
+    Optional<User> findByPhone(
+            String phone
+    );
+
     Optional<User> findByUsernameOrEmail(
             String username,
             String email

@@ -1,0 +1,75 @@
+### =====================================================
+### MEMBER MODULE - SMOKE TEST
+### =====================================================
+
+@baseUrl = http://localhost:8080/api/v1
+@memberId = 1
+
+#########################################################
+### MEMBER
+#########################################################
+
+### 1. Xem hồ sơ
+GET {{baseUrl}}/members/me
+Authorization: Bearer {{memberToken}}
+
+###
+
+### 2. Cập nhật hồ sơ
+PUT {{baseUrl}}/members/me
+Authorization: Bearer {{memberToken}}
+Content-Type: application/json
+
+{
+  "fullName": "Nguyễn Văn A",
+  "phone": "0901234567",
+  "gender": "MALE",
+  "dateOfBirth": "2000-01-01",
+  "address": "Đà Nẵng",
+  "emergencyContactName": "Nguyễn Văn B",
+  "emergencyContactPhone": "0912345678",
+  "fitnessGoal": "LOSE_WEIGHT",
+  "healthNote": "Không"
+}
+
+###
+
+### 3. Upload Avatar
+PATCH {{baseUrl}}/members/me/avatar
+Authorization: Bearer {{memberToken}}
+Content-Type: multipart/form-data; boundary=FitLife
+
+--FitLife
+Content-Disposition: form-data; name="file"; filename="avatar.jpg"
+Content-Type: image/jpeg
+
+< ./files/avatar.jpg
+--FitLife--
+
+###
+
+### 4. Timeline của tôi
+GET {{baseUrl}}/members/me/timeline?page=0&size=20
+Authorization: Bearer {{memberToken}}
+
+#########################################################
+### ADMIN
+#########################################################
+
+###
+
+### 5. Danh sách Member
+GET {{baseUrl}}/admin/members?page=0&size=10
+Authorization: Bearer {{adminToken}}
+
+###
+
+### 6. Chi tiết Member
+GET {{baseUrl}}/admin/members/{{memberId}}
+Authorization: Bearer {{adminToken}}
+
+###
+
+### 7. Timeline Member
+GET {{baseUrl}}/admin/members/{{memberId}}/timeline?page=0&size=20
+Authorization: Bearer {{adminToken}}

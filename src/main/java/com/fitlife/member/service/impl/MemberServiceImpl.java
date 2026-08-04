@@ -1,5 +1,9 @@
 package com.fitlife.member.service.impl;
 
+import com.fitlife.common.exception.AppException;
+import com.fitlife.common.exception.ErrorCode;
+import com.fitlife.common.response.PageResponse;
+import com.fitlife.member.avatar.service.MemberAvatarStorageService;
 import com.fitlife.member.dto.request.AdminMemberStatusUpdateRequest;
 import com.fitlife.member.dto.request.MemberCreateRequest;
 import com.fitlife.member.dto.request.MemberUpdateRequest;
@@ -10,8 +14,10 @@ import com.fitlife.member.entity.Member;
 import com.fitlife.member.enums.MemberStatus;
 import com.fitlife.member.mapper.MemberMapper;
 import com.fitlife.member.repository.MemberRepository;
+import com.fitlife.member.service.CurrentMemberService;
 import com.fitlife.member.service.MemberService;
-import com.fitlife.common.response.PageResponse;
+import com.fitlife.member.timeline.enums.MemberTimelineType;
+import com.fitlife.member.timeline.service.MemberTimelineRecorder;
 import com.fitlife.user.entity.Role;
 import com.fitlife.user.entity.User;
 import com.fitlife.user.enums.AuthProvider;
@@ -23,348 +29,1048 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
-public class MemberServiceImpl implements MemberService {
+public class MemberServiceImpl
+        implements MemberService {
 
-    private static final String ROLE_MEMBER_CODE = "ROLE_MEMBER";
+    private static final String ROLE_MEMBER_CODE =
+            "ROLE_MEMBER";
 
     private final MemberRepository memberRepository;
+
     private final UserRepository userRepository;
+
     private final RoleRepository roleRepository;
+
     private final MemberMapper memberMapper;
+
     private final PasswordEncoder passwordEncoder;
+
+    private final CurrentMemberService currentMemberService;
+
+    private final MemberAvatarStorageService
+            memberAvatarStorageService;
+
+    private final MemberTimelineRecorder
+            memberTimelineRecorder;
 
     @Override
     @Transactional
-    public MemberResponse createMemberByAdmin(MemberCreateRequest request) {
-        validateUniqueUsername(request.getUsername());
-        validateUniqueEmail(request.getEmail());
+    public MemberResponse createMemberByAdmin(
+            MemberCreateRequest request
+    ) {
+        validateDateOfBirth(
+                request.getDateOfBirth()
+        );
 
-        Role memberRole = roleRepository.findByCode(ROLE_MEMBER_CODE)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy ROLE_MEMBER"));
+        String username =
+                normalizeRequired(
+                        request.getUsername()
+                );
 
-        User user = new User();
-        user.setUsername(request.getUsername());
-        user.setEmail(request.getEmail());
-        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        user.setFullName(request.getFullName());
-        user.setPhone(request.getPhone());
-        user.setStatus(UserStatus.ACTIVE);
-        user.setAuthProvider(AuthProvider.LOCAL);
-        user.setEmailVerified(false);
-        user.setIsDeleted(false);
+        String email =
+                normalizeEmail(
+                        request.getEmail()
+                );
 
-        if (user.getRoles() == null) {
-            user.setRoles(new HashSet<>());
-        }
-        user.getRoles().add(memberRole);
+        String phone =
+                normalizeNullable(
+                        request.getPhone()
+                );
 
-        User savedUser = userRepository.save(user);
+        validateUniqueUsername(
+                username,
+                null
+        );
 
-        Member member = new Member();
-        member.setUser(savedUser);
-        member.setMemberCode(generateMemberCode());
-        member.setGender(request.getGender());
-        member.setDateOfBirth(request.getDateOfBirth());
-        member.setAddress(request.getAddress());
-        member.setEmergencyContactName(request.getEmergencyContactName());
-        member.setEmergencyContactPhone(request.getEmergencyContactPhone());
-        member.setJoinDate(LocalDate.now());
-        member.setFitnessGoal(request.getFitnessGoal());
-        member.setHealthNote(request.getHealthNote());
-        member.setStatus(MemberStatus.ACTIVE);
-        member.setIsDeleted(false);
+        validateUniqueEmail(
+                email,
+                null
+        );
 
-        Member savedMember = memberRepository.save(member);
-        return memberMapper.toResponse(savedMember);
+        validateUniquePhone(
+                phone,
+                null
+        );
+
+        Role memberRole =
+                roleRepository
+                        .findByCode(
+                                ROLE_MEMBER_CODE
+                        )
+                        .orElseThrow(
+                                () ->
+                                        new AppException(
+                                                ErrorCode.ROLE_NOT_FOUND
+                                        )
+                        );
+
+        User user =
+                User.builder()
+                        .username(username)
+                        .email(email)
+                        .passwordHash(
+                                passwordEncoder.encode(
+                                        request.getPassword()
+                                )
+                        )
+                        .fullName(
+                                normalizeRequired(
+                                        request.getFullName()
+                                )
+                        )
+                        .phone(phone)
+                        .status(
+                                UserStatus.ACTIVE
+                        )
+                        .authProvider(
+                                AuthProvider.LOCAL
+                        )
+                        .emailVerified(true)
+                        .isDeleted(false)
+                        .roles(
+                                new HashSet<>()
+                        )
+                        .build();
+
+        user.getRoles().add(
+                memberRole
+        );
+
+        User savedUser =
+                userRepository.save(
+                        user
+                );
+
+        Member member =
+                Member.builder()
+                        .user(savedUser)
+                        .memberCode(
+                                generateMemberCode()
+                        )
+                        .gender(
+                                request.getGender()
+                        )
+                        .dateOfBirth(
+                                request.getDateOfBirth()
+                        )
+                        .address(
+                                normalizeNullable(
+                                        request.getAddress()
+                                )
+                        )
+                        .emergencyContactName(
+                                normalizeNullable(
+                                        request
+                                                .getEmergencyContactName()
+                                )
+                        )
+                        .emergencyContactPhone(
+                                normalizeNullable(
+                                        request
+                                                .getEmergencyContactPhone()
+                                )
+                        )
+                        .joinDate(
+                                LocalDate.now()
+                        )
+                        .fitnessGoal(
+                                request.getFitnessGoal()
+                        )
+                        .healthNote(
+                                normalizeNullable(
+                                        request.getHealthNote()
+                                )
+                        )
+                        .status(
+                                MemberStatus.ACTIVE
+                        )
+                        .isDeleted(false)
+                        .build();
+
+        Member savedMember =
+                memberRepository.save(
+                        member
+                );
+
+        memberTimelineRecorder.recordOnce(
+                savedMember.getId(),
+                MemberTimelineType.SYSTEM,
+                "Tạo hồ sơ hội viên",
+                "Hồ sơ hội viên đã được tạo bởi quản trị viên.",
+                savedMember.getId(),
+                "MEMBER",
+                savedMember
+                        .getStatus()
+                        .name(),
+                LocalDateTime.now()
+        );
+
+        return memberMapper.toResponse(
+                savedMember
+        );
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<MemberSummaryResponse> getAllMembersForAdmin(
+    public PageResponse<MemberSummaryResponse>
+    getAllMembersForAdmin(
             String keyword,
             MemberStatus status,
             Pageable pageable
     ) {
-        String searchKeyword = normalizeKeyword(keyword);
+        var page =
+                memberRepository.searchMembers(
+                        normalizeNullable(
+                                keyword
+                        ),
+                        status,
+                        pageable
+                );
 
-        var page = memberRepository.searchMembers(searchKeyword, status, pageable);
-
-        return PageResponse.from(page, memberMapper::toSummaryResponse);
+        return PageResponse.from(
+                page,
+                memberMapper::toSummaryResponse
+        );
     }
 
     @Override
     @Transactional(readOnly = true)
-    public MemberResponse getMemberDetailForAdmin(Long id) {
-        Member member = getActiveMemberById(id);
-        return memberMapper.toResponse(member);
+    public MemberResponse getMemberDetailForAdmin(
+            Long id
+    ) {
+        return memberMapper.toResponse(
+                getActiveMemberById(id)
+        );
     }
 
     @Override
     @Transactional(readOnly = true)
-    public MemberResponse getMemberByCodeForAdmin(String memberCode) {
-        Member member = memberRepository.findByMemberCodeAndIsDeletedFalse(memberCode)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hội viên với mã: " + memberCode));
+    public MemberResponse getMemberByCodeForAdmin(
+            String memberCode
+    ) {
+        String normalizedCode =
+                normalizeRequired(
+                        memberCode
+                ).toUpperCase(
+                        Locale.ROOT
+                );
 
-        return memberMapper.toResponse(member);
+        Member member =
+                memberRepository
+                        .findByMemberCodeAndIsDeletedFalse(
+                                normalizedCode
+                        )
+                        .orElseThrow(
+                                () ->
+                                        new AppException(
+                                                ErrorCode.MEMBER_NOT_FOUND
+                                        )
+                        );
+
+        return memberMapper.toResponse(
+                member
+        );
     }
 
     @Override
     @Transactional
-    public MemberResponse updateMemberByAdmin(Long id, MemberUpdateRequest request) {
-        Member member = getActiveMemberById(id);
-        User user = member.getUser();
+    public MemberResponse updateMemberByAdmin(
+            Long id,
+            MemberUpdateRequest request
+    ) {
+        validateDateOfBirth(
+                request.getDateOfBirth()
+        );
 
-        updateUserInfoByAdmin(user, request);
-        updateMemberInfoByAdmin(member, request);
+        Member member =
+                getActiveMemberById(
+                        id
+                );
 
-        if (user != null) {
-            userRepository.save(user);
+        User user =
+                requireLinkedUser(
+                        member
+                );
+
+        updateUserInfoByAdmin(
+                user,
+                request
+        );
+
+        updateMemberInfoByAdmin(
+                member,
+                request
+        );
+
+        userRepository.save(
+                user
+        );
+
+        Member savedMember =
+                memberRepository.save(
+                        member
+                );
+
+        memberTimelineRecorder.record(
+                savedMember.getId(),
+                MemberTimelineType.MEMBER_PROFILE,
+                "Quản trị viên cập nhật hồ sơ",
+                "Thông tin hội viên đã được cập nhật.",
+                savedMember.getId(),
+                "MEMBER",
+                savedMember
+                        .getStatus()
+                        .name(),
+                LocalDateTime.now()
+        );
+
+        return memberMapper.toResponse(
+                savedMember
+        );
+    }
+
+    @Override
+    @Transactional
+    public MemberResponse updateMemberStatusByAdmin(
+            Long id,
+            AdminMemberStatusUpdateRequest request
+    ) {
+        if (
+                request.getStatus() == null
+        ) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
         }
 
-        Member savedMember = memberRepository.save(member);
-        return memberMapper.toResponse(savedMember);
-    }
+        Member member =
+                getActiveMemberById(
+                        id
+                );
 
-    @Override
-    @Transactional
-    public MemberResponse updateMemberStatusByAdmin(Long id, AdminMemberStatusUpdateRequest request) {
-        Member member = getActiveMemberById(id);
+        User user =
+                requireLinkedUser(
+                        member
+                );
 
-        member.setStatus(request.getStatus());
+        member.setStatus(
+                request.getStatus()
+        );
 
-        User user = member.getUser();
-        if (user != null) {
-            syncUserStatusByMemberStatus(user, request.getStatus());
-            userRepository.save(user);
-        }
+        syncUserStatusByMemberStatus(
+                user,
+                request.getStatus()
+        );
 
-        Member savedMember = memberRepository.save(member);
-        return memberMapper.toResponse(savedMember);
+        userRepository.save(
+                user
+        );
+
+        Member savedMember =
+                memberRepository.save(
+                        member
+                );
+
+        memberTimelineRecorder.record(
+                savedMember.getId(),
+                MemberTimelineType.SYSTEM,
+                "Cập nhật trạng thái hội viên",
+                "Trạng thái hội viên đã được thay đổi.",
+                savedMember.getId(),
+                "MEMBER_STATUS",
+                savedMember
+                        .getStatus()
+                        .name(),
+                LocalDateTime.now()
+        );
+
+        return memberMapper.toResponse(
+                savedMember
+        );
     }
 
     @Override
     @Transactional(readOnly = true)
-    public MemberResponse getMyProfile(String tokenIdentifier) {
-        User user = findUserByUsernameOrEmail(tokenIdentifier);
-
-        Member member = memberRepository.findByUserIdAndIsDeletedFalse(user.getId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hồ sơ hội viên"));
-
-        return memberMapper.toResponse(member);
+    public MemberResponse getMyProfile() {
+        return memberMapper.toResponse(
+                currentMemberService
+                        .getCurrentMember()
+        );
     }
 
     @Override
     @Transactional
-    public MemberResponse updateMyProfile(String tokenIdentifier, MyMemberUpdateRequest request) {
-        User user = findUserByUsernameOrEmail(tokenIdentifier);
+    public MemberResponse updateMyProfile(
+            MyMemberUpdateRequest request
+    ) {
+        validateDateOfBirth(
+                request.getDateOfBirth()
+        );
 
-        Member member = memberRepository.findByUserIdAndIsDeletedFalse(user.getId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hồ sơ hội viên"));
+        Member member =
+                currentMemberService
+                        .getCurrentMember();
 
-        updateMyUserInfo(user, request);
-        updateMyMemberInfo(member, request);
+        User user =
+                requireLinkedUser(
+                        member
+                );
 
-        userRepository.save(user);
-        Member savedMember = memberRepository.save(member);
+        updateMyUserInfo(
+                user,
+                request
+        );
 
-        return memberMapper.toResponse(savedMember);
+        updateMyMemberInfo(
+                member,
+                request
+        );
+
+        userRepository.save(
+                user
+        );
+
+        Member savedMember =
+                memberRepository.save(
+                        member
+                );
+
+        memberTimelineRecorder.record(
+                savedMember.getId(),
+                MemberTimelineType.MEMBER_PROFILE,
+                "Cập nhật hồ sơ",
+                "Hội viên đã cập nhật thông tin cá nhân.",
+                savedMember.getId(),
+                "MEMBER",
+                savedMember
+                        .getStatus()
+                        .name(),
+                LocalDateTime.now()
+        );
+
+        return memberMapper.toResponse(
+                savedMember
+        );
     }
 
     @Override
     @Transactional
-    public void deleteMemberByAdmin(Long id) {
-        Member member = getActiveMemberById(id);
+    public MemberResponse updateMyAvatar(
+            MultipartFile file
+    ) {
+        Member member =
+                currentMemberService
+                        .getCurrentMember();
+
+        User user =
+                requireLinkedUser(
+                        member
+                );
+
+        String avatarUrl =
+                memberAvatarStorageService
+                        .uploadMemberAvatar(
+                                user.getId(),
+                                file
+                        );
+
+        user.setAvatarUrl(
+                avatarUrl
+        );
+
+        userRepository.save(
+                user
+        );
+
+        memberTimelineRecorder.record(
+                member.getId(),
+                MemberTimelineType.MEMBER_PROFILE,
+                "Cập nhật ảnh đại diện",
+                "Hội viên đã thay đổi ảnh đại diện.",
+                member.getId(),
+                "MEMBER_AVATAR",
+                "UPDATED",
+                LocalDateTime.now()
+        );
+
+        return memberMapper.toResponse(
+                member
+        );
+    }
+
+    @Override
+    @Transactional
+    public void deleteMemberByAdmin(
+            Long id
+    ) {
+        Member member =
+                getActiveMemberById(
+                        id
+                );
+
+        User user =
+                requireLinkedUser(
+                        member
+                );
 
         member.setIsDeleted(true);
-        member.setStatus(MemberStatus.INACTIVE);
-        memberRepository.save(member);
+        member.setStatus(
+                MemberStatus.INACTIVE
+        );
 
-        User user = member.getUser();
-        if (user != null) {
-            user.setIsDeleted(true);
-            user.setStatus(UserStatus.INACTIVE);
-            userRepository.save(user);
-        }
+        user.setIsDeleted(true);
+        user.setStatus(
+                UserStatus.INACTIVE
+        );
+
+        memberRepository.save(
+                member
+        );
+
+        userRepository.save(
+                user
+        );
+
+        memberTimelineRecorder.record(
+                member.getId(),
+                MemberTimelineType.SYSTEM,
+                "Vô hiệu hóa hội viên",
+                "Hồ sơ hội viên đã bị xóa mềm.",
+                member.getId(),
+                "MEMBER",
+                "DELETED",
+                LocalDateTime.now()
+        );
     }
 
     @Override
     @Transactional
-    public void restoreMemberByAdmin(Long id) {
-        Member member = memberRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hội viên với ID: " + id));
+    public void restoreMemberByAdmin(
+            Long id
+    ) {
+        Member member =
+                memberRepository
+                        .findById(id)
+                        .orElseThrow(
+                                () ->
+                                        new AppException(
+                                                ErrorCode.MEMBER_NOT_FOUND
+                                        )
+                        );
+
+        User user =
+                requireLinkedUser(
+                        member
+                );
 
         member.setIsDeleted(false);
-        member.setStatus(MemberStatus.ACTIVE);
-        memberRepository.save(member);
+        member.setStatus(
+                MemberStatus.ACTIVE
+        );
 
-        User user = member.getUser();
-        if (user != null) {
-            user.setIsDeleted(false);
-            user.setStatus(UserStatus.ACTIVE);
-            userRepository.save(user);
+        user.setIsDeleted(false);
+        user.setStatus(
+                UserStatus.ACTIVE
+        );
+
+        memberRepository.save(
+                member
+        );
+
+        userRepository.save(
+                user
+        );
+
+        memberTimelineRecorder.record(
+                member.getId(),
+                MemberTimelineType.SYSTEM,
+                "Khôi phục hội viên",
+                "Hồ sơ hội viên đã được khôi phục.",
+                member.getId(),
+                "MEMBER",
+                "RESTORED",
+                LocalDateTime.now()
+        );
+    }
+
+    private void updateUserInfoByAdmin(
+            User user,
+            MemberUpdateRequest request
+    ) {
+        if (
+                request.getEmail() != null
+        ) {
+            String email =
+                    normalizeEmail(
+                            request.getEmail()
+                    );
+
+            validateUniqueEmail(
+                    email,
+                    user.getId()
+            );
+
+            user.setEmail(
+                    email
+            );
+        }
+
+        if (
+                request.getFullName() != null
+        ) {
+            user.setFullName(
+                    normalizeRequired(
+                            request.getFullName()
+                    )
+            );
+        }
+
+        if (
+                request.getPhone() != null
+        ) {
+            String phone =
+                    normalizeNullable(
+                            request.getPhone()
+                    );
+
+            validateUniquePhone(
+                    phone,
+                    user.getId()
+            );
+
+            user.setPhone(
+                    phone
+            );
         }
     }
 
-    private void validateUniqueUsername(String username) {
-        if (userRepository.existsByUsername(username)) {
-            throw new RuntimeException("Tên đăng nhập đã tồn tại");
+    private void updateMemberInfoByAdmin(
+            Member member,
+            MemberUpdateRequest request
+    ) {
+        if (
+                request.getGender() != null
+        ) {
+            member.setGender(
+                    request.getGender()
+            );
+        }
+
+        if (
+                request.getDateOfBirth() != null
+        ) {
+            member.setDateOfBirth(
+                    request.getDateOfBirth()
+            );
+        }
+
+        if (
+                request.getAddress() != null
+        ) {
+            member.setAddress(
+                    normalizeNullable(
+                            request.getAddress()
+                    )
+            );
+        }
+
+        if (
+                request
+                        .getEmergencyContactName()
+                        != null
+        ) {
+            member.setEmergencyContactName(
+                    normalizeNullable(
+                            request
+                                    .getEmergencyContactName()
+                    )
+            );
+        }
+
+        if (
+                request
+                        .getEmergencyContactPhone()
+                        != null
+        ) {
+            member.setEmergencyContactPhone(
+                    normalizeNullable(
+                            request
+                                    .getEmergencyContactPhone()
+                    )
+            );
+        }
+
+        if (
+                request.getFitnessGoal() != null
+        ) {
+            member.setFitnessGoal(
+                    request.getFitnessGoal()
+            );
+        }
+
+        if (
+                request.getHealthNote() != null
+        ) {
+            member.setHealthNote(
+                    normalizeNullable(
+                            request.getHealthNote()
+                    )
+            );
+        }
+
+        if (
+                request.getStatus() != null
+        ) {
+            member.setStatus(
+                    request.getStatus()
+            );
+
+            syncUserStatusByMemberStatus(
+                    requireLinkedUser(
+                            member
+                    ),
+                    request.getStatus()
+            );
         }
     }
 
-    private void validateUniqueEmail(String email) {
-        if (userRepository.existsByEmail(email)) {
-            throw new RuntimeException("Email đã tồn tại");
+    private void updateMyUserInfo(
+            User user,
+            MyMemberUpdateRequest request
+    ) {
+        if (
+                request.getFullName() != null
+        ) {
+            user.setFullName(
+                    normalizeRequired(
+                            request.getFullName()
+                    )
+            );
+        }
+
+        if (
+                request.getPhone() != null
+        ) {
+            String phone =
+                    normalizeNullable(
+                            request.getPhone()
+                    );
+
+            validateUniquePhone(
+                    phone,
+                    user.getId()
+            );
+
+            user.setPhone(
+                    phone
+            );
         }
     }
 
-    private Member getActiveMemberById(Long id) {
-        Member member = memberRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hội viên với ID: " + id));
+    private void updateMyMemberInfo(
+            Member member,
+            MyMemberUpdateRequest request
+    ) {
+        if (
+                request.getGender() != null
+        ) {
+            member.setGender(
+                    request.getGender()
+            );
+        }
 
-        if (Boolean.TRUE.equals(member.getIsDeleted())) {
-            throw new RuntimeException("Hồ sơ hội viên đã bị xóa");
+        if (
+                request.getDateOfBirth() != null
+        ) {
+            member.setDateOfBirth(
+                    request.getDateOfBirth()
+            );
+        }
+
+        if (
+                request.getAddress() != null
+        ) {
+            member.setAddress(
+                    normalizeNullable(
+                            request.getAddress()
+                    )
+            );
+        }
+
+        if (
+                request
+                        .getEmergencyContactName()
+                        != null
+        ) {
+            member.setEmergencyContactName(
+                    normalizeNullable(
+                            request
+                                    .getEmergencyContactName()
+                    )
+            );
+        }
+
+        if (
+                request
+                        .getEmergencyContactPhone()
+                        != null
+        ) {
+            member.setEmergencyContactPhone(
+                    normalizeNullable(
+                            request
+                                    .getEmergencyContactPhone()
+                    )
+            );
+        }
+
+        if (
+                request.getFitnessGoal() != null
+        ) {
+            member.setFitnessGoal(
+                    request.getFitnessGoal()
+            );
+        }
+
+        if (
+                request.getHealthNote() != null
+        ) {
+            member.setHealthNote(
+                    normalizeNullable(
+                            request.getHealthNote()
+                    )
+            );
+        }
+    }
+
+    private Member getActiveMemberById(
+            Long id
+    ) {
+        if (id == null) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        Member member =
+                memberRepository
+                        .findById(id)
+                        .orElseThrow(
+                                () ->
+                                        new AppException(
+                                                ErrorCode.MEMBER_NOT_FOUND
+                                        )
+                        );
+
+        if (
+                Boolean.TRUE.equals(
+                        member.getIsDeleted()
+                )
+        ) {
+            throw new AppException(
+                    ErrorCode.MEMBER_NOT_FOUND
+            );
         }
 
         return member;
     }
 
-    private User findUserByUsernameOrEmail(String tokenIdentifier) {
-        return userRepository.findByUsername(tokenIdentifier)
-                .orElseGet(() -> userRepository.findByEmail(tokenIdentifier)
-                        .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản người dùng")));
+    private User requireLinkedUser(
+            Member member
+    ) {
+        if (
+                member.getUser() == null
+        ) {
+            throw new AppException(
+                    ErrorCode.MEMBER_NO_ACCOUNT
+            );
+        }
+
+        return member.getUser();
     }
 
-    private void updateUserInfoByAdmin(User user, MemberUpdateRequest request) {
-        if (user == null) {
+    private void validateUniqueUsername(
+            String username,
+            Long excludedUserId
+    ) {
+        userRepository
+                .findByUsername(
+                        username
+                )
+                .filter(
+                        user ->
+                                !Objects.equals(
+                                        user.getId(),
+                                        excludedUserId
+                                )
+                )
+                .ifPresent(
+                        user -> {
+                            throw new AppException(
+                                    ErrorCode.USERNAME_ALREADY_EXISTS
+                            );
+                        }
+                );
+    }
+
+    private void validateUniqueEmail(
+            String email,
+            Long excludedUserId
+    ) {
+        userRepository
+                .findByEmail(
+                        email
+                )
+                .filter(
+                        user ->
+                                !Objects.equals(
+                                        user.getId(),
+                                        excludedUserId
+                                )
+                )
+                .ifPresent(
+                        user -> {
+                            throw new AppException(
+                                    ErrorCode.EMAIL_ALREADY_EXISTS
+                            );
+                        }
+                );
+    }
+
+    private void validateUniquePhone(
+            String phone,
+            Long excludedUserId
+    ) {
+        if (
+                phone == null
+        ) {
             return;
         }
 
-        if (request.getEmail() != null && !Objects.equals(request.getEmail(), user.getEmail())) {
-            if (userRepository.existsByEmail(request.getEmail())) {
-                throw new RuntimeException("Email đã tồn tại");
+        userRepository
+                .findByPhone(
+                        phone
+                )
+                .filter(
+                        user ->
+                                !Objects.equals(
+                                        user.getId(),
+                                        excludedUserId
+                                )
+                )
+                .ifPresent(
+                        user -> {
+                            throw new AppException(
+                                    ErrorCode.PHONE_ALREADY_EXISTS
+                            );
+                        }
+                );
+    }
+
+    private void syncUserStatusByMemberStatus(
+            User user,
+            MemberStatus memberStatus
+    ) {
+        switch (memberStatus) {
+            case ACTIVE -> {
+                user.setStatus(
+                        UserStatus.ACTIVE
+                );
+
+                user.setIsDeleted(
+                        false
+                );
             }
-            user.setEmail(request.getEmail());
-        }
 
-        if (request.getFullName() != null) {
-            user.setFullName(request.getFullName());
-        }
-
-        if (request.getPhone() != null) {
-            user.setPhone(request.getPhone());
+            case INACTIVE,
+                 SUSPENDED ->
+                    user.setStatus(
+                            UserStatus.INACTIVE
+                    );
         }
     }
 
-    private void updateMemberInfoByAdmin(Member member, MemberUpdateRequest request) {
-        if (request.getGender() != null) {
-            member.setGender(request.getGender());
-        }
-
-        if (request.getDateOfBirth() != null) {
-            member.setDateOfBirth(request.getDateOfBirth());
-        }
-
-        if (request.getAddress() != null) {
-            member.setAddress(request.getAddress());
-        }
-
-        if (request.getEmergencyContactName() != null) {
-            member.setEmergencyContactName(request.getEmergencyContactName());
-        }
-
-        if (request.getEmergencyContactPhone() != null) {
-            member.setEmergencyContactPhone(request.getEmergencyContactPhone());
-        }
-
-        if (request.getFitnessGoal() != null) {
-            member.setFitnessGoal(request.getFitnessGoal());
-        }
-
-        if (request.getHealthNote() != null) {
-            member.setHealthNote(request.getHealthNote());
-        }
-
-        if (request.getStatus() != null) {
-            member.setStatus(request.getStatus());
+    private void validateDateOfBirth(
+            LocalDate dateOfBirth
+    ) {
+        if (
+                dateOfBirth != null
+                        && dateOfBirth
+                        .isAfter(
+                                LocalDate.now()
+                        )
+        ) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
         }
     }
 
-    private void updateMyUserInfo(User user, MyMemberUpdateRequest request) {
-        if (request.getFullName() != null) {
-            user.setFullName(request.getFullName());
-        }
-
-        if (request.getPhone() != null) {
-            user.setPhone(request.getPhone());
-        }
-
-        if (request.getAvatarUrl() != null) {
-            user.setAvatarUrl(request.getAvatarUrl());
-        }
+    private String normalizeEmail(
+            String value
+    ) {
+        return normalizeRequired(
+                value
+        ).toLowerCase(
+                Locale.ROOT
+        );
     }
 
-    private void updateMyMemberInfo(Member member, MyMemberUpdateRequest request) {
-        if (request.getGender() != null) {
-            member.setGender(request.getGender());
+    private String normalizeRequired(
+            String value
+    ) {
+        if (
+                value == null
+                        || value.isBlank()
+        ) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
         }
 
-        if (request.getDateOfBirth() != null) {
-            member.setDateOfBirth(request.getDateOfBirth());
-        }
-
-        if (request.getAddress() != null) {
-            member.setAddress(request.getAddress());
-        }
-
-        if (request.getEmergencyContactName() != null) {
-            member.setEmergencyContactName(request.getEmergencyContactName());
-        }
-
-        if (request.getEmergencyContactPhone() != null) {
-            member.setEmergencyContactPhone(request.getEmergencyContactPhone());
-        }
-
-        if (request.getFitnessGoal() != null) {
-            member.setFitnessGoal(request.getFitnessGoal());
-        }
-
-        if (request.getHealthNote() != null) {
-            member.setHealthNote(request.getHealthNote());
-        }
+        return value.trim();
     }
 
-    private void syncUserStatusByMemberStatus(User user, MemberStatus memberStatus) {
-        if (memberStatus == MemberStatus.ACTIVE) {
-            user.setStatus(UserStatus.ACTIVE);
-            user.setIsDeleted(false);
-            return;
-        }
-
-        if (memberStatus == MemberStatus.INACTIVE || memberStatus == MemberStatus.SUSPENDED) {
-            user.setStatus(UserStatus.INACTIVE);
-        }
-    }
-
-    private String normalizeKeyword(String keyword) {
-        if (keyword == null || keyword.trim().isEmpty()) {
+    private String normalizeNullable(
+            String value
+    ) {
+        if (
+                value == null
+        ) {
             return null;
         }
-        return keyword.trim();
+
+        String normalized =
+                value.trim();
+
+        return normalized.isEmpty()
+                ? null
+                : normalized;
     }
 
     private String generateMemberCode() {
         String code;
 
         do {
-            code = "MEM" + System.currentTimeMillis();
-        } while (memberRepository.existsByMemberCode(code));
+            code =
+                    "MEM"
+                            + System
+                            .currentTimeMillis();
+        } while (
+                memberRepository
+                        .existsByMemberCode(
+                                code
+                        )
+        );
 
         return code;
     }
