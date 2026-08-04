@@ -20,6 +20,8 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -132,6 +134,31 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(
                 ErrorCode.INVALID_REQUEST
         );
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>>
+    handleMediaTypeNotSupported(
+            HttpMediaTypeNotSupportedException exception
+    ) {
+        log.debug(
+                "Unsupported content type: {}",
+                exception.getContentType()
+        );
+
+        ErrorCode errorCode =
+                ErrorCode.INVALID_REQUEST;
+
+        return ResponseEntity
+                .status(
+                        HttpStatus.UNSUPPORTED_MEDIA_TYPE
+                )
+                .body(
+                        ApiResponse.error(
+                                errorCode.getCode(),
+                                "Content-Type is not supported. Expected multipart/form-data for file upload"
+                        )
+                );
     }
 
     @ExceptionHandler({

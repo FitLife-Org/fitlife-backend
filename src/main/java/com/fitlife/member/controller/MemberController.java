@@ -15,8 +15,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -38,108 +38,70 @@ public class MemberController {
 
     private final MemberTimelineService memberTimelineService;
 
-    /**
-     * Member xem hồ sơ của chính mình.
-     */
     @GetMapping
     @PreAuthorize("hasRole('MEMBER')")
     @Operation(
-            summary = "Get current member profile",
-            description = "Return profile of the currently authenticated member."
+            summary = "Get current member profile"
     )
     public ApiResponse<MemberResponse> getMyProfile() {
-        MemberResponse response =
-                memberService.getMyProfile();
-
         return ApiResponse.success(
                 "Get member profile successfully",
-                response
+                memberService.getMyProfile()
         );
     }
 
-    /**
-     * Member cập nhật các thông tin hồ sơ được phép.
-     *
-     * Không cập nhật:
-     * - email
-     * - username
-     * - memberCode
-     * - status
-     * - joinDate
-     * - avatarUrl
-     */
     @PutMapping
     @PreAuthorize("hasRole('MEMBER')")
     @Operation(
-            summary = "Update current member profile",
-            description = """
-                    Member can update:
-                    - fullName
-                    - phone
-                    - gender
-                    - dateOfBirth
-                    - address
-                    - emergencyContactName
-                    - emergencyContactPhone
-                    - fitnessGoal
-                    - healthNote
-                    """
+            summary = "Update current member profile"
     )
     public ApiResponse<MemberResponse> updateMyProfile(
             @Valid
             @RequestBody
             MyMemberUpdateRequest request
     ) {
-        MemberResponse response =
-                memberService.updateMyProfile(request);
-
         return ApiResponse.success(
                 "Update member profile successfully",
-                response
+                memberService.updateMyProfile(
+                        request
+                )
         );
     }
 
-    /**
-     * Member upload avatar bằng MultipartFile.
-     */
     @PatchMapping(
             value = "/avatar",
-            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+            consumes =
+                    MediaType.MULTIPART_FORM_DATA_VALUE
     )
     @PreAuthorize("hasRole('MEMBER')")
     @Operation(
             summary = "Upload current member avatar",
             description = """
-                    Upload JPG, PNG or WEBP avatar.
-                    Maximum size is 5 MB.
-                    Form field name must be: file
+                    Supported:
+                    - JPG
+                    - PNG
+                    - WEBP
+                    
+                    Maximum size: 5 MB.
+                    Multipart field: file.
                     """
     )
     public ApiResponse<MemberResponse> updateMyAvatar(
             @RequestPart("file")
             MultipartFile file
     ) {
-        MemberResponse response =
-                memberService.updateMyAvatar(file);
-
         return ApiResponse.success(
                 "Update member avatar successfully",
-                response
+                memberService.updateMyAvatar(
+                        file
+                )
         );
     }
 
-    /**
-     * Member xem timeline của chính mình.
-     */
     @GetMapping("/timeline")
     @PreAuthorize("hasRole('MEMBER')")
     @Operation(
-            summary = "Get current member timeline",
-            description = """
-                    Return activities of current member:
-                    profile, subscription, invoice, payment,
-                    check-in, body metric, AI, workout and nutrition.
-                    """
+            summary = "Get current member timeline"
     )
     public ApiResponse<
             PageResponse<MemberTimelineItemResponse>
@@ -153,17 +115,15 @@ public class MemberController {
             Pageable pageable
     ) {
         Member currentMember =
-                currentMemberService.getCurrentMember();
-
-        PageResponse<MemberTimelineItemResponse> response =
-                memberTimelineService.getTimeline(
-                        currentMember.getId(),
-                        pageable
-                );
+                currentMemberService
+                        .getCurrentMember();
 
         return ApiResponse.success(
                 "Get member timeline successfully",
-                response
+                memberTimelineService.getTimeline(
+                        currentMember.getId(),
+                        pageable
+                )
         );
     }
 }

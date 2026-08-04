@@ -77,6 +77,7 @@ public class Member {
     @Column(nullable = false, length = 30)
     private MemberStatus status;
 
+    @Builder.Default
     @Column(name = "is_deleted", nullable = false)
     private Boolean isDeleted = false;
 

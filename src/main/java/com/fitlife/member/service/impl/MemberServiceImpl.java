@@ -16,6 +16,8 @@ import com.fitlife.member.mapper.MemberMapper;
 import com.fitlife.member.repository.MemberRepository;
 import com.fitlife.member.service.CurrentMemberService;
 import com.fitlife.member.service.MemberService;
+import com.fitlife.member.timeline.enums.MemberTimelineType;
+import com.fitlife.member.timeline.service.MemberTimelineRecorder;
 import com.fitlife.user.entity.Role;
 import com.fitlife.user.entity.User;
 import com.fitlife.user.enums.AuthProvider;
@@ -30,116 +32,311 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
-public class MemberServiceImpl implements MemberService {
+public class MemberServiceImpl
+        implements MemberService {
 
-    private static final String ROLE_MEMBER_CODE = "ROLE_MEMBER";
+    private static final String ROLE_MEMBER_CODE =
+            "ROLE_MEMBER";
 
     private final MemberRepository memberRepository;
+
     private final UserRepository userRepository;
+
     private final RoleRepository roleRepository;
+
     private final MemberMapper memberMapper;
+
     private final PasswordEncoder passwordEncoder;
+
     private final CurrentMemberService currentMemberService;
-    private final MemberAvatarStorageService memberAvatarStorageService;
+
+    private final MemberAvatarStorageService
+            memberAvatarStorageService;
+
+    private final MemberTimelineRecorder
+            memberTimelineRecorder;
 
     @Override
     @Transactional
-    public MemberResponse createMemberByAdmin(MemberCreateRequest request) {
-        String username = normalizeRequired(request.getUsername());
-        String email = normalizeEmail(request.getEmail());
-        String phone = normalizeNullable(request.getPhone());
+    public MemberResponse createMemberByAdmin(
+            MemberCreateRequest request
+    ) {
+        validateDateOfBirth(
+                request.getDateOfBirth()
+        );
 
-        validateUniqueUsername(username, null);
-        validateUniqueEmail(email, null);
-        validateUniquePhone(phone, null);
+        String username =
+                normalizeRequired(
+                        request.getUsername()
+                );
 
-        Role memberRole = roleRepository.findByCode(ROLE_MEMBER_CODE)
-                .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
+        String email =
+                normalizeEmail(
+                        request.getEmail()
+                );
 
-        User user = User.builder()
-                .username(username)
-                .email(email)
-                .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .fullName(normalizeRequired(request.getFullName()))
-                .phone(phone)
-                .status(UserStatus.ACTIVE)
-                .authProvider(AuthProvider.LOCAL)
-                .emailVerified(true)
-                .isDeleted(false)
-                .roles(new HashSet<>())
-                .build();
+        String phone =
+                normalizeNullable(
+                        request.getPhone()
+                );
 
-        user.getRoles().add(memberRole);
-        User savedUser = userRepository.save(user);
+        validateUniqueUsername(
+                username,
+                null
+        );
 
-        Member member = Member.builder()
-                .user(savedUser)
-                .memberCode(generateMemberCode())
-                .gender(request.getGender())
-                .dateOfBirth(request.getDateOfBirth())
-                .address(normalizeNullable(request.getAddress()))
-                .emergencyContactName(normalizeNullable(request.getEmergencyContactName()))
-                .emergencyContactPhone(normalizeNullable(request.getEmergencyContactPhone()))
-                .joinDate(LocalDate.now())
-                .fitnessGoal(request.getFitnessGoal())
-                .healthNote(normalizeNullable(request.getHealthNote()))
-                .status(MemberStatus.ACTIVE)
-                .isDeleted(false)
-                .build();
+        validateUniqueEmail(
+                email,
+                null
+        );
 
-        return memberMapper.toResponse(memberRepository.save(member));
+        validateUniquePhone(
+                phone,
+                null
+        );
+
+        Role memberRole =
+                roleRepository
+                        .findByCode(
+                                ROLE_MEMBER_CODE
+                        )
+                        .orElseThrow(
+                                () ->
+                                        new AppException(
+                                                ErrorCode.ROLE_NOT_FOUND
+                                        )
+                        );
+
+        User user =
+                User.builder()
+                        .username(username)
+                        .email(email)
+                        .passwordHash(
+                                passwordEncoder.encode(
+                                        request.getPassword()
+                                )
+                        )
+                        .fullName(
+                                normalizeRequired(
+                                        request.getFullName()
+                                )
+                        )
+                        .phone(phone)
+                        .status(
+                                UserStatus.ACTIVE
+                        )
+                        .authProvider(
+                                AuthProvider.LOCAL
+                        )
+                        .emailVerified(true)
+                        .isDeleted(false)
+                        .roles(
+                                new HashSet<>()
+                        )
+                        .build();
+
+        user.getRoles().add(
+                memberRole
+        );
+
+        User savedUser =
+                userRepository.save(
+                        user
+                );
+
+        Member member =
+                Member.builder()
+                        .user(savedUser)
+                        .memberCode(
+                                generateMemberCode()
+                        )
+                        .gender(
+                                request.getGender()
+                        )
+                        .dateOfBirth(
+                                request.getDateOfBirth()
+                        )
+                        .address(
+                                normalizeNullable(
+                                        request.getAddress()
+                                )
+                        )
+                        .emergencyContactName(
+                                normalizeNullable(
+                                        request
+                                                .getEmergencyContactName()
+                                )
+                        )
+                        .emergencyContactPhone(
+                                normalizeNullable(
+                                        request
+                                                .getEmergencyContactPhone()
+                                )
+                        )
+                        .joinDate(
+                                LocalDate.now()
+                        )
+                        .fitnessGoal(
+                                request.getFitnessGoal()
+                        )
+                        .healthNote(
+                                normalizeNullable(
+                                        request.getHealthNote()
+                                )
+                        )
+                        .status(
+                                MemberStatus.ACTIVE
+                        )
+                        .isDeleted(false)
+                        .build();
+
+        Member savedMember =
+                memberRepository.save(
+                        member
+                );
+
+        memberTimelineRecorder.recordOnce(
+                savedMember.getId(),
+                MemberTimelineType.SYSTEM,
+                "Tạo hồ sơ hội viên",
+                "Hồ sơ hội viên đã được tạo bởi quản trị viên.",
+                savedMember.getId(),
+                "MEMBER",
+                savedMember
+                        .getStatus()
+                        .name(),
+                LocalDateTime.now()
+        );
+
+        return memberMapper.toResponse(
+                savedMember
+        );
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<MemberSummaryResponse> getAllMembersForAdmin(
+    public PageResponse<MemberSummaryResponse>
+    getAllMembersForAdmin(
             String keyword,
             MemberStatus status,
             Pageable pageable
     ) {
-        var page = memberRepository.searchMembers(
-                normalizeNullable(keyword),
-                status,
-                pageable
+        var page =
+                memberRepository.searchMembers(
+                        normalizeNullable(
+                                keyword
+                        ),
+                        status,
+                        pageable
+                );
+
+        return PageResponse.from(
+                page,
+                memberMapper::toSummaryResponse
         );
-
-        return PageResponse.from(page, memberMapper::toSummaryResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public MemberResponse getMemberDetailForAdmin(Long id) {
-        return memberMapper.toResponse(getActiveMemberById(id));
+    public MemberResponse getMemberDetailForAdmin(
+            Long id
+    ) {
+        return memberMapper.toResponse(
+                getActiveMemberById(id)
+        );
     }
 
     @Override
     @Transactional(readOnly = true)
-    public MemberResponse getMemberByCodeForAdmin(String memberCode) {
-        String normalizedCode = normalizeRequired(memberCode).toUpperCase(Locale.ROOT);
+    public MemberResponse getMemberByCodeForAdmin(
+            String memberCode
+    ) {
+        String normalizedCode =
+                normalizeRequired(
+                        memberCode
+                ).toUpperCase(
+                        Locale.ROOT
+                );
 
-        Member member = memberRepository.findByMemberCodeAndIsDeletedFalse(normalizedCode)
-                .orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_FOUND));
+        Member member =
+                memberRepository
+                        .findByMemberCodeAndIsDeletedFalse(
+                                normalizedCode
+                        )
+                        .orElseThrow(
+                                () ->
+                                        new AppException(
+                                                ErrorCode.MEMBER_NOT_FOUND
+                                        )
+                        );
 
-        return memberMapper.toResponse(member);
+        return memberMapper.toResponse(
+                member
+        );
     }
 
     @Override
     @Transactional
-    public MemberResponse updateMemberByAdmin(Long id, MemberUpdateRequest request) {
-        Member member = getActiveMemberById(id);
-        User user = requireLinkedUser(member);
+    public MemberResponse updateMemberByAdmin(
+            Long id,
+            MemberUpdateRequest request
+    ) {
+        validateDateOfBirth(
+                request.getDateOfBirth()
+        );
 
-        updateUserInfoByAdmin(user, request);
-        updateMemberInfoByAdmin(member, request);
+        Member member =
+                getActiveMemberById(
+                        id
+                );
 
-        userRepository.save(user);
-        return memberMapper.toResponse(memberRepository.save(member));
+        User user =
+                requireLinkedUser(
+                        member
+                );
+
+        updateUserInfoByAdmin(
+                user,
+                request
+        );
+
+        updateMemberInfoByAdmin(
+                member,
+                request
+        );
+
+        userRepository.save(
+                user
+        );
+
+        Member savedMember =
+                memberRepository.save(
+                        member
+                );
+
+        memberTimelineRecorder.record(
+                savedMember.getId(),
+                MemberTimelineType.MEMBER_PROFILE,
+                "Quản trị viên cập nhật hồ sơ",
+                "Thông tin hội viên đã được cập nhật.",
+                savedMember.getId(),
+                "MEMBER",
+                savedMember
+                        .getStatus()
+                        .name(),
+                LocalDateTime.now()
+        );
+
+        return memberMapper.toResponse(
+                savedMember
+        );
     }
 
     @Override
@@ -148,263 +345,733 @@ public class MemberServiceImpl implements MemberService {
             Long id,
             AdminMemberStatusUpdateRequest request
     ) {
-        Member member = getActiveMemberById(id);
-        User user = requireLinkedUser(member);
+        if (
+                request.getStatus() == null
+        ) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
 
-        member.setStatus(request.getStatus());
-        syncUserStatusByMemberStatus(user, request.getStatus());
+        Member member =
+                getActiveMemberById(
+                        id
+                );
 
-        userRepository.save(user);
-        return memberMapper.toResponse(memberRepository.save(member));
+        User user =
+                requireLinkedUser(
+                        member
+                );
+
+        member.setStatus(
+                request.getStatus()
+        );
+
+        syncUserStatusByMemberStatus(
+                user,
+                request.getStatus()
+        );
+
+        userRepository.save(
+                user
+        );
+
+        Member savedMember =
+                memberRepository.save(
+                        member
+                );
+
+        memberTimelineRecorder.record(
+                savedMember.getId(),
+                MemberTimelineType.SYSTEM,
+                "Cập nhật trạng thái hội viên",
+                "Trạng thái hội viên đã được thay đổi.",
+                savedMember.getId(),
+                "MEMBER_STATUS",
+                savedMember
+                        .getStatus()
+                        .name(),
+                LocalDateTime.now()
+        );
+
+        return memberMapper.toResponse(
+                savedMember
+        );
     }
 
     @Override
     @Transactional(readOnly = true)
     public MemberResponse getMyProfile() {
-        return memberMapper.toResponse(currentMemberService.getCurrentMember());
+        return memberMapper.toResponse(
+                currentMemberService
+                        .getCurrentMember()
+        );
     }
 
     @Override
     @Transactional
-    public MemberResponse updateMyProfile(MyMemberUpdateRequest request) {
-        Member member = currentMemberService.getCurrentMember();
-        User user = requireLinkedUser(member);
+    public MemberResponse updateMyProfile(
+            MyMemberUpdateRequest request
+    ) {
+        validateDateOfBirth(
+                request.getDateOfBirth()
+        );
 
-        updateMyUserInfo(user, request);
-        updateMyMemberInfo(member, request);
+        Member member =
+                currentMemberService
+                        .getCurrentMember();
 
-        userRepository.save(user);
-        return memberMapper.toResponse(memberRepository.save(member));
+        User user =
+                requireLinkedUser(
+                        member
+                );
+
+        updateMyUserInfo(
+                user,
+                request
+        );
+
+        updateMyMemberInfo(
+                member,
+                request
+        );
+
+        userRepository.save(
+                user
+        );
+
+        Member savedMember =
+                memberRepository.save(
+                        member
+                );
+
+        memberTimelineRecorder.record(
+                savedMember.getId(),
+                MemberTimelineType.MEMBER_PROFILE,
+                "Cập nhật hồ sơ",
+                "Hội viên đã cập nhật thông tin cá nhân.",
+                savedMember.getId(),
+                "MEMBER",
+                savedMember
+                        .getStatus()
+                        .name(),
+                LocalDateTime.now()
+        );
+
+        return memberMapper.toResponse(
+                savedMember
+        );
     }
 
     @Override
     @Transactional
-    public MemberResponse updateMyAvatar(MultipartFile file) {
-        Member member = currentMemberService.getCurrentMember();
-        User user = requireLinkedUser(member);
+    public MemberResponse updateMyAvatar(
+            MultipartFile file
+    ) {
+        Member member =
+                currentMemberService
+                        .getCurrentMember();
 
-        String avatarUrl = memberAvatarStorageService
-                .uploadMemberAvatar(user.getId(), file);
+        User user =
+                requireLinkedUser(
+                        member
+                );
 
-        user.setAvatarUrl(avatarUrl);
-        userRepository.save(user);
+        String avatarUrl =
+                memberAvatarStorageService
+                        .uploadMemberAvatar(
+                                user.getId(),
+                                file
+                        );
 
-        return memberMapper.toResponse(member);
+        user.setAvatarUrl(
+                avatarUrl
+        );
+
+        userRepository.save(
+                user
+        );
+
+        memberTimelineRecorder.record(
+                member.getId(),
+                MemberTimelineType.MEMBER_PROFILE,
+                "Cập nhật ảnh đại diện",
+                "Hội viên đã thay đổi ảnh đại diện.",
+                member.getId(),
+                "MEMBER_AVATAR",
+                "UPDATED",
+                LocalDateTime.now()
+        );
+
+        return memberMapper.toResponse(
+                member
+        );
     }
 
     @Override
     @Transactional
-    public void deleteMemberByAdmin(Long id) {
-        Member member = getActiveMemberById(id);
-        User user = requireLinkedUser(member);
+    public void deleteMemberByAdmin(
+            Long id
+    ) {
+        Member member =
+                getActiveMemberById(
+                        id
+                );
+
+        User user =
+                requireLinkedUser(
+                        member
+                );
 
         member.setIsDeleted(true);
-        member.setStatus(MemberStatus.INACTIVE);
+        member.setStatus(
+                MemberStatus.INACTIVE
+        );
 
         user.setIsDeleted(true);
-        user.setStatus(UserStatus.INACTIVE);
+        user.setStatus(
+                UserStatus.INACTIVE
+        );
 
-        memberRepository.save(member);
-        userRepository.save(user);
+        memberRepository.save(
+                member
+        );
+
+        userRepository.save(
+                user
+        );
+
+        memberTimelineRecorder.record(
+                member.getId(),
+                MemberTimelineType.SYSTEM,
+                "Vô hiệu hóa hội viên",
+                "Hồ sơ hội viên đã bị xóa mềm.",
+                member.getId(),
+                "MEMBER",
+                "DELETED",
+                LocalDateTime.now()
+        );
     }
 
     @Override
     @Transactional
-    public void restoreMemberByAdmin(Long id) {
-        Member member = memberRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_FOUND));
+    public void restoreMemberByAdmin(
+            Long id
+    ) {
+        Member member =
+                memberRepository
+                        .findById(id)
+                        .orElseThrow(
+                                () ->
+                                        new AppException(
+                                                ErrorCode.MEMBER_NOT_FOUND
+                                        )
+                        );
 
-        User user = requireLinkedUser(member);
+        User user =
+                requireLinkedUser(
+                        member
+                );
 
         member.setIsDeleted(false);
-        member.setStatus(MemberStatus.ACTIVE);
+        member.setStatus(
+                MemberStatus.ACTIVE
+        );
 
         user.setIsDeleted(false);
-        user.setStatus(UserStatus.ACTIVE);
+        user.setStatus(
+                UserStatus.ACTIVE
+        );
 
-        memberRepository.save(member);
-        userRepository.save(user);
+        memberRepository.save(
+                member
+        );
+
+        userRepository.save(
+                user
+        );
+
+        memberTimelineRecorder.record(
+                member.getId(),
+                MemberTimelineType.SYSTEM,
+                "Khôi phục hội viên",
+                "Hồ sơ hội viên đã được khôi phục.",
+                member.getId(),
+                "MEMBER",
+                "RESTORED",
+                LocalDateTime.now()
+        );
     }
 
-    private void updateUserInfoByAdmin(User user, MemberUpdateRequest request) {
-        if (request.getEmail() != null) {
-            String email = normalizeEmail(request.getEmail());
-            validateUniqueEmail(email, user.getId());
-            user.setEmail(email);
+    private void updateUserInfoByAdmin(
+            User user,
+            MemberUpdateRequest request
+    ) {
+        if (
+                request.getEmail() != null
+        ) {
+            String email =
+                    normalizeEmail(
+                            request.getEmail()
+                    );
+
+            validateUniqueEmail(
+                    email,
+                    user.getId()
+            );
+
+            user.setEmail(
+                    email
+            );
         }
 
-        if (request.getFullName() != null) {
-            user.setFullName(normalizeRequired(request.getFullName()));
+        if (
+                request.getFullName() != null
+        ) {
+            user.setFullName(
+                    normalizeRequired(
+                            request.getFullName()
+                    )
+            );
         }
 
-        if (request.getPhone() != null) {
-            String phone = normalizeNullable(request.getPhone());
-            validateUniquePhone(phone, user.getId());
-            user.setPhone(phone);
-        }
-    }
+        if (
+                request.getPhone() != null
+        ) {
+            String phone =
+                    normalizeNullable(
+                            request.getPhone()
+                    );
 
-    private void updateMemberInfoByAdmin(Member member, MemberUpdateRequest request) {
-        if (request.getGender() != null) {
-            member.setGender(request.getGender());
-        }
+            validateUniquePhone(
+                    phone,
+                    user.getId()
+            );
 
-        if (request.getDateOfBirth() != null) {
-            member.setDateOfBirth(request.getDateOfBirth());
-        }
-
-        if (request.getAddress() != null) {
-            member.setAddress(normalizeNullable(request.getAddress()));
-        }
-
-        if (request.getEmergencyContactName() != null) {
-            member.setEmergencyContactName(normalizeNullable(request.getEmergencyContactName()));
-        }
-
-        if (request.getEmergencyContactPhone() != null) {
-            member.setEmergencyContactPhone(normalizeNullable(request.getEmergencyContactPhone()));
-        }
-
-        if (request.getFitnessGoal() != null) {
-            member.setFitnessGoal(request.getFitnessGoal());
-        }
-
-        if (request.getHealthNote() != null) {
-            member.setHealthNote(normalizeNullable(request.getHealthNote()));
-        }
-
-        if (request.getStatus() != null) {
-            member.setStatus(request.getStatus());
-            syncUserStatusByMemberStatus(requireLinkedUser(member), request.getStatus());
-        }
-    }
-
-    private void updateMyUserInfo(User user, MyMemberUpdateRequest request) {
-        if (request.getFullName() != null) {
-            user.setFullName(normalizeRequired(request.getFullName()));
-        }
-
-        if (request.getPhone() != null) {
-            String phone = normalizeNullable(request.getPhone());
-            validateUniquePhone(phone, user.getId());
-            user.setPhone(phone);
-        }
-    }
-
-    private void updateMyMemberInfo(Member member, MyMemberUpdateRequest request) {
-        if (request.getGender() != null) {
-            member.setGender(request.getGender());
-        }
-
-        if (request.getDateOfBirth() != null) {
-            member.setDateOfBirth(request.getDateOfBirth());
-        }
-
-        if (request.getAddress() != null) {
-            member.setAddress(normalizeNullable(request.getAddress()));
-        }
-
-        if (request.getEmergencyContactName() != null) {
-            member.setEmergencyContactName(normalizeNullable(request.getEmergencyContactName()));
-        }
-
-        if (request.getEmergencyContactPhone() != null) {
-            member.setEmergencyContactPhone(normalizeNullable(request.getEmergencyContactPhone()));
-        }
-
-        if (request.getFitnessGoal() != null) {
-            member.setFitnessGoal(request.getFitnessGoal());
-        }
-
-        if (request.getHealthNote() != null) {
-            member.setHealthNote(normalizeNullable(request.getHealthNote()));
+            user.setPhone(
+                    phone
+            );
         }
     }
 
-    private Member getActiveMemberById(Long id) {
+    private void updateMemberInfoByAdmin(
+            Member member,
+            MemberUpdateRequest request
+    ) {
+        if (
+                request.getGender() != null
+        ) {
+            member.setGender(
+                    request.getGender()
+            );
+        }
+
+        if (
+                request.getDateOfBirth() != null
+        ) {
+            member.setDateOfBirth(
+                    request.getDateOfBirth()
+            );
+        }
+
+        if (
+                request.getAddress() != null
+        ) {
+            member.setAddress(
+                    normalizeNullable(
+                            request.getAddress()
+                    )
+            );
+        }
+
+        if (
+                request
+                        .getEmergencyContactName()
+                        != null
+        ) {
+            member.setEmergencyContactName(
+                    normalizeNullable(
+                            request
+                                    .getEmergencyContactName()
+                    )
+            );
+        }
+
+        if (
+                request
+                        .getEmergencyContactPhone()
+                        != null
+        ) {
+            member.setEmergencyContactPhone(
+                    normalizeNullable(
+                            request
+                                    .getEmergencyContactPhone()
+                    )
+            );
+        }
+
+        if (
+                request.getFitnessGoal() != null
+        ) {
+            member.setFitnessGoal(
+                    request.getFitnessGoal()
+            );
+        }
+
+        if (
+                request.getHealthNote() != null
+        ) {
+            member.setHealthNote(
+                    normalizeNullable(
+                            request.getHealthNote()
+                    )
+            );
+        }
+
+        if (
+                request.getStatus() != null
+        ) {
+            member.setStatus(
+                    request.getStatus()
+            );
+
+            syncUserStatusByMemberStatus(
+                    requireLinkedUser(
+                            member
+                    ),
+                    request.getStatus()
+            );
+        }
+    }
+
+    private void updateMyUserInfo(
+            User user,
+            MyMemberUpdateRequest request
+    ) {
+        if (
+                request.getFullName() != null
+        ) {
+            user.setFullName(
+                    normalizeRequired(
+                            request.getFullName()
+                    )
+            );
+        }
+
+        if (
+                request.getPhone() != null
+        ) {
+            String phone =
+                    normalizeNullable(
+                            request.getPhone()
+                    );
+
+            validateUniquePhone(
+                    phone,
+                    user.getId()
+            );
+
+            user.setPhone(
+                    phone
+            );
+        }
+    }
+
+    private void updateMyMemberInfo(
+            Member member,
+            MyMemberUpdateRequest request
+    ) {
+        if (
+                request.getGender() != null
+        ) {
+            member.setGender(
+                    request.getGender()
+            );
+        }
+
+        if (
+                request.getDateOfBirth() != null
+        ) {
+            member.setDateOfBirth(
+                    request.getDateOfBirth()
+            );
+        }
+
+        if (
+                request.getAddress() != null
+        ) {
+            member.setAddress(
+                    normalizeNullable(
+                            request.getAddress()
+                    )
+            );
+        }
+
+        if (
+                request
+                        .getEmergencyContactName()
+                        != null
+        ) {
+            member.setEmergencyContactName(
+                    normalizeNullable(
+                            request
+                                    .getEmergencyContactName()
+                    )
+            );
+        }
+
+        if (
+                request
+                        .getEmergencyContactPhone()
+                        != null
+        ) {
+            member.setEmergencyContactPhone(
+                    normalizeNullable(
+                            request
+                                    .getEmergencyContactPhone()
+                    )
+            );
+        }
+
+        if (
+                request.getFitnessGoal() != null
+        ) {
+            member.setFitnessGoal(
+                    request.getFitnessGoal()
+            );
+        }
+
+        if (
+                request.getHealthNote() != null
+        ) {
+            member.setHealthNote(
+                    normalizeNullable(
+                            request.getHealthNote()
+                    )
+            );
+        }
+    }
+
+    private Member getActiveMemberById(
+            Long id
+    ) {
         if (id == null) {
-            throw new AppException(ErrorCode.INVALID_REQUEST);
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
         }
 
-        Member member = memberRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_FOUND));
+        Member member =
+                memberRepository
+                        .findById(id)
+                        .orElseThrow(
+                                () ->
+                                        new AppException(
+                                                ErrorCode.MEMBER_NOT_FOUND
+                                        )
+                        );
 
-        if (Boolean.TRUE.equals(member.getIsDeleted())) {
-            throw new AppException(ErrorCode.MEMBER_NOT_FOUND);
+        if (
+                Boolean.TRUE.equals(
+                        member.getIsDeleted()
+                )
+        ) {
+            throw new AppException(
+                    ErrorCode.MEMBER_NOT_FOUND
+            );
         }
 
         return member;
     }
 
-    private User requireLinkedUser(Member member) {
-        if (member.getUser() == null) {
-            throw new AppException(ErrorCode.MEMBER_NO_ACCOUNT);
+    private User requireLinkedUser(
+            Member member
+    ) {
+        if (
+                member.getUser() == null
+        ) {
+            throw new AppException(
+                    ErrorCode.MEMBER_NO_ACCOUNT
+            );
         }
+
         return member.getUser();
     }
 
-    private void validateUniqueUsername(String username, Long excludedUserId) {
-        userRepository.findByUsername(username)
-                .filter(user -> !Objects.equals(user.getId(), excludedUserId))
-                .ifPresent(user -> {
-                    throw new AppException(ErrorCode.USERNAME_ALREADY_EXISTS);
-                });
+    private void validateUniqueUsername(
+            String username,
+            Long excludedUserId
+    ) {
+        userRepository
+                .findByUsername(
+                        username
+                )
+                .filter(
+                        user ->
+                                !Objects.equals(
+                                        user.getId(),
+                                        excludedUserId
+                                )
+                )
+                .ifPresent(
+                        user -> {
+                            throw new AppException(
+                                    ErrorCode.USERNAME_ALREADY_EXISTS
+                            );
+                        }
+                );
     }
 
-    private void validateUniqueEmail(String email, Long excludedUserId) {
-        userRepository.findByEmail(email)
-                .filter(user -> !Objects.equals(user.getId(), excludedUserId))
-                .ifPresent(user -> {
-                    throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS);
-                });
+    private void validateUniqueEmail(
+            String email,
+            Long excludedUserId
+    ) {
+        userRepository
+                .findByEmail(
+                        email
+                )
+                .filter(
+                        user ->
+                                !Objects.equals(
+                                        user.getId(),
+                                        excludedUserId
+                                )
+                )
+                .ifPresent(
+                        user -> {
+                            throw new AppException(
+                                    ErrorCode.EMAIL_ALREADY_EXISTS
+                            );
+                        }
+                );
     }
 
-    private void validateUniquePhone(String phone, Long excludedUserId) {
-        if (phone == null) {
+    private void validateUniquePhone(
+            String phone,
+            Long excludedUserId
+    ) {
+        if (
+                phone == null
+        ) {
             return;
         }
 
-        userRepository.findByPhone(phone)
-                .filter(user -> !Objects.equals(user.getId(), excludedUserId))
-                .ifPresent(user -> {
-                    throw new AppException(ErrorCode.PHONE_ALREADY_EXISTS);
-                });
+        userRepository
+                .findByPhone(
+                        phone
+                )
+                .filter(
+                        user ->
+                                !Objects.equals(
+                                        user.getId(),
+                                        excludedUserId
+                                )
+                )
+                .ifPresent(
+                        user -> {
+                            throw new AppException(
+                                    ErrorCode.PHONE_ALREADY_EXISTS
+                            );
+                        }
+                );
     }
 
-    private void syncUserStatusByMemberStatus(User user, MemberStatus memberStatus) {
+    private void syncUserStatusByMemberStatus(
+            User user,
+            MemberStatus memberStatus
+    ) {
         switch (memberStatus) {
             case ACTIVE -> {
-                user.setStatus(UserStatus.ACTIVE);
-                user.setIsDeleted(false);
+                user.setStatus(
+                        UserStatus.ACTIVE
+                );
+
+                user.setIsDeleted(
+                        false
+                );
             }
-            case INACTIVE, SUSPENDED -> user.setStatus(UserStatus.INACTIVE);
+
+            case INACTIVE,
+                 SUSPENDED ->
+                    user.setStatus(
+                            UserStatus.INACTIVE
+                    );
         }
     }
 
-    private String normalizeEmail(String value) {
-        return normalizeRequired(value).toLowerCase(Locale.ROOT);
+    private void validateDateOfBirth(
+            LocalDate dateOfBirth
+    ) {
+        if (
+                dateOfBirth != null
+                        && dateOfBirth
+                        .isAfter(
+                                LocalDate.now()
+                        )
+        ) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
     }
 
-    private String normalizeRequired(String value) {
-        if (value == null || value.isBlank()) {
-            throw new AppException(ErrorCode.INVALID_REQUEST);
+    private String normalizeEmail(
+            String value
+    ) {
+        return normalizeRequired(
+                value
+        ).toLowerCase(
+                Locale.ROOT
+        );
+    }
+
+    private String normalizeRequired(
+            String value
+    ) {
+        if (
+                value == null
+                        || value.isBlank()
+        ) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
         }
+
         return value.trim();
     }
 
-    private String normalizeNullable(String value) {
-        if (value == null) {
+    private String normalizeNullable(
+            String value
+    ) {
+        if (
+                value == null
+        ) {
             return null;
         }
-        String normalized = value.trim();
-        return normalized.isEmpty() ? null : normalized;
+
+        String normalized =
+                value.trim();
+
+        return normalized.isEmpty()
+                ? null
+                : normalized;
     }
 
     private String generateMemberCode() {
         String code;
+
         do {
-            code = "MEM" + System.currentTimeMillis();
-        } while (memberRepository.existsByMemberCode(code));
+            code =
+                    "MEM"
+                            + System
+                            .currentTimeMillis();
+        } while (
+                memberRepository
+                        .existsByMemberCode(
+                                code
+                        )
+        );
+
         return code;
     }
 }
