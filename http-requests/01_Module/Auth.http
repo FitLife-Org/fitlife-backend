@@ -8,7 +8,7 @@
 @memberIdentifier = member01
 @memberPassword = 123456
 
-@adminIdentifier = admin01
+@adminIdentifier = admin
 @adminPassword = 123456
 
 

@@ -1,14 +1,20 @@
 package com.fitlife.bodymetric.controller;
 
-import com.fitlife.bodymetric.dto.response.BodyMetricResponse;
 import com.fitlife.bodymetric.dto.request.BodyMetricCreateRequest;
+import com.fitlife.bodymetric.dto.response.BodyMetricResponse;
 import com.fitlife.bodymetric.service.BodyMetricService;
 import com.fitlife.common.response.ApiResponse;
 import com.fitlife.common.response.PageResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -17,71 +23,160 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/body-metrics/me")
+@Tag(
+        name = "Member - Body Metric",
+        description = "APIs for the current member to record and view body metrics"
+)
+@SecurityRequirement(name = "bearerAuth")
+@PreAuthorize("hasRole('MEMBER')")
 public class MyBodyMetricController {
 
     private final BodyMetricService bodyMetricService;
 
+    /**
+     * Member tạo một lần đo mới.
+     *
+     * Client không cần gửi memberId.
+     * Backend tự resolve Member từ access token.
+     */
     @PostMapping
+    @Operation(
+            summary = "Create my body metric",
+            description = """
+                    Create a new body metric record for the current member.
+
+                    Required:
+                    - weightKg
+
+                    Height:
+                    - required for the first metric;
+                    - may be omitted later, backend will reuse the latest height.
+
+                    BMI is always calculated by backend.
+                    """
+    )
     public ApiResponse<BodyMetricResponse> createMyBodyMetric(
-            @Valid @RequestBody BodyMetricCreateRequest request
+            @Valid
+            @RequestBody
+            BodyMetricCreateRequest request
     ) {
-        return ApiResponse.<BodyMetricResponse>builder()
-                .message("Body metric created successfully")
-                .data(bodyMetricService.createMyBodyMetric(request))
-                .build();
+        BodyMetricResponse response =
+                bodyMetricService.createMyBodyMetric(
+                        request
+                );
+
+        return ApiResponse.success(
+                "Create body metric successfully",
+                response
+        );
     }
 
     /**
-     * Member xem danh sách body metric của chính mình.
+     * Danh sách Body Metric của Member hiện tại.
+     *
+     * Mặc định:
+     * - page = 0
+     * - size = 20
+     * - latest trước
      */
     @GetMapping
-    public ApiResponse<PageResponse<BodyMetricResponse>> getMyBodyMetrics(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+    @Operation(
+            summary = "Get my body metrics",
+            description = "Return paginated body metric history of the current member."
+    )
+    public ApiResponse<PageResponse<BodyMetricResponse>>
+    getMyBodyMetrics(
+            @PageableDefault(
+                    page = 0,
+                    size = 20,
+                    sort = "recordedAt",
+                    direction = Sort.Direction.DESC
+            )
+            Pageable pageable
     ) {
-        Pageable pageable = PageRequest.of(page, size);
+        PageResponse<BodyMetricResponse> response =
+                bodyMetricService.getMyBodyMetrics(
+                        pageable
+                );
 
-        return ApiResponse.<PageResponse<BodyMetricResponse>>builder()
-                .message("Get my body metrics successfully")
-                .data(bodyMetricService.getMyBodyMetrics(pageable))
-                .build();
+        return ApiResponse.success(
+                "Get body metrics successfully",
+                response
+        );
     }
 
     /**
-     * Member xem chi tiết một body metric của chính mình.
+     * Member chỉ được xem metric thuộc chính mình.
      */
     @GetMapping("/{id}")
+    @Operation(
+            summary = "Get my body metric detail"
+    )
     public ApiResponse<BodyMetricResponse> getMyBodyMetricDetail(
-            @PathVariable Long id
+            @PathVariable
+            Long id
     ) {
-        return ApiResponse.<BodyMetricResponse>builder()
-                .message("Get my body metric detail successfully")
-                .data(bodyMetricService.getMyBodyMetricDetail(id))
-                .build();
+        BodyMetricResponse response =
+                bodyMetricService.getMyBodyMetricDetail(
+                        id
+                );
+
+        return ApiResponse.success(
+                "Get body metric detail successfully",
+                response
+        );
     }
 
     /**
-     * Member xem body metric mới nhất của chính mình.
+     * Lấy metric mới nhất theo recordedAt.
      */
     @GetMapping("/latest")
+    @Operation(
+            summary = "Get my latest body metric",
+            description = "Latest record is determined by recordedAt, not createdAt."
+    )
     public ApiResponse<BodyMetricResponse> getLatestMyBodyMetric() {
-        return ApiResponse.<BodyMetricResponse>builder()
-                .message("Get latest my body metric successfully")
-                .data(bodyMetricService.getLatestMyBodyMetric())
-                .build();
+        BodyMetricResponse response =
+                bodyMetricService.getLatestMyBodyMetric();
+
+        return ApiResponse.success(
+                "Get latest body metric successfully",
+                response
+        );
     }
 
     /**
-     * Member xem lịch sử body metric theo khoảng thời gian.
+     * Dữ liệu lịch sử tăng dần theo recordedAt,
+     * phù hợp để vẽ biểu đồ.
      */
     @GetMapping("/history")
-    public ApiResponse<List<BodyMetricResponse>> getMyBodyMetricHistory(
-            @RequestParam LocalDateTime from,
-            @RequestParam LocalDateTime to
+    @Operation(
+            summary = "Get my body metric history",
+            description = "Return body metrics within a required time range, sorted ascending."
+    )
+    public ApiResponse<List<BodyMetricResponse>>
+    getMyBodyMetricHistory(
+            @RequestParam
+            @DateTimeFormat(
+                    iso = DateTimeFormat.ISO.DATE_TIME
+            )
+            LocalDateTime from,
+
+            @RequestParam
+            @DateTimeFormat(
+                    iso = DateTimeFormat.ISO.DATE_TIME
+            )
+            LocalDateTime to
     ) {
-        return ApiResponse.<List<BodyMetricResponse>>builder()
-                .message("Get my body metric history successfully")
-                .data(bodyMetricService.getMyBodyMetricHistory(from, to))
-                .build();
+        List<BodyMetricResponse> response =
+                bodyMetricService.getMyBodyMetricHistory(
+                        from,
+                        to
+                );
+
+        return ApiResponse.success(
+                "Get body metric history successfully",
+                response
+        );
     }
 }
