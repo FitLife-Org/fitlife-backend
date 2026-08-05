@@ -1,5 +1,6 @@
 package com.fitlife.nutrition.controller;
 
+import com.fitlife.common.response.ApiResponse;
 import com.fitlife.nutrition.dto.response.NutritionPlanResponse;
 import com.fitlife.nutrition.service.NutritionPlanService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,18 +22,16 @@ public class AdminNutritionPlanController {
 
     private final NutritionPlanService nutritionPlanService;
 
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ADMIN')")
-    @Operation(summary = "Admin views all nutrition plans in the system")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN')")
     @GetMapping
-    public ResponseEntity<Page<NutritionPlanResponse>> getAllPlans(
+    public ResponseEntity<ApiResponse<Page<NutritionPlanResponse>>> getAllPlans(
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        return ResponseEntity.ok(nutritionPlanService.getAllNutritionPlansForAdmin(pageable));
+        return ResponseEntity.ok(ApiResponse.success("Success", nutritionPlanService.getAllNutritionPlansForAdmin(pageable)));
     }
 
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ADMIN')")
-    @Operation(summary = "Admin views details of any nutrition plan")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN')")
     @GetMapping("/{id}")
-    public ResponseEntity<NutritionPlanResponse> getPlanById(@PathVariable Long id) {
-        return ResponseEntity.ok(nutritionPlanService.getNutritionPlanByIdForAdmin(id));
+    public ResponseEntity<ApiResponse<NutritionPlanResponse>> getPlanById(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success("Success", nutritionPlanService.getNutritionPlanByIdForAdmin(id)));
     }
 }

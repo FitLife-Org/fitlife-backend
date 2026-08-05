@@ -7,11 +7,7 @@ import org.springframework.data.domain.Pageable;
 
 public interface NutritionPlanService {
 
-    /*
-     * =========================================================
-     * MEMBER — lấy Member hiện tại từ JWT principal
-     * =========================================================
-     */
+
 
     Page<NutritionPlanResponse> getMyNutritionPlans(
             String principal,

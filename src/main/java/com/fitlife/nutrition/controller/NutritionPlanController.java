@@ -2,6 +2,7 @@ package com.fitlife.nutrition.controller;
 
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
+import com.fitlife.common.response.ApiResponse;
 import com.fitlife.nutrition.dto.request.NutritionPlanRequest;
 import com.fitlife.nutrition.dto.response.NutritionPlanResponse;
 import com.fitlife.nutrition.service.NutritionPlanService;
@@ -30,119 +31,119 @@ public class NutritionPlanController {
     @Operation(summary = "Create a new nutrition plan")
     @PostMapping
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<NutritionPlanResponse> createMyNutritionPlan(
+    public ResponseEntity<ApiResponse<NutritionPlanResponse>> createMyNutritionPlan(
             @Valid @RequestBody NutritionPlanRequest request,
             Authentication authentication) {
         NutritionPlanResponse response = nutritionPlanService.createMyNutritionPlan(
                 getPrincipal(authentication), request
         );
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Success", response));
     }
 
     @Operation(summary = "Get all nutrition plans for current logged in member")
     @GetMapping("/me")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<Page<NutritionPlanResponse>> getMyNutritionPlans(
+    public ResponseEntity<ApiResponse<Page<NutritionPlanResponse>>> getMyNutritionPlans(
             Authentication authentication,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        return ResponseEntity.ok(
+        return ResponseEntity.ok(ApiResponse.success("Success", 
                 nutritionPlanService.getMyNutritionPlans(getPrincipal(authentication), pageable)
-        );
+        ));
     }
 
     @Operation(summary = "Get current active nutrition plan for a member")
     @GetMapping("/me/active")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<NutritionPlanResponse> getMyActiveNutritionPlan(
+    public ResponseEntity<ApiResponse<NutritionPlanResponse>> getMyActiveNutritionPlan(
             Authentication authentication) {
-        return ResponseEntity.ok(
+        return ResponseEntity.ok(ApiResponse.success("Success", 
                 nutritionPlanService.getMyActiveNutritionPlan(getPrincipal(authentication))
-        );
+        ));
     }
 
     @Operation(summary = "Get today's nutrition plan for a member")
     @GetMapping("/me/today")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<NutritionPlanResponse> getMyTodayNutritionPlan(
+    public ResponseEntity<ApiResponse<NutritionPlanResponse>> getMyTodayNutritionPlan(
             Authentication authentication) {
-        return ResponseEntity.ok(
+        return ResponseEntity.ok(ApiResponse.success("Success", 
                 nutritionPlanService.getMyTodayNutritionPlan(getPrincipal(authentication))
-        );
+        ));
     }
 
     @Operation(summary = "Get a nutrition plan by ID")
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<NutritionPlanResponse> getMyNutritionPlanById(
+    public ResponseEntity<ApiResponse<NutritionPlanResponse>> getMyNutritionPlanById(
             @PathVariable Long id,
             Authentication authentication) {
-        return ResponseEntity.ok(
+        return ResponseEntity.ok(ApiResponse.success("Success", 
                 nutritionPlanService.getMyNutritionPlanById(id, getPrincipal(authentication))
-        );
+        ));
     }
 
     @Operation(summary = "Update an existing nutrition plan")
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<NutritionPlanResponse> updateMyNutritionPlan(
+    public ResponseEntity<ApiResponse<NutritionPlanResponse>> updateMyNutritionPlan(
             @PathVariable Long id,
             @Valid @RequestBody NutritionPlanRequest request,
             Authentication authentication) {
-        return ResponseEntity.ok(
+        return ResponseEntity.ok(ApiResponse.success("Success", 
                 nutritionPlanService.updateMyNutritionPlan(id, getPrincipal(authentication), request)
-        );
+        ));
     }
 
     @Operation(summary = "Activate a nutrition plan")
     @PostMapping("/{id}/activate")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<Void> activateMyNutritionPlan(
+    public ResponseEntity<ApiResponse<Void>> activateMyNutritionPlan(
             @PathVariable Long id,
             Authentication authentication) {
         nutritionPlanService.activateMyNutritionPlan(id, getPrincipal(authentication));
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(ApiResponse.success("Success", null));
     }
 
     @Operation(summary = "Complete an active nutrition plan")
     @PostMapping("/{id}/complete")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<Void> completeMyNutritionPlan(
+    public ResponseEntity<ApiResponse<Void>> completeMyNutritionPlan(
             @PathVariable Long id,
             Authentication authentication) {
         nutritionPlanService.completeMyNutritionPlan(id, getPrincipal(authentication));
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(ApiResponse.success("Success", null));
     }
 
     @Operation(summary = "Archive a nutrition plan")
     @PostMapping("/{id}/archive")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<Void> archiveMyNutritionPlan(
+    public ResponseEntity<ApiResponse<Void>> archiveMyNutritionPlan(
             @PathVariable Long id,
             Authentication authentication) {
         nutritionPlanService.archiveMyNutritionPlan(id, getPrincipal(authentication));
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(ApiResponse.success("Success", null));
     }
 
     @Operation(summary = "Clone an existing nutrition plan to a new draft plan")
     @PostMapping("/{id}/clone")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<NutritionPlanResponse> cloneMyNutritionPlan(
+    public ResponseEntity<ApiResponse<NutritionPlanResponse>> cloneMyNutritionPlan(
             @PathVariable Long id,
             Authentication authentication) {
         NutritionPlanResponse response = nutritionPlanService.cloneMyNutritionPlan(
                 id, getPrincipal(authentication)
         );
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Success", response));
     }
 
     @Operation(summary = "Delete a nutrition plan (soft delete)")
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<Void> deleteMyNutritionPlan(
+    public ResponseEntity<ApiResponse<Void>> deleteMyNutritionPlan(
             @PathVariable Long id,
             Authentication authentication) {
         nutritionPlanService.deleteMyNutritionPlan(id, getPrincipal(authentication));
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiResponse.success("Success", null));
     }
 
     private String getPrincipal(Authentication authentication) {
