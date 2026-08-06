@@ -2,8 +2,23 @@ package com.fitlife.bodymetric.entity;
 
 import com.fitlife.member.entity.Member;
 import com.fitlife.user.entity.User;
-import jakarta.persistence.*;
-import lombok.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -37,51 +52,93 @@ import java.time.LocalDateTime;
 public class BodyMetric {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(
+            strategy = GenerationType.IDENTITY
+    )
     private Long id;
 
-    /**
-     * Một Member có nhiều BodyMetric.
-     */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "member_id", nullable = false)
+    @JoinColumn(
+            name = "member_id",
+            nullable = false
+    )
     private Member member;
 
     /**
-     * Người tạo bản ghi. Thường là Admin/Staff.
-     * Có thể null nếu hệ thống chưa lấy được current user.
+     * User tạo bản ghi.
+     *
+     * Có thể là:
+     * - chính Member;
+     * - Admin;
+     * - Staff.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
     private User createdBy;
 
-    @Column(name = "weight_kg", nullable = false, precision = 5, scale = 2)
+    @Column(
+            name = "weight_kg",
+            nullable = false,
+            precision = 5,
+            scale = 2
+    )
     private BigDecimal weightKg;
 
-    @Column(name = "height_cm", precision = 5, scale = 2)
+    @Column(
+            name = "height_cm",
+            nullable = false,
+            precision = 5,
+            scale = 2
+    )
     private BigDecimal heightCm;
 
-    @Column(name = "bmi", precision = 5, scale = 2)
+    @Column(
+            name = "bmi",
+            nullable = false,
+            precision = 5,
+            scale = 2
+    )
     private BigDecimal bmi;
 
-    @Column(name = "body_fat_percent", precision = 5, scale = 2)
+    @Column(
+            name = "body_fat_percent",
+            precision = 5,
+            scale = 2
+    )
     private BigDecimal bodyFatPercent;
 
-    @Column(name = "muscle_mass_kg", precision = 5, scale = 2)
+    @Column(
+            name = "muscle_mass_kg",
+            precision = 5,
+            scale = 2
+    )
     private BigDecimal muscleMassKg;
 
-    @Column(name = "note", columnDefinition = "TEXT")
+    @Column(
+            name = "note",
+            columnDefinition = "TEXT"
+    )
     private String note;
 
-    @Column(name = "recorded_at", nullable = false)
+    @Column(
+            name = "recorded_at",
+            nullable = false
+    )
     private LocalDateTime recordedAt;
 
     @Builder.Default
-    @Column(name = "is_deleted", nullable = false)
+    @Column(
+            name = "is_deleted",
+            nullable = false
+    )
     private Boolean isDeleted = false;
 
     @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(
+            name = "created_at",
+            nullable = false,
+            updatable = false
+    )
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
@@ -91,45 +148,66 @@ public class BodyMetric {
     @PrePersist
     protected void onCreate() {
         if (recordedAt == null) {
-            recordedAt = LocalDateTime.now();
+            recordedAt =
+                    LocalDateTime.now();
         }
 
         if (isDeleted == null) {
             isDeleted = false;
         }
 
-        calculateBmiIfPossible();
+        calculateBmi();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        calculateBmiIfPossible();
+        calculateBmi();
     }
 
-    public void calculateBmiIfPossible() {
-        if (weightKg == null || heightCm == null) {
-            this.bmi = null;
-            return;
+    /**
+     * BMI = weightKg / heightMeter².
+     *
+     * BMI tuyệt đối không nhận từ client.
+     */
+    public void calculateBmi() {
+        if (
+                weightKg == null ||
+                        heightCm == null
+        ) {
+            throw new IllegalStateException(
+                    "Weight and height are required to calculate BMI"
+            );
         }
 
-        if (heightCm.compareTo(BigDecimal.ZERO) <= 0) {
-            this.bmi = null;
-            return;
+        if (
+                weightKg.compareTo(
+                        BigDecimal.ZERO
+                ) <= 0 ||
+                        heightCm.compareTo(
+                                BigDecimal.ZERO
+                        ) <= 0
+        ) {
+            throw new IllegalStateException(
+                    "Weight and height must be greater than zero"
+            );
         }
 
-        BigDecimal heightMeter = heightCm.divide(
-                BigDecimal.valueOf(100),
-                4,
+        BigDecimal heightMeter =
+                heightCm.divide(
+                        BigDecimal.valueOf(100),
+                        4,
+                        RoundingMode.HALF_UP
+                );
+
+        BigDecimal heightSquare =
+                heightMeter.multiply(
+                        heightMeter
+                );
+
+        bmi = weightKg.divide(
+                heightSquare,
+                2,
                 RoundingMode.HALF_UP
         );
-
-        BigDecimal heightSquare = heightMeter.multiply(heightMeter);
-
-        if (heightSquare.compareTo(BigDecimal.ZERO) <= 0) {
-            this.bmi = null;
-            return;
-        }
-
-        this.bmi = weightKg.divide(heightSquare, 2, RoundingMode.HALF_UP);
     }
 }

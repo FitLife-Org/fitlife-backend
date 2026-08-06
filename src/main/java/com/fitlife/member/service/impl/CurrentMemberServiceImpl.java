@@ -30,6 +30,15 @@ public class CurrentMemberServiceImpl
                 currentUserService
                         .getCurrentUser();
 
+        if (
+                currentUser == null ||
+                        currentUser.getId() == null
+        ) {
+            throw new AppException(
+                    ErrorCode.USER_NOT_FOUND
+            );
+        }
+
         Member member =
                 memberRepository
                         .findByUserIdAndIsDeletedFalse(
@@ -41,7 +50,9 @@ public class CurrentMemberServiceImpl
                                 )
                         );
 
-        validateMember(member);
+        validateMember(
+                member
+        );
 
         return member;
     }
@@ -49,18 +60,53 @@ public class CurrentMemberServiceImpl
     private void validateMember(
             Member member
     ) {
-        if (Boolean.TRUE.equals(
-                member.getIsDeleted()
-        )) {
+        if (
+                member == null ||
+                        member.getId() == null
+        ) {
             throw new AppException(
                     ErrorCode.MEMBER_NOT_FOUND
             );
         }
 
-        if (member.getStatus()
-                != MemberStatus.ACTIVE) {
+        if (
+                Boolean.TRUE.equals(
+                        member.getIsDeleted()
+                )
+        ) {
+            throw new AppException(
+                    ErrorCode.MEMBER_NOT_FOUND
+            );
+        }
+
+        if (
+                member.getStatus() !=
+                        MemberStatus.ACTIVE
+        ) {
             throw new AppException(
                     ErrorCode.ACCOUNT_INACTIVE
+            );
+        }
+
+        User user =
+                member.getUser();
+
+        if (
+                user == null ||
+                        user.getId() == null
+        ) {
+            throw new AppException(
+                    ErrorCode.USER_NOT_FOUND
+            );
+        }
+
+        if (
+                Boolean.TRUE.equals(
+                        user.getIsDeleted()
+                )
+        ) {
+            throw new AppException(
+                    ErrorCode.USER_NOT_FOUND
             );
         }
     }

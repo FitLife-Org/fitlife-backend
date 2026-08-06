@@ -5,20 +5,29 @@ public interface AiKnowledgeIndexService {
     /**
      * Tạo mới hoặc cập nhật vector của một knowledge
      * trong Qdrant.
+     *
+     * @param knowledgeId ID knowledge trong MySQL
      */
-    void indexKnowledge(Long knowledgeId);
+    void indexKnowledge(
+            Long knowledgeId
+    );
 
     /**
-     * Xóa point tương ứng khỏi Qdrant.
+     * Xóa vector tương ứng của knowledge khỏi Qdrant
+     * và chuyển trạng thái index trong MySQL về PENDING.
+     *
+     * @param knowledgeId ID knowledge trong MySQL
      */
-    void deleteKnowledgePoint(Long knowledgeId);
+    void deleteKnowledgePoint(
+            Long knowledgeId
+    );
 
     /**
-     * Index lại toàn bộ knowledge đang active.
+     * Index lại toàn bộ knowledge:
+     * - chưa bị xóa;
+     * - đang active.
      *
      * @return số knowledge index thành công
      */
     int reindexAll();
-
-    void markUnindexed(Long knowledgeId);
 }

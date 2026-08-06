@@ -6,10 +6,17 @@ import com.fitlife.bodymetric.dto.response.BodyMetricResponse;
 import com.fitlife.bodymetric.service.BodyMetricService;
 import com.fitlife.common.response.ApiResponse;
 import com.fitlife.common.response.PageResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -17,118 +24,226 @@ import java.time.LocalDateTime;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/admin/body-metrics")
+@Tag(
+        name = "Admin - Body Metric",
+        description = "APIs for Admin and Staff to manage member body metrics"
+)
+@SecurityRequirement(name = "bearerAuth")
+@PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
 public class AdminBodyMetricController {
 
     private final BodyMetricService bodyMetricService;
 
     /**
-     * Admin/Staff tạo chỉ số cơ thể cho hội viên.
-     * memberId truyền trong request body.
+     * Admin/Staff ghi nhận metric cho một Member.
+     *
+     * memberId bắt buộc trong body.
      */
     @PostMapping
-    public ApiResponse<BodyMetricResponse> createByAdmin(
-            @Valid @RequestBody BodyMetricCreateRequest request
+    @Operation(
+            summary = "Create body metric for member"
+    )
+    public ApiResponse<BodyMetricResponse> createBodyMetric(
+            @Valid
+            @RequestBody
+            BodyMetricCreateRequest request
     ) {
-        return ApiResponse.<BodyMetricResponse>builder()
-                .message("Body metric created successfully")
-                .data(bodyMetricService.createByAdmin(request))
-                .build();
+        BodyMetricResponse response =
+                bodyMetricService.createByAdmin(
+                        request
+                );
+
+        return ApiResponse.success(
+                "Create body metric successfully",
+                response
+        );
     }
 
     /**
-     * Admin/Staff xem danh sách body metric, có filter.
+     * Tìm kiếm và lọc tất cả Body Metric.
      */
     @GetMapping
-    public ApiResponse<PageResponse<BodyMetricResponse>> getBodyMetricsForAdmin(
-            @RequestParam(required = false) Long memberId,
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) LocalDateTime from,
-            @RequestParam(required = false) LocalDateTime to,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
-    ) {
-        Pageable pageable = PageRequest.of(page, size);
+    @Operation(
+            summary = "Search body metrics",
+            description = """
+                    Supported filters:
+                    - memberId
+                    - keyword: member name, code, email or phone
+                    - from
+                    - to
+                    """
+    )
+    public ApiResponse<PageResponse<BodyMetricResponse>>
+    getBodyMetrics(
+            @RequestParam(required = false)
+            Long memberId,
 
-        return ApiResponse.<PageResponse<BodyMetricResponse>>builder()
-                .message("Get body metrics successfully")
-                .data(bodyMetricService.getBodyMetricsForAdmin(
+            @RequestParam(required = false)
+            String keyword,
+
+            @RequestParam(required = false)
+            @DateTimeFormat(
+                    iso = DateTimeFormat.ISO.DATE_TIME
+            )
+            LocalDateTime from,
+
+            @RequestParam(required = false)
+            @DateTimeFormat(
+                    iso = DateTimeFormat.ISO.DATE_TIME
+            )
+            LocalDateTime to,
+
+            @PageableDefault(
+                    page = 0,
+                    size = 20,
+                    sort = "recordedAt",
+                    direction = Sort.Direction.DESC
+            )
+            Pageable pageable
+    ) {
+        PageResponse<BodyMetricResponse> response =
+                bodyMetricService.getBodyMetricsForAdmin(
                         memberId,
                         keyword,
                         from,
                         to,
                         pageable
-                ))
-                .build();
+                );
+
+        return ApiResponse.success(
+                "Get body metrics successfully",
+                response
+        );
     }
 
     /**
-     * Admin/Staff xem chi tiết một body metric.
+     * Xem chi tiết metric bất kỳ.
      */
     @GetMapping("/{id}")
-    public ApiResponse<BodyMetricResponse> getBodyMetricDetailForAdmin(
-            @PathVariable Long id
+    @Operation(
+            summary = "Get body metric detail"
+    )
+    public ApiResponse<BodyMetricResponse> getBodyMetricDetail(
+            @Parameter(
+                    description = "Body metric id",
+                    example = "1"
+            )
+            @PathVariable
+            Long id
     ) {
-        return ApiResponse.<BodyMetricResponse>builder()
-                .message("Get body metric detail successfully")
-                .data(bodyMetricService.getBodyMetricDetailForAdmin(id))
-                .build();
+        BodyMetricResponse response =
+                bodyMetricService.getBodyMetricDetailForAdmin(
+                        id
+                );
+
+        return ApiResponse.success(
+                "Get body metric detail successfully",
+                response
+        );
     }
 
     /**
-     * Admin/Staff xem lịch sử body metric của một hội viên.
+     * Danh sách metric của một Member.
      */
     @GetMapping("/member/{memberId}")
-    public ApiResponse<PageResponse<BodyMetricResponse>> getBodyMetricsByMemberForAdmin(
-            @PathVariable Long memberId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
-    ) {
-        Pageable pageable = PageRequest.of(page, size);
+    @Operation(
+            summary = "Get body metrics by member"
+    )
+    public ApiResponse<PageResponse<BodyMetricResponse>>
+    getBodyMetricsByMember(
+            @PathVariable
+            Long memberId,
 
-        return ApiResponse.<PageResponse<BodyMetricResponse>>builder()
-                .message("Get member body metrics successfully")
-                .data(bodyMetricService.getBodyMetricsByMemberForAdmin(memberId, pageable))
-                .build();
+            @PageableDefault(
+                    page = 0,
+                    size = 20,
+                    sort = "recordedAt",
+                    direction = Sort.Direction.DESC
+            )
+            Pageable pageable
+    ) {
+        PageResponse<BodyMetricResponse> response =
+                bodyMetricService
+                        .getBodyMetricsByMemberForAdmin(
+                                memberId,
+                                pageable
+                        );
+
+        return ApiResponse.success(
+                "Get member body metrics successfully",
+                response
+        );
     }
 
     /**
-     * Admin/Staff xem body metric mới nhất của một hội viên.
+     * Metric mới nhất của một Member.
      */
     @GetMapping("/member/{memberId}/latest")
-    public ApiResponse<BodyMetricResponse> getLatestBodyMetricByMemberForAdmin(
-            @PathVariable Long memberId
+    @Operation(
+            summary = "Get latest body metric by member"
+    )
+    public ApiResponse<BodyMetricResponse>
+    getLatestBodyMetricByMember(
+            @PathVariable
+            Long memberId
     ) {
-        return ApiResponse.<BodyMetricResponse>builder()
-                .message("Get latest member body metric successfully")
-                .data(bodyMetricService.getLatestBodyMetricByMemberForAdmin(memberId))
-                .build();
+        BodyMetricResponse response =
+                bodyMetricService
+                        .getLatestBodyMetricByMemberForAdmin(
+                                memberId
+                        );
+
+        return ApiResponse.success(
+                "Get latest member body metric successfully",
+                response
+        );
     }
 
     /**
-     * Admin/Staff cập nhật body metric.
+     * Chỉ Admin/Staff được sửa metric trong MVP.
      */
     @PutMapping("/{id}")
-    public ApiResponse<BodyMetricResponse> updateByAdmin(
-            @PathVariable Long id,
-            @Valid @RequestBody BodyMetricUpdateRequest request
+    @Operation(
+            summary = "Update body metric"
+    )
+    public ApiResponse<BodyMetricResponse> updateBodyMetric(
+            @PathVariable
+            Long id,
+
+            @Valid
+            @RequestBody
+            BodyMetricUpdateRequest request
     ) {
-        return ApiResponse.<BodyMetricResponse>builder()
-                .message("Body metric updated successfully")
-                .data(bodyMetricService.updateByAdmin(id, request))
-                .build();
+        BodyMetricResponse response =
+                bodyMetricService.updateByAdmin(
+                        id,
+                        request
+                );
+
+        return ApiResponse.success(
+                "Update body metric successfully",
+                response
+        );
     }
 
     /**
-     * Admin/Staff xóa mềm body metric.
+     * Xóa mềm.
      */
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> deleteByAdmin(
-            @PathVariable Long id
+    @Operation(
+            summary = "Soft delete body metric"
+    )
+    public ApiResponse<Void> deleteBodyMetric(
+            @PathVariable
+            Long id
     ) {
-        bodyMetricService.deleteByAdmin(id);
+        bodyMetricService.deleteByAdmin(
+                id
+        );
 
-        return ApiResponse.<Void>builder()
-                .message("Body metric deleted successfully")
-                .build();
+        return ApiResponse.success(
+                "Delete body metric successfully",
+                null
+        );
     }
 }

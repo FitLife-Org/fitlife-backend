@@ -159,4 +159,21 @@ public class AiKnowledge {
     private void preUpdate() {
         updatedAt = LocalDateTime.now();
     }
+
+    public boolean isIndexed() {
+        return indexStatus == AiKnowledgeIndexStatus.INDEXED;
+    }
+
+    public boolean isActive() {
+        return Boolean.TRUE.equals(active);
+    }
+
+    public boolean isDeleted() {
+        return Boolean.TRUE.equals(deleted);
+    }
+
+    public boolean needReindex() {
+        return indexStatus == AiKnowledgeIndexStatus.PENDING
+                || indexStatus == AiKnowledgeIndexStatus.FAILED;
+    }
 }

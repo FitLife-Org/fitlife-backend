@@ -15,9 +15,12 @@ public interface BodyMetricService {
     // Admin / Staff
     // =========================
 
-    BodyMetricResponse createByAdmin(BodyMetricCreateRequest request);
+    BodyMetricResponse createByAdmin(
+            BodyMetricCreateRequest request
+    );
 
-    PageResponse<BodyMetricResponse> getBodyMetricsForAdmin(
+    PageResponse<BodyMetricResponse>
+    getBodyMetricsForAdmin(
             Long memberId,
             String keyword,
             LocalDateTime from,
@@ -25,32 +28,54 @@ public interface BodyMetricService {
             Pageable pageable
     );
 
-    BodyMetricResponse getBodyMetricDetailForAdmin(Long id);
+    BodyMetricResponse
+    getBodyMetricDetailForAdmin(
+            Long id
+    );
 
-    PageResponse<BodyMetricResponse> getBodyMetricsByMemberForAdmin(
+    PageResponse<BodyMetricResponse>
+    getBodyMetricsByMemberForAdmin(
             Long memberId,
             Pageable pageable
     );
 
-    BodyMetricResponse getLatestBodyMetricByMemberForAdmin(Long memberId);
+    BodyMetricResponse
+    getLatestBodyMetricByMemberForAdmin(
+            Long memberId
+    );
 
-    BodyMetricResponse updateByAdmin(Long id, BodyMetricUpdateRequest request);
+    BodyMetricResponse updateByAdmin(
+            Long id,
+            BodyMetricUpdateRequest request
+    );
 
-    void deleteByAdmin(Long id);
+    void deleteByAdmin(
+            Long id
+    );
 
     // =========================
-    // Member - My Body Metric
+    // Current Member
     // =========================
 
-    BodyMetricResponse createMyBodyMetric(BodyMetricCreateRequest request);
+    BodyMetricResponse createMyBodyMetric(
+            BodyMetricCreateRequest request
+    );
 
-    PageResponse<BodyMetricResponse> getMyBodyMetrics(Pageable pageable);
+    PageResponse<BodyMetricResponse>
+    getMyBodyMetrics(
+            Pageable pageable
+    );
 
-    BodyMetricResponse getMyBodyMetricDetail(Long id);
+    BodyMetricResponse
+    getMyBodyMetricDetail(
+            Long id
+    );
 
-    BodyMetricResponse getLatestMyBodyMetric();
+    BodyMetricResponse
+    getLatestMyBodyMetric();
 
-    List<BodyMetricResponse> getMyBodyMetricHistory(
+    List<BodyMetricResponse>
+    getMyBodyMetricHistory(
             LocalDateTime from,
             LocalDateTime to
     );
