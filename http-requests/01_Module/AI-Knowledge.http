@@ -1,0 +1,230 @@
+### =====================================================
+### AI KNOWLEDGE MODULE - CRUD + INDEX SMOKE TEST
+### =====================================================
+
+@baseUrl = http://localhost:8080/api/v1
+@knowledgeId = 1
+
+#########################################################
+### 1. STATISTICS
+#########################################################
+
+GET {{baseUrl}}/admin/ai/knowledge/statistics
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+###
+
+#########################################################
+### 2. LIST
+#########################################################
+
+GET {{baseUrl}}/admin/ai/knowledge?page=0&size=10&sortBy=updatedAt&direction=DESC
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+###
+
+#########################################################
+### 3. FILTER
+#########################################################
+
+GET {{baseUrl}}/admin/ai/knowledge?page=0&size=10&category=WORKOUT&active=true
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+###
+
+#########################################################
+### 4. CREATE
+#########################################################
+
+POST {{baseUrl}}/admin/ai/knowledge
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "code": "WORKOUT_BEGINNER_LOSE_WEIGHT_001",
+  "title": "Lịch tập giảm cân an toàn cho người mới",
+  "content": "Người mới nên bắt đầu từ 3 đến 4 buổi mỗi tuần. Ưu tiên kỹ thuật đúng, tăng dần khối lượng và kết hợp cardio cường độ vừa phải.",
+  "category": "WORKOUT",
+  "goal": "LOSE_WEIGHT",
+  "experienceLevel": "BEGINNER",
+  "language": "vi",
+  "active": true
+}
+
+> {%
+    client.test("Create knowledge", function () {
+        client.assert(
+            response.status === 201,
+            "Expected HTTP 201"
+        );
+
+        client.assert(
+            response.body.data,
+            "Missing knowledge data"
+        );
+
+        client.global.set(
+            "knowledgeId",
+            response.body.data.id
+        );
+    });
+%}
+
+###
+
+#########################################################
+### 5. DETAIL
+#########################################################
+
+GET {{baseUrl}}/admin/ai/knowledge/{{knowledgeId}}
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+###
+
+#########################################################
+### 6. UPDATE
+#########################################################
+
+PUT {{baseUrl}}/admin/ai/knowledge/{{knowledgeId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "code": "WORKOUT_BEGINNER_LOSE_WEIGHT_001",
+  "title": "Lịch tập giảm cân an toàn cho người mới",
+  "content": "Người mới nên tập 3 đến 4 buổi mỗi tuần. Mỗi buổi từ 45 đến 60 phút, ưu tiên bài compound cơ bản, kỹ thuật đúng và tăng tải từ từ.",
+  "category": "WORKOUT",
+  "goal": "LOSE_WEIGHT",
+  "experienceLevel": "BEGINNER",
+  "language": "vi",
+  "active": true
+}
+
+###
+
+#########################################################
+### 7. DISABLE
+#########################################################
+
+PATCH {{baseUrl}}/admin/ai/knowledge/{{knowledgeId}}/status
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "active": false
+}
+
+###
+
+#########################################################
+### 8. ENABLE
+#########################################################
+
+PATCH {{baseUrl}}/admin/ai/knowledge/{{knowledgeId}}/status
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "active": true
+}
+
+###
+
+#########################################################
+### 9. REINDEX ONE
+#########################################################
+
+POST {{baseUrl}}/admin/ai/knowledge/{{knowledgeId}}/reindex
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+###
+
+#########################################################
+### 10. REINDEX ALL
+#########################################################
+
+POST {{baseUrl}}/admin/ai/knowledge/reindex-all
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+###
+
+#########################################################
+### 11. DELETE
+#########################################################
+
+DELETE {{baseUrl}}/admin/ai/knowledge/{{knowledgeId}}
+Authorization: Bearer {{adminToken}}
+
+###
+
+#########################################################
+### NEGATIVE TESTS
+#########################################################
+
+### 12. Member cannot access admin knowledge
+### Expected: 403
+GET {{baseUrl}}/admin/ai/knowledge?page=0&size=10
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+###
+
+### 13. Duplicate code
+### Expected: 400 hoặc business error code
+POST {{baseUrl}}/admin/ai/knowledge
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "code": "WORKOUT_BEGINNER_LOSE_WEIGHT_001",
+  "title": "Duplicate knowledge",
+  "content": "Duplicate knowledge content",
+  "category": "WORKOUT",
+  "goal": "LOSE_WEIGHT",
+  "experienceLevel": "BEGINNER",
+  "language": "vi",
+  "active": true
+}
+
+###
+
+### 14. Invalid language
+### Expected: 400
+POST {{baseUrl}}/admin/ai/knowledge
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "code": "INVALID_LANGUAGE_001",
+  "title": "Invalid language test",
+  "content": "Invalid language test content",
+  "category": "GENERAL",
+  "language": "fr",
+  "active": true
+}
+
+###
+
+### 15. Missing content
+### Expected: 400
+POST {{baseUrl}}/admin/ai/knowledge
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "code": "MISSING_CONTENT_001",
+  "title": "Missing content",
+  "category": "GENERAL",
+  "language": "vi",
+  "active": true
+}

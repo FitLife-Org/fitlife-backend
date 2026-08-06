@@ -5,6 +5,7 @@ import com.fitlife.ai.knowledge.dto.request.AiKnowledgeSearchRequest;
 import com.fitlife.ai.knowledge.dto.request.AiKnowledgeStatusRequest;
 import com.fitlife.ai.knowledge.dto.request.AiKnowledgeUpdateRequest;
 import com.fitlife.ai.knowledge.dto.response.AiKnowledgeResponse;
+import com.fitlife.ai.knowledge.dto.response.AiKnowledgeStatisticsResponse;
 import com.fitlife.ai.knowledge.service.AiKnowledgeService;
 import com.fitlife.common.response.ApiResponse;
 import com.fitlife.common.response.PageResponse;
@@ -17,7 +18,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import com.fitlife.ai.knowledge.dto.response.AiKnowledgeStatisticsResponse;
 
 import java.util.Map;
 
@@ -27,35 +27,15 @@ import java.util.Map;
 @PreAuthorize("hasRole('ADMIN')")
 @Tag(
         name = "Admin AI Knowledge",
-        description = """
-                Admin APIs for managing AI knowledge,
-                indexing data into Qdrant and controlling
-                which knowledge is used by AI retrieval.
-                """
+        description = "Manage AI knowledge and Qdrant indexing"
 )
 @SecurityRequirement(name = "bearerAuth")
 public class AiKnowledgeController {
 
     private final AiKnowledgeService service;
 
-    // =====================================================
-    // CREATE
-    // =====================================================
-
     @PostMapping
-    @Operation(
-            summary = "Create AI knowledge",
-            description = """
-                    Create a knowledge record in MySQL.
-
-                    If the record is active, the system attempts to:
-                    - generate embedding;
-                    - upsert the vector into Qdrant.
-
-                    Vector indexing failure does not roll back
-                    the MySQL knowledge record.
-                    """
-    )
+    @Operation(summary = "Create AI knowledge")
     public ResponseEntity<
             ApiResponse<AiKnowledgeResponse>
             > create(
@@ -76,33 +56,8 @@ public class AiKnowledgeController {
                 );
     }
 
-    @GetMapping("/statistics")
-    @Operation(
-            summary = "Get AI knowledge statistics"
-    )
-    public ApiResponse<AiKnowledgeStatisticsResponse>
-    getStatistics() {
-        return ApiResponse.success(
-                "Get AI knowledge statistics successfully",
-                service.getStatistics()
-        );
-    }
-
-    // =====================================================
-    // UPDATE
-    // =====================================================
-
     @PutMapping("/{id}")
-    @Operation(
-            summary = "Update AI knowledge",
-            description = """
-                    Update a knowledge record.
-
-                    Changes to title, content, category, goal,
-                    experience level or language cause the record
-                    to be indexed again.
-                    """
-    )
+    @Operation(summary = "Update AI knowledge")
     public ApiResponse<AiKnowledgeResponse> update(
             @PathVariable
             Long id,
@@ -120,41 +75,23 @@ public class AiKnowledgeController {
         );
     }
 
-    // =====================================================
-    // DETAIL
-    // =====================================================
-
-    @GetMapping("/{id}")
-    @Operation(
-            summary = "Get AI knowledge detail"
-    )
-    public ApiResponse<AiKnowledgeResponse> getById(
-            @PathVariable
-            Long id
-    ) {
+    /*
+     * Phải đặt trước /{id} để path "statistics"
+     * không bị hiểu nhầm là id.
+     */
+    @GetMapping("/statistics")
+    @Operation(summary = "Get AI knowledge statistics")
+    public ApiResponse<
+            AiKnowledgeStatisticsResponse
+            > getStatistics() {
         return ApiResponse.success(
-                "Get AI knowledge successfully",
-                service.getById(id)
+                "Get AI knowledge statistics successfully",
+                service.getStatistics()
         );
     }
 
-    // =====================================================
-    // SEARCH
-    // =====================================================
-
     @GetMapping
-    @Operation(
-            summary = "Search AI knowledge",
-            description = """
-                    Search and filter AI knowledge by:
-                    - keyword;
-                    - category;
-                    - index status;
-                    - active status.
-
-                    Deleted records are not returned.
-                    """
-    )
+    @Operation(summary = "Search AI knowledge")
     public ApiResponse<
             PageResponse<AiKnowledgeResponse>
             > search(
@@ -168,21 +105,20 @@ public class AiKnowledgeController {
         );
     }
 
-    // =====================================================
-    // CHANGE STATUS
-    // =====================================================
+    @GetMapping("/{id}")
+    @Operation(summary = "Get AI knowledge detail")
+    public ApiResponse<AiKnowledgeResponse> getById(
+            @PathVariable
+            Long id
+    ) {
+        return ApiResponse.success(
+                "Get AI knowledge successfully",
+                service.getById(id)
+        );
+    }
 
     @PatchMapping("/{id}/status")
-    @Operation(
-            summary = "Change AI knowledge active status",
-            description = """
-                    When activated:
-                    - the system indexes the knowledge into Qdrant.
-
-                    When deactivated:
-                    - the corresponding Qdrant point is deleted.
-                    """
-    )
+    @Operation(summary = "Change AI knowledge status")
     public ApiResponse<AiKnowledgeResponse> changeStatus(
             @PathVariable
             Long id,
@@ -200,18 +136,8 @@ public class AiKnowledgeController {
         );
     }
 
-    // =====================================================
-    // DELETE
-    // =====================================================
-
     @DeleteMapping("/{id}")
-    @Operation(
-            summary = "Soft delete AI knowledge",
-            description = """
-                    Soft delete the knowledge from MySQL and
-                    attempt to delete its vector from Qdrant.
-                    """
-    )
+    @Operation(summary = "Soft delete AI knowledge")
     public ResponseEntity<Void> delete(
             @PathVariable
             Long id
@@ -223,22 +149,8 @@ public class AiKnowledgeController {
                 .build();
     }
 
-    // =====================================================
-    // REINDEX ONE
-    // =====================================================
-
     @PostMapping("/{id}/reindex")
-    @Operation(
-            summary = "Reindex one AI knowledge",
-            description = """
-                    Regenerate embedding and upsert the knowledge
-                    into Qdrant.
-
-                    Unlike automatic synchronization during CRUD,
-                    this explicit endpoint returns an error when
-                    indexing fails.
-                    """
-    )
+    @Operation(summary = "Reindex one AI knowledge")
     public ApiResponse<AiKnowledgeResponse> reindex(
             @PathVariable
             Long id
@@ -249,14 +161,8 @@ public class AiKnowledgeController {
         );
     }
 
-    // =====================================================
-    // REINDEX ALL
-    // =====================================================
-
     @PostMapping("/reindex-all")
-    @Operation(
-            summary = "Reindex all active AI knowledge"
-    )
+    @Operation(summary = "Reindex all active AI knowledge")
     public ApiResponse<Map<String, Integer>> reindexAll() {
         int indexedCount =
                 service.reindexAll();
