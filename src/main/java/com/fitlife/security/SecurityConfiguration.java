@@ -311,7 +311,8 @@ public class SecurityConfiguration {
                          */
                         .requestMatchers(
                                 HttpMethod.POST,
-                                "/check-ins/scan-gym-qr"
+                                "/check-ins/scan-gym-qr",
+                                "/check-ins/check-out"
                         ).hasRole("MEMBER")
 
                         .requestMatchers(

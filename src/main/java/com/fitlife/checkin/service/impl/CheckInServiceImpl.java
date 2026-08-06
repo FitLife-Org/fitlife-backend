@@ -152,6 +152,20 @@ public class CheckInServiceImpl implements CheckInService {
         return getMyCheckInHistory(memberUsername, fromDate, toDate, page, size);
     }
 
+    @Override
+    public MemberQrResponse getMemberQr(String memberUsername) {
+        User user = userRepository.findByUsernameOrEmail(memberUsername, memberUsername)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        Member member = memberRepository.findByUserIdAndIsDeletedFalse(user.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_FOUND, "Member profile not found for user"));
+
+        return MemberQrResponse.builder()
+                .memberCode(member.getMemberCode())
+                .qrData("FITLIFE_MEMBER:" + member.getMemberCode())
+                .build();
+    }
+
     // =========================================================================
     // STAFF/ADMIN SUPPORT DESK METHODS
     // =========================================================================

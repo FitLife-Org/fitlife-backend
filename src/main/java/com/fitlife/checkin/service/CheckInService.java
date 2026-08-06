@@ -23,6 +23,8 @@ public interface CheckInService {
             int size
     );
 
+    MemberQrResponse getMemberQr(String memberUsername);
+
     // Staff/Admin Support Desk Methods
     CheckInLookupResponse lookupMember(String keyword);
 
