@@ -1,5 +1,7 @@
 package com.fitlife.member.controller;
 
+import com.fitlife.checkin.dto.MemberQrResponse;
+import com.fitlife.checkin.service.CheckInService;
 import com.fitlife.common.response.ApiResponse;
 import com.fitlife.common.response.PageResponse;
 import com.fitlife.member.dto.request.MyMemberUpdateRequest;
@@ -19,6 +21,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -37,6 +40,20 @@ public class MemberController {
     private final CurrentMemberService currentMemberService;
 
     private final MemberTimelineService memberTimelineService;
+
+    private final CheckInService checkInService;
+
+    @GetMapping("/qr")
+    @PreAuthorize("hasRole('MEMBER')")
+    @Operation(
+            summary = "Get current member QR code data"
+    )
+    public ApiResponse<MemberQrResponse> getMyQr(Authentication authentication) {
+        return ApiResponse.success(
+                "Get member QR successfully",
+                checkInService.getMemberQr(authentication.getName())
+        );
+    }
 
     @GetMapping
     @PreAuthorize("hasRole('MEMBER')")

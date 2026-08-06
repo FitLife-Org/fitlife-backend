@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/admin/check-in-qrs")
+@RequestMapping("/admin/checkin-qr-codes")
 @RequiredArgsConstructor
 @Tag(name = "Admin Gym QR Management", description = "Endpoints for administrators to manage gym check-in QR codes")
 public class AdminCheckInQrController {
@@ -52,14 +52,14 @@ public class AdminCheckInQrController {
         return ResponseEntity.ok(ApiResponse.success("Get gym QR details successfully", response));
     }
 
-    @PostMapping("/{id}/regenerate")
+    @PostMapping("/{id}/rotate")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STAFF', 'ADMIN', 'STAFF')")
-    @Operation(summary = "Regenerate QR token", description = "Rotate and update the security token of a QR point.")
-    public ResponseEntity<ApiResponse<AdminCheckInQrResponse>> regenerateGymQrToken(
+    @Operation(summary = "Rotate QR token", description = "Rotate and update the security token of a QR point.")
+    public ResponseEntity<ApiResponse<AdminCheckInQrResponse>> rotateGymQrToken(
             @PathVariable Long id
     ) {
         AdminCheckInQrResponse response = checkInService.regenerateGymQrToken(id);
-        return ResponseEntity.ok(ApiResponse.success("Regenerate gym QR token successfully", response));
+        return ResponseEntity.ok(ApiResponse.success("Rotate gym QR token successfully", response));
     }
 
     @PatchMapping("/{id}/status")

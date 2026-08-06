@@ -106,4 +106,50 @@ public class AdminStaffCheckInController {
         CheckInResponse response = checkInService.cancelCheckIn(id, request);
         return ApiResponse.success("Hủy lượt checkin thành công", response);
     }
+
+    @PostMapping("/check-ins/check-out")
+    @PreAuthorize("hasRole('MEMBER')")
+    public ApiResponse<CheckInResponse> memberCheckOut(
+            @Valid @RequestBody MemberCheckOutRequest request,
+            Authentication authentication
+    ) {
+        CheckInResponse response = checkInService.memberCheckOut(request, authentication.getName());
+        return ApiResponse.success("Self check-out successfully", response);
+    }
+
+    @GetMapping("/staff/check-ins/member-preview")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    public ApiResponse<CheckInLookupResponse> lookupMember(
+            @RequestParam String keyword
+    ) {
+        CheckInLookupResponse response = checkInService.lookupMember(keyword);
+        return ApiResponse.success("Lookup member successfully", response);
+    }
+
+    @PostMapping("/staff/check-ins/{id}/check-out")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    public ApiResponse<CheckInResponse> staffCheckOutMember(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        CheckInResponse response = checkInService.staffCheckOutMember(id, authentication.getName());
+        return ApiResponse.success("Check-out successfully", response);
+    }
+
+    @GetMapping("/staff/check-ins/current")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    public ApiResponse<PageResponse<CheckInResponse>> getMembersCurrentlyInside(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        PageResponse<CheckInResponse> response = checkInService.getMembersCurrentlyInside(page, size);
+        return ApiResponse.success("Get members inside gym successfully", response);
+    }
+
+    @GetMapping("/staff/check-ins/statistics/today")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    public ApiResponse<CheckInTodayStatisticsResponse> getTodayStatistics() {
+        CheckInTodayStatisticsResponse response = checkInService.getTodayStatistics();
+        return ApiResponse.success("Get today check-in statistics successfully", response);
+    }
 }
