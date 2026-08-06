@@ -133,50 +133,113 @@ public class AiQdrantPointServiceImpl
         requireEnabled();
         validateVector(vector);
 
-        int normalizedLimit = normalizeLimit(limit);
+        int normalizedLimit =
+                normalizeLimit(limit);
+
         double normalizedThreshold =
-                normalizeScoreThreshold(scoreThreshold);
+                normalizeScoreThreshold(
+                        scoreThreshold
+                );
 
         QdrantSearchRequest request =
-                QdrantSearchRequest.builder()
-                        .vector(vector)
+                QdrantSearchRequest
+                        .builder()
+                        .vector(
+                                vector
+                        )
                         .filter(
-                                filter == null || filter.isEmpty()
+                                filter == null ||
+                                        filter.isEmpty()
                                         ? null
                                         : filter
                         )
-                        .limit(normalizedLimit)
-                        .scoreThreshold(normalizedThreshold)
-                        .withPayload(true)
-                        .withVector(false)
+                        .limit(
+                                normalizedLimit
+                        )
+                        .scoreThreshold(
+                                normalizedThreshold
+                        )
+                        .withPayload(
+                                true
+                        )
+                        .withVector(
+                                false
+                        )
                         .build();
 
         try {
-            QdrantSearchResponse response = client.post()
-                    .uri(
-                            "/collections/{collection}/points/search",
-                            properties.getCollectionName()
-                    )
-                    .body(request)
-                    .retrieve()
-                    .body(QdrantSearchResponse.class);
+            log.debug(
+                    """
+                    Qdrant search started.
+                    collection={}
+                    vectorDimension={}
+                    limit={}
+                    scoreThreshold={}
+                    hasFilter={}
+                    """,
+                    properties.getCollectionName(),
+                    vector.size(),
+                    normalizedLimit,
+                    normalizedThreshold,
+                    filter != null &&
+                            !filter.isEmpty()
+            );
 
-            if (response == null
-                    || response.getResult() == null) {
+            QdrantSearchResponse response =
+                    client.post()
+                            .uri(
+                                    "/collections/{collection}/points/search",
+                                    properties.getCollectionName()
+                            )
+                            .body(request)
+                            .retrieve()
+                            .body(
+                                    QdrantSearchResponse.class
+                            );
+
+            if (
+                    response == null ||
+                            response.getResult() == null ||
+                            response.getResult().isEmpty()
+            ) {
                 return List.of();
             }
 
-            return response.getResult();
-
-        } catch (AppException e) {
-            throw e;
-
-        } catch (Exception e) {
-            log.error(
-                    "Qdrant search failed. collection={}, message={}",
+            log.debug(
+                    """
+                    Qdrant search completed.
+                    collection={}
+                    resultCount={}
+                    status={}
+                    elapsedTime={}
+                    """,
                     properties.getCollectionName(),
-                    e.getMessage(),
-                    e
+                    response.getResult().size(),
+                    response.getStatus(),
+                    response.getTime()
+            );
+
+            return List.copyOf(
+                    response.getResult()
+            );
+
+        } catch (AppException exception) {
+            throw exception;
+
+        } catch (Exception exception) {
+            log.error(
+                    """
+                    Qdrant search failed.
+                    collection={}
+                    limit={}
+                    scoreThreshold={}
+                    message={}
+                    """,
+                    properties.getCollectionName(),
+                    normalizedLimit,
+                    normalizedThreshold,
+                    exception.getMessage(),
+                    exception
             );
 
             throw new AppException(

@@ -1,0 +1,206 @@
+### =====================================================
+### AI RETRIEVAL - QDRANT SEARCH TEST
+### =====================================================
+
+@baseUrl = http://localhost:8080/api/v1
+
+#########################################################
+### 1. SEARCH WORKOUT KNOWLEDGE
+#########################################################
+
+POST {{baseUrl}}/admin/ai/knowledge/search-test
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "query": "Lịch tập giảm cân an toàn cho người mới",
+  "category": "WORKOUT",
+  "goal": "LOSE_WEIGHT",
+  "experienceLevel": "BEGINNER",
+  "language": "vi",
+  "limit": 5,
+  "scoreThreshold": 0.2
+}
+
+> {%
+    client.test("Search-test trả HTTP 200", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+    });
+
+    client.test("Response có metadata", function () {
+        client.assert(
+            response.body.data,
+            "Missing response data"
+        );
+
+        client.assert(
+            response.body.data.collection,
+            "Missing Qdrant collection"
+        );
+
+        client.assert(
+            Array.isArray(
+                response.body.data.results
+            ),
+            "Results must be an array"
+        );
+    });
+%}
+
+###
+
+#########################################################
+### 2. SEARCH NUTRITION KNOWLEDGE
+#########################################################
+
+POST {{baseUrl}}/admin/ai/knowledge/search-test
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "query": "Chế độ ăn giảm mỡ an toàn và đủ protein",
+  "category": "NUTRITION",
+  "goal": "LOSE_WEIGHT",
+  "experienceLevel": "BEGINNER",
+  "language": "vi",
+  "limit": 5,
+  "scoreThreshold": 0.2
+}
+
+###
+
+#########################################################
+### 3. SEARCH WITHOUT OPTIONAL FILTERS
+#########################################################
+
+POST {{baseUrl}}/admin/ai/knowledge/search-test
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "query": "Nguyên tắc tập luyện an toàn",
+  "language": "vi",
+  "limit": 10,
+  "scoreThreshold": 0.1
+}
+
+###
+
+#########################################################
+### 4. HIGH SCORE THRESHOLD
+### Có thể trả results rỗng nhưng vẫn phải HTTP 200
+#########################################################
+
+POST {{baseUrl}}/admin/ai/knowledge/search-test
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "query": "Lịch tập giảm cân",
+  "category": "WORKOUT",
+  "goal": "LOSE_WEIGHT",
+  "experienceLevel": "BEGINNER",
+  "language": "vi",
+  "limit": 5,
+  "scoreThreshold": 0.95
+}
+
+###
+
+#########################################################
+### NEGATIVE TESTS
+#########################################################
+
+### 5. MEMBER KHÔNG ĐƯỢC SEARCH-TEST
+### Expected: 403
+POST {{baseUrl}}/admin/ai/knowledge/search-test
+Authorization: Bearer {{memberToken}}
+Content-Type: application/json
+
+{
+  "query": "Lịch tập giảm cân",
+  "language": "vi",
+  "limit": 5,
+  "scoreThreshold": 0.2
+}
+
+###
+
+### 6. KHÔNG CÓ TOKEN
+### Expected: 401
+POST {{baseUrl}}/admin/ai/knowledge/search-test
+Content-Type: application/json
+
+{
+  "query": "Lịch tập giảm cân",
+  "language": "vi",
+  "limit": 5,
+  "scoreThreshold": 0.2
+}
+
+###
+
+### 7. QUERY RỖNG
+### Expected: 400
+POST {{baseUrl}}/admin/ai/knowledge/search-test
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "query": "",
+  "language": "vi",
+  "limit": 5,
+  "scoreThreshold": 0.2
+}
+
+###
+
+### 8. LANGUAGE KHÔNG HỖ TRỢ
+### Expected: 400
+POST {{baseUrl}}/admin/ai/knowledge/search-test
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "query": "Workout plan",
+  "language": "fr",
+  "limit": 5,
+  "scoreThreshold": 0.2
+}
+
+###
+
+### 9. LIMIT QUÁ LỚN
+### Expected: 400
+POST {{baseUrl}}/admin/ai/knowledge/search-test
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "query": "Workout plan",
+  "language": "en",
+  "limit": 100,
+  "scoreThreshold": 0.2
+}
+
+###
+
+### 10. SCORE THRESHOLD KHÔNG HỢP LỆ
+### Expected: 400
+POST {{baseUrl}}/admin/ai/knowledge/search-test
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "query": "Workout plan",
+  "language": "en",
+  "limit": 5,
+  "scoreThreshold": 1.5
+}

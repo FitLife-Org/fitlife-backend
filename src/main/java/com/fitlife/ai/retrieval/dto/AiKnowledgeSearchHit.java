@@ -17,8 +17,14 @@ import lombok.Setter;
 @AllArgsConstructor
 public class AiKnowledgeSearchHit {
 
+    /**
+     * ID point trong Qdrant.
+     */
     private String pointId;
 
+    /**
+     * ID knowledge tương ứng trong MySQL.
+     */
     private Long knowledgeId;
 
     private String code;
@@ -35,5 +41,8 @@ public class AiKnowledgeSearchHit {
 
     private String language;
 
+    /**
+     * Similarity score do Qdrant trả về.
+     */
     private Double score;
 }
