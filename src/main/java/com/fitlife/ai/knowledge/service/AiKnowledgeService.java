@@ -1,27 +1,45 @@
 package com.fitlife.ai.knowledge.service;
 
-import com.fitlife.ai.knowledge.dto.request.*;
+import com.fitlife.ai.knowledge.dto.request.AiKnowledgeCreateRequest;
+import com.fitlife.ai.knowledge.dto.request.AiKnowledgeSearchRequest;
+import com.fitlife.ai.knowledge.dto.request.AiKnowledgeUpdateRequest;
 import com.fitlife.ai.knowledge.dto.response.AiKnowledgeResponse;
-import com.fitlife.ai.knowledge.enums.*;
+import com.fitlife.ai.knowledge.dto.response.AiKnowledgeStatisticsResponse;
 import com.fitlife.common.response.PageResponse;
-import org.springframework.data.domain.*;
 
 public interface AiKnowledgeService {
-    AiKnowledgeResponse create(AiKnowledgeCreateRequest request);
 
-    AiKnowledgeResponse update(Long id, AiKnowledgeUpdateRequest request);
+    AiKnowledgeResponse create(
+            AiKnowledgeCreateRequest request
+    );
 
-    AiKnowledgeResponse getById(Long id);
+    AiKnowledgeResponse update(
+            Long id,
+            AiKnowledgeUpdateRequest request
+    );
+
+    AiKnowledgeResponse getById(
+            Long id
+    );
 
     PageResponse<AiKnowledgeResponse> search(
             AiKnowledgeSearchRequest request
     );
 
-    AiKnowledgeResponse changeStatus(Long id, boolean active);
+    AiKnowledgeStatisticsResponse getStatistics();
 
-    void delete(Long id);
+    AiKnowledgeResponse changeStatus(
+            Long id,
+            boolean active
+    );
 
-    AiKnowledgeResponse reindex(Long id);
+    void delete(
+            Long id
+    );
+
+    AiKnowledgeResponse reindex(
+            Long id
+    );
 
     int reindexAll();
 }

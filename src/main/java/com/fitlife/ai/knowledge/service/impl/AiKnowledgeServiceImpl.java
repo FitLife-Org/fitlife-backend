@@ -4,7 +4,9 @@ import com.fitlife.ai.knowledge.dto.request.AiKnowledgeCreateRequest;
 import com.fitlife.ai.knowledge.dto.request.AiKnowledgeSearchRequest;
 import com.fitlife.ai.knowledge.dto.request.AiKnowledgeUpdateRequest;
 import com.fitlife.ai.knowledge.dto.response.AiKnowledgeResponse;
+import com.fitlife.ai.knowledge.dto.response.AiKnowledgeStatisticsResponse;
 import com.fitlife.ai.knowledge.entity.AiKnowledge;
+import com.fitlife.ai.knowledge.enums.AiKnowledgeIndexStatus;
 import com.fitlife.ai.knowledge.mapper.AiKnowledgeMapper;
 import com.fitlife.ai.knowledge.repository.AiKnowledgeRepository;
 import com.fitlife.ai.knowledge.repository.AiKnowledgeSpecifications;
@@ -50,7 +52,7 @@ public class AiKnowledgeServiceImpl
         validateCreateRequest(request);
 
         /*
-         * Lưu vào MySQL trước với indexStatus PENDING.
+         * Tạo knowledge trong MySQL ở trạng thái PENDING.
          */
         AiKnowledge knowledge =
                 persistenceService.createPending(
@@ -58,12 +60,12 @@ public class AiKnowledgeServiceImpl
                 );
 
         /*
-         * Đồng bộ Qdrant sau khi dữ liệu DB đã được tạo.
+         * Sau khi lưu MySQL, thử đồng bộ Embedding + Qdrant.
          *
          * Nếu Qdrant hoặc Embedding lỗi:
-         * - bản ghi MySQL vẫn được giữ;
-         * - IndexService chịu trách nhiệm đánh dấu FAILED;
-         * - API CRUD không bị rollback chỉ vì vector store lỗi.
+         * - knowledge trong MySQL vẫn được giữ;
+         * - IndexService đánh dấu FAILED;
+         * - API create vẫn trả bản ghi đã tạo.
          */
         synchronizeIndexSafely(
                 knowledge
@@ -87,10 +89,8 @@ public class AiKnowledgeServiceImpl
         validateUpdateRequest(request);
 
         /*
-         * PersistenceService phải:
-         * - cập nhật nội dung;
-         * - reset indexStatus về PENDING;
-         * - xóa indexError/indexedAt nếu cần.
+         * PersistenceService cập nhật nội dung và đưa
+         * indexStatus về PENDING.
          */
         AiKnowledge knowledge =
                 persistenceService.updatePending(
@@ -98,6 +98,10 @@ public class AiKnowledgeServiceImpl
                         request
                 );
 
+        /*
+         * Nếu active thì reindex.
+         * Nếu inactive thì xóa point khỏi Qdrant.
+         */
         synchronizeIndexSafely(
                 knowledge
         );
@@ -155,35 +159,55 @@ public class AiKnowledgeServiceImpl
                         pageable
                 );
 
-        return PageResponse
-                .<AiKnowledgeResponse>builder()
-                .content(
-                        page.getContent()
-                                .stream()
-                                .map(mapper::toResponse)
-                                .toList()
-                )
-                .page(
-                        page.getNumber()
-                )
-                .size(
-                        page.getSize()
-                )
-                .totalElements(
-                        page.getTotalElements()
-                )
-                .totalPages(
-                        page.getTotalPages()
-                )
-                .first(
-                        page.isFirst()
-                )
-                .last(
-                        page.isLast()
-                )
-                .empty(
-                        page.isEmpty()
-                )
+        return toPageResponse(page);
+    }
+
+    // =====================================================
+    // STATISTICS
+    // =====================================================
+
+    @Override
+    @Transactional(readOnly = true)
+    public AiKnowledgeStatisticsResponse getStatistics() {
+        long total =
+                repository.countByDeletedFalse();
+
+        long active =
+                repository
+                        .countByActiveTrueAndDeletedFalse();
+
+        long indexed =
+                repository
+                        .countByDeletedFalseAndIndexStatus(
+                                AiKnowledgeIndexStatus.INDEXED
+                        );
+
+        long pending =
+                repository
+                        .countByDeletedFalseAndIndexStatus(
+                                AiKnowledgeIndexStatus.PENDING
+                        );
+
+        long failed =
+                repository
+                        .countByDeletedFalseAndIndexStatus(
+                                AiKnowledgeIndexStatus.FAILED
+                        );
+
+        long inactive =
+                Math.max(
+                        total - active,
+                        0
+                );
+
+        return AiKnowledgeStatisticsResponse
+                .builder()
+                .total(total)
+                .active(active)
+                .inactive(inactive)
+                .indexed(indexed)
+                .pending(pending)
+                .failed(failed)
                 .build();
     }
 
@@ -206,11 +230,10 @@ public class AiKnowledgeServiceImpl
 
         /*
          * ACTIVE:
-         * → index hoặc reindex vào Qdrant.
+         * → tạo embedding và index/reindex Qdrant.
          *
          * INACTIVE:
-         * → xóa point khỏi Qdrant để retrieval
-         * không sử dụng knowledge này.
+         * → xóa point khỏi Qdrant.
          */
         synchronizeIndexSafely(
                 knowledge
@@ -231,10 +254,9 @@ public class AiKnowledgeServiceImpl
                 required(id);
 
         /*
-         * Cố gắng xóa vector trước khi soft delete DB.
+         * Cố gắng xóa point Qdrant trước khi soft delete DB.
          *
-         * Không để lỗi Qdrant ngăn thao tác soft delete
-         * trong MySQL.
+         * Không để Qdrant lỗi ngăn việc xóa mềm trong MySQL.
          */
         try {
             if (
@@ -246,10 +268,12 @@ public class AiKnowledgeServiceImpl
                         knowledge.getId()
                 );
             }
+
         } catch (Exception exception) {
             log.error(
                     """
-                    Knowledge will be soft deleted, but Qdrant point deletion failed.
+                    Knowledge will be soft deleted,
+                    but Qdrant point deletion failed.
                     knowledgeId={}
                     code={}
                     pointId={}
@@ -283,6 +307,9 @@ public class AiKnowledgeServiceImpl
         AiKnowledge knowledge =
                 required(id);
 
+        /*
+         * Knowledge inactive không được index thủ công.
+         */
         if (
                 !Boolean.TRUE.equals(
                         knowledge.getActive()
@@ -294,10 +321,8 @@ public class AiKnowledgeServiceImpl
         }
 
         /*
-         * Đây là endpoint explicit.
-         *
-         * Nếu Embedding/Qdrant lỗi thì phải ném lỗi để Admin
-         * biết thao tác reindex chưa thành công.
+         * Explicit reindex phải ném lỗi nếu Embedding
+         * hoặc Qdrant không thành công.
          */
         indexService.indexKnowledge(id);
 
@@ -354,18 +379,20 @@ public class AiKnowledgeServiceImpl
                 indexService.indexKnowledge(
                         knowledge.getId()
                 );
+
             } else {
                 indexService.deleteKnowledgePoint(
                         knowledge.getId()
                 );
             }
+
         } catch (Exception exception) {
             /*
-             * IndexService/PersistenceService của index
-             * phải ghi trạng thái FAILED và indexError.
+             * IndexService phải chịu trách nhiệm gọi
+             * persistenceService.markFailed().
              *
-             * Không rethrow ở CRUD tự động để dữ liệu MySQL
-             * vẫn được lưu thành công.
+             * Không rethrow tại CRUD tự động để dữ liệu
+             * MySQL vẫn được lưu.
              */
             log.error(
                     """
@@ -382,6 +409,45 @@ public class AiKnowledgeServiceImpl
                     exception
             );
         }
+    }
+
+    // =====================================================
+    // PAGE RESPONSE
+    // =====================================================
+
+    private PageResponse<AiKnowledgeResponse> toPageResponse(
+            Page<AiKnowledge> page
+    ) {
+        return PageResponse
+                .<AiKnowledgeResponse>builder()
+                .content(
+                        page.getContent()
+                                .stream()
+                                .map(mapper::toResponse)
+                                .toList()
+                )
+                .page(
+                        page.getNumber()
+                )
+                .size(
+                        page.getSize()
+                )
+                .totalElements(
+                        page.getTotalElements()
+                )
+                .totalPages(
+                        page.getTotalPages()
+                )
+                .first(
+                        page.isFirst()
+                )
+                .last(
+                        page.isLast()
+                )
+                .empty(
+                        page.isEmpty()
+                )
+                .build();
     }
 
     // =====================================================
@@ -431,7 +497,9 @@ public class AiKnowledgeServiceImpl
         validateId(id);
 
         return repository
-                .findByIdAndDeletedFalse(id)
+                .findByIdAndDeletedFalse(
+                        id
+                )
                 .orElseThrow(() ->
                         new AppException(
                                 ErrorCode.AI_KNOWLEDGE_NOT_FOUND

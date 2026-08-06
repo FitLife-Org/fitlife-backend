@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import com.fitlife.ai.knowledge.dto.response.AiKnowledgeStatisticsResponse;
 
 import java.util.Map;
 
@@ -73,6 +74,18 @@ public class AiKnowledgeController {
                                 response
                         )
                 );
+    }
+
+    @GetMapping("/statistics")
+    @Operation(
+            summary = "Get AI knowledge statistics"
+    )
+    public ApiResponse<AiKnowledgeStatisticsResponse>
+    getStatistics() {
+        return ApiResponse.success(
+                "Get AI knowledge statistics successfully",
+                service.getStatistics()
+        );
     }
 
     // =====================================================
