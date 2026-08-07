@@ -82,7 +82,7 @@ public class NutritionPlanController {
     }
 
     @Operation(summary = "Update an existing nutrition plan")
-    @PutMapping("/{id}")
+    @PatchMapping("/{id}")
     @PreAuthorize("hasRole('MEMBER')")
     public ResponseEntity<NutritionPlanResponse> updateMyNutritionPlan(
             @PathVariable Long id,
@@ -91,6 +91,18 @@ public class NutritionPlanController {
         return ResponseEntity.ok(
                 nutritionPlanService.updateMyNutritionPlan(id, getPrincipal(authentication), request)
         );
+    }
+
+    @Operation(summary = "Update structure of an existing nutrition plan")
+    @PutMapping("/{id}/structure")
+    @PreAuthorize("hasRole('MEMBER')")
+    public ResponseEntity<ApiResponse<NutritionPlanResponse>> updateMyNutritionPlanStructure(
+            @PathVariable Long id,
+            @Valid @RequestBody NutritionPlanRequest request,
+            Authentication authentication) {
+        return ResponseEntity.ok(ApiResponse.success("Success", 
+                nutritionPlanService.updateMyNutritionPlan(id, getPrincipal(authentication), request)
+        ));
     }
 
     @Operation(summary = "Activate a nutrition plan")
