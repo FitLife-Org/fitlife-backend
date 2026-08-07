@@ -7,12 +7,13 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Snapshot của một knowledge được retrieve từ Qdrant.
+ * Một knowledge chunk được truy xuất từ Qdrant
+ * và đưa vào prompt của Gemini.
  *
- * Dùng để:
- * - đưa nội dung knowledge vào prompt RAG;
- * - lưu lại metadata knowledge mà AI đã sử dụng;
- * - phục vụ audit và debug.
+ * DTO này được lưu trong context snapshot để:
+ * - audit AI đã sử dụng kiến thức nào;
+ * - debug kết quả retrieval;
+ * - giải thích nguồn tạo kế hoạch.
  */
 @Getter
 @Setter
@@ -21,19 +22,10 @@ import lombok.Setter;
 @AllArgsConstructor
 public class AiContextChunkSnapshot {
 
-    /**
-     * ID của bản ghi ai_knowledge trong MySQL.
-     */
     private Long knowledgeId;
 
-    /**
-     * ID point trong Qdrant.
-     */
     private String pointId;
 
-    /**
-     * Mã knowledge nghiệp vụ.
-     */
     private String code;
 
     private String title;

@@ -34,6 +34,7 @@ import com.fitlife.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import com.fitlife.ai.dto.internal.AiInputBodyMetricSnapshot;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -611,71 +612,55 @@ public class AiFullPlanOrchestratorServiceImpl
     buildFullPlanRetrievalRequest(
             AiInputSnapshot snapshot
     ) {
+        if (
+                snapshot == null ||
+                        snapshot.getRequest() == null
+        ) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
         AiInputRequestSnapshot request =
                 snapshot.getRequest();
-
-        FitnessGoal goal =
-                request.getGoal();
 
         return AiKnowledgeRetrievalRequest
                 .builder()
                 .query(
-                        """
-                        Xây dựng full plan cá nhân hóa gồm:
-                        - phân tích cơ thể;
-                        - kế hoạch tập luyện;
-                        - kế hoạch dinh dưỡng;
-                        - cảnh báo an toàn.
-
-                        Goal: %s
-                        Experience level: %s
-                        Activity level: %s
-                        Workout days per week: %s
-                        Workout duration minutes: %s
-                        Meals per day: %s
-                        Preferred language: %s
-
-                        Full input snapshot:
-                        %s
-                        """.formatted(
-                                goal,
-                                request
-                                        .getExperienceLevel(),
-                                request
-                                        .getActivityLevel(),
-                                request
-                                        .getWorkoutDaysPerWeek(),
-                                request
-                                        .getWorkoutDurationMinutes(),
-                                request
-                                        .getMealsPerDay(),
-                                request
-                                        .getPreferredLanguage(),
-                                toJson(snapshot)
-                        ).trim()
+                        buildRetrievalQuery(
+                                snapshot
+                        )
                 )
                 /*
-                 * Full Plan cần nhiều nhóm kiến thức nên
-                 * không khóa vào một category duy nhất.
+                 * Full Plan cần cả Workout và Nutrition.
+                 * Không khóa category ở đây để retrieval
+                 * có thể lấy kiến thức thuộc nhiều category.
                  */
-                .category(null)
+                .category(
+                        null
+                )
                 .goal(
-                        goal.name()
+                        request.getGoal() == null
+                                ? null
+                                : request
+                                .getGoal()
+                                .name()
                 )
                 .experienceLevel(
-                        request
+                        request.getExperienceLevel() == null
+                                ? null
+                                : request
                                 .getExperienceLevel()
                                 .name()
                 )
                 .language(
-                        request
-                                .getPreferredLanguage()
+                        request.getPreferredLanguage()
                 )
                 .limit(
-                        RETRIEVAL_LIMIT
+                        10
                 )
                 .scoreThreshold(
-                        RETRIEVAL_SCORE_THRESHOLD
+                        0.2D
                 )
                 .build();
     }
@@ -1090,5 +1075,98 @@ public class AiFullPlanOrchestratorServiceImpl
                     ErrorCode.AI_RESPONSE_INVALID
             );
         }
+    }
+
+    private String buildRetrievalQuery(
+            AiInputSnapshot snapshot
+    ) {
+        AiInputRequestSnapshot request =
+                snapshot.getRequest();
+
+        AiInputBodyMetricSnapshot metric =
+                snapshot.getLatestBodyMetric();
+
+        String goal =
+                request.getGoal() == null
+                        ? "GENERAL"
+                        : request
+                        .getGoal()
+                        .name();
+
+        String experienceLevel =
+                request.getExperienceLevel() == null
+                        ? "GENERAL"
+                        : request
+                        .getExperienceLevel()
+                        .name();
+
+        String userNote =
+                request.getUserNote() == null
+                        ? ""
+                        : request
+                        .getUserNote()
+                        .trim();
+
+        return """
+            Create a safe personalized workout and nutrition plan.
+
+            Goal: %s
+            Experience level: %s
+            Activity level: %s
+            Workout days per week: %s
+            Workout duration: %s minutes
+            Meals per day: %s
+            Weight: %s kg
+            Height: %s cm
+            BMI: %s
+            Health note: %s
+            User note: %s
+            """.formatted(
+                goal,
+                experienceLevel,
+                safe(
+                        request.getActivityLevel()
+                ),
+                safe(
+                        request.getWorkoutDaysPerWeek()
+                ),
+                safe(
+                        request.getWorkoutDurationMinutes()
+                ),
+                safe(
+                        request.getMealsPerDay()
+                ),
+                metric == null
+                        ? ""
+                        : safe(
+                        metric.getWeightKg()
+                ),
+                metric == null
+                        ? ""
+                        : safe(
+                        metric.getHeightCm()
+                ),
+                metric == null
+                        ? ""
+                        : safe(
+                        metric.getBmi()
+                ),
+                snapshot.getMember() == null
+                        ? ""
+                        : safe(
+                        snapshot
+                                .getMember()
+                                .getHealthNote()
+                ),
+                userNote
+        ).trim();
+    }
+
+    private String safe(
+            Object value
+    ) {
+        return value == null
+                ? ""
+                : value.toString();
     }
 }
