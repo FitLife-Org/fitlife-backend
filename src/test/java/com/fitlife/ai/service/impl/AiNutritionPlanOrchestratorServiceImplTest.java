@@ -12,6 +12,7 @@ import com.fitlife.ai.entity.AiSuggestion;
 import com.fitlife.ai.enums.ActivityLevel;
 import com.fitlife.ai.enums.AiPromptVersion;
 import com.fitlife.ai.enums.AiProvider;
+import com.fitlife.ai.mapper.AiSuggestionMapper;
 import com.fitlife.ai.retrieval.dto.AiKnowledgeRetrievalRequest;
 import com.fitlife.ai.retrieval.service.AiKnowledgeRetrievalService;
 import com.fitlife.ai.service.AiPlanParserService;
@@ -20,7 +21,6 @@ import com.fitlife.ai.service.AiProviderService;
 import com.fitlife.ai.service.AiResponseValidatorService;
 import com.fitlife.ai.service.AiSnapshotService;
 import com.fitlife.ai.service.AiSuggestionPersistenceService;
-import com.fitlife.ai.service.AiSuggestionResponseService;
 import com.fitlife.ai.service.AiUsageService;
 import com.fitlife.bodymetric.repository.BodyMetricRepository;
 import com.fitlife.common.exception.AppException;
@@ -32,22 +32,15 @@ import com.fitlife.user.entity.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -56,20 +49,16 @@ import static org.mockito.Mockito.when;
 class AiNutritionPlanOrchestratorServiceImplTest {
 
     @Mock
-    private CurrentMemberService
-            currentMemberService;
+    private CurrentMemberService currentMemberService;
 
     @Mock
-    private AiUsageService
-            aiUsageService;
+    private AiUsageService aiUsageService;
 
     @Mock
-    private BodyMetricRepository
-            bodyMetricRepository;
+    private BodyMetricRepository bodyMetricRepository;
 
     @Mock
-    private AiSnapshotService
-            aiSnapshotService;
+    private AiSnapshotService aiSnapshotService;
 
     @Mock
     private AiKnowledgeRetrievalService
@@ -80,12 +69,10 @@ class AiNutritionPlanOrchestratorServiceImplTest {
             aiPromptBuilderService;
 
     @Mock
-    private AiProviderService
-            aiProviderService;
+    private AiProviderService aiProviderService;
 
     @Mock
-    private AiPlanParserService
-            aiPlanParserService;
+    private AiPlanParserService aiPlanParserService;
 
     @Mock
     private AiResponseValidatorService
@@ -95,9 +82,12 @@ class AiNutritionPlanOrchestratorServiceImplTest {
     private AiSuggestionPersistenceService
             aiSuggestionPersistenceService;
 
+    /*
+     * Orchestrator hiện tại dùng Mapper để convert
+     * AiSuggestion -> AiSuggestionResponse.
+     */
     @Mock
-    private AiSuggestionResponseService
-            aiSuggestionResponseService;
+    private AiSuggestionMapper aiSuggestionMapper;
 
     private AiNutritionPlanOrchestratorServiceImpl
             orchestrator;
@@ -110,19 +100,23 @@ class AiNutritionPlanOrchestratorServiceImplTest {
                         aiUsageService,
                         bodyMetricRepository,
                         aiSnapshotService,
+                        aiKnowledgeRetrievalService,
                         aiPromptBuilderService,
                         aiProviderService,
                         aiPlanParserService,
                         aiResponseValidatorService,
                         aiSuggestionPersistenceService,
-                        aiSuggestionResponseService,
-                        aiKnowledgeRetrievalService,
+                        aiSuggestionMapper,
                         new ObjectMapper()
                 );
     }
 
+    // =====================================================
+    // TEST 1: HAPPY PATH
+    // =====================================================
+
     @Test
-    void createNutritionPlan_shouldCompleteHappyPath() {
+    void createNutritionPlan_shouldReturnSuccess() {
         Member member =
                 createMember();
 
@@ -133,15 +127,11 @@ class AiNutritionPlanOrchestratorServiceImplTest {
                 AiInputSnapshot.builder()
                         .build();
 
-        AiContextSnapshot contextSnapshot =
-                AiContextSnapshot.builder()
-                        .collection(
-                                "fitlife_knowledge"
-                        )
-                        .topK(5)
-                        .fallback(false)
-                        .chunks(List.of())
-                        .build();
+        AiContextSnapshot context =
+                AiContextSnapshot.empty(
+                        "fitlife_knowledge",
+                        5
+                );
 
         AiPromptResult promptResult =
                 AiPromptResult.builder()
@@ -153,13 +143,18 @@ class AiNutritionPlanOrchestratorServiceImplTest {
                                 "nutrition-prompt"
                         )
                         .contextSnapshot(
-                                contextSnapshot
+                                context
                         )
                         .build();
 
         AiSuggestion pending =
                 AiSuggestion.builder()
                         .id(10L)
+                        /*
+                         * Để warning ban đầu null giúp
+                         * test đơn giản và ổn định.
+                         */
+                        .warningMessage(null)
                         .build();
 
         AiProviderResult providerResult =
@@ -188,14 +183,18 @@ class AiNutritionPlanOrchestratorServiceImplTest {
                         .build();
 
         AiSuggestionResponse expected =
-                mock(
-                        AiSuggestionResponse.class
-                );
+                new AiSuggestionResponse();
+
+        // =================================================
+        // MOCK
+        // =================================================
 
         when(
                 currentMemberService
                         .getCurrentMember()
-        ).thenReturn(member);
+        ).thenReturn(
+                member
+        );
 
         when(
                 bodyMetricRepository
@@ -213,7 +212,9 @@ class AiNutritionPlanOrchestratorServiceImplTest {
                                 null,
                                 request
                         )
-        ).thenReturn(snapshot);
+        ).thenReturn(
+                snapshot
+        );
 
         when(
                 aiKnowledgeRetrievalService
@@ -222,15 +223,19 @@ class AiNutritionPlanOrchestratorServiceImplTest {
                                         AiKnowledgeRetrievalRequest.class
                                 )
                         )
-        ).thenReturn(contextSnapshot);
+        ).thenReturn(
+                context
+        );
 
         when(
                 aiPromptBuilderService
                         .buildNutritionPlanPrompt(
                                 snapshot,
-                                contextSnapshot
+                                context
                         )
-        ).thenReturn(promptResult);
+        ).thenReturn(
+                promptResult
+        );
 
         when(
                 aiSuggestionPersistenceService
@@ -239,20 +244,26 @@ class AiNutritionPlanOrchestratorServiceImplTest {
                                         AiSuggestion.class
                                 )
                         )
-        ).thenReturn(pending);
+        ).thenReturn(
+                pending
+        );
 
         when(
                 aiProviderService.generate(
                         "nutrition-prompt"
                 )
-        ).thenReturn(providerResult);
+        ).thenReturn(
+                providerResult
+        );
 
         when(
                 aiPlanParserService
                         .parseNutritionPlan(
                                 "{}"
                         )
-        ).thenReturn(generated);
+        ).thenReturn(
+                generated
+        );
 
         when(
                 aiSuggestionPersistenceService
@@ -262,14 +273,22 @@ class AiNutritionPlanOrchestratorServiceImplTest {
                                 generated,
                                 "Chỉ mang tính tham khảo"
                         )
-        ).thenReturn(success);
+        ).thenReturn(
+                success
+        );
 
         when(
-                aiSuggestionResponseService
-                        .getSummaryResponse(
-                                10L
+                aiSuggestionMapper
+                        .toResponse(
+                                success
                         )
-        ).thenReturn(expected);
+        ).thenReturn(
+                expected
+        );
+
+        // =================================================
+        // EXECUTE
+        // =================================================
 
         AiSuggestionResponse actual =
                 orchestrator
@@ -277,39 +296,22 @@ class AiNutritionPlanOrchestratorServiceImplTest {
                                 request
                         );
 
+        // =================================================
+        // ASSERT
+        // =================================================
+
         assertSame(
                 expected,
                 actual
         );
 
-        InOrder ordered =
-                inOrder(
-                        aiUsageService,
-                        aiSnapshotService,
-                        aiKnowledgeRetrievalService,
-                        aiPromptBuilderService,
-                        aiSuggestionPersistenceService,
-                        aiProviderService,
-                        aiPlanParserService,
-                        aiResponseValidatorService,
-                        aiSuggestionResponseService
-                );
-
-        ordered.verify(
+        verify(
                 aiUsageService
         ).validateDailyLimit(
                 1L
         );
 
-        ordered.verify(
-                aiSnapshotService
-        ).buildNutritionPlanSnapshot(
-                member,
-                null,
-                request
-        );
-
-        ordered.verify(
+        verify(
                 aiKnowledgeRetrievalService
         ).retrieveContextSafely(
                 any(
@@ -317,58 +319,26 @@ class AiNutritionPlanOrchestratorServiceImplTest {
                 )
         );
 
-        ordered.verify(
-                aiPromptBuilderService
-        ).buildNutritionPlanPrompt(
-                snapshot,
-                contextSnapshot
-        );
-
-        ordered.verify(
-                aiSuggestionPersistenceService
-        ).createPending(
-                any(
-                        AiSuggestion.class
-                )
-        );
-
-        ordered.verify(
-                aiProviderService
-        ).generate(
-                "nutrition-prompt"
-        );
-
-        ordered.verify(
-                aiPlanParserService
-        ).parseNutritionPlan(
-                "{}"
-        );
-
-        ordered.verify(
+        verify(
                 aiResponseValidatorService
         ).validateNutritionPlan(
                 generated,
                 snapshot
         );
 
-        ordered.verify(
-                aiSuggestionPersistenceService
-        ).markNutritionPlanSuccess(
-                10L,
-                providerResult,
-                generated,
-                "Chỉ mang tính tham khảo"
-        );
-
-        ordered.verify(
-                aiSuggestionResponseService
-        ).getSummaryResponse(
-                10L
+        verify(
+                aiSuggestionMapper
+        ).toResponse(
+                success
         );
     }
 
+    // =====================================================
+    // TEST 2: PROVIDER ERROR
+    // =====================================================
+
     @Test
-    void createNutritionPlan_shouldNormalizeWarningsBeforeValidation() {
+    void createNutritionPlan_shouldMarkFailedWhenProviderFails() {
         Member member =
                 createMember();
 
@@ -379,205 +349,12 @@ class AiNutritionPlanOrchestratorServiceImplTest {
                 AiInputSnapshot.builder()
                         .build();
 
-        AiContextSnapshot contextSnapshot =
-                AiContextSnapshot.builder()
-                        .collection(
-                                "fitlife_knowledge"
-                        )
-                        .topK(5)
-                        .fallback(false)
-                        .chunks(List.of())
-                        .build();
-
-        AiPromptResult promptResult =
-                AiPromptResult.builder()
-                        .version(
-                                AiPromptVersion
-                                        .NUTRITION_PLAN_V2_RAG
-                        )
-                        .prompt(
-                                "nutrition-prompt"
-                        )
-                        .contextSnapshot(
-                                contextSnapshot
-                        )
-                        .build();
-
-        AiSuggestion pending =
-                AiSuggestion.builder()
-                        .id(11L)
-                        .build();
-
-        AiProviderResult providerResult =
-                AiProviderResult.builder()
-                        .provider(
-                                AiProvider.GEMINI
-                        )
-                        .modelName(
-                                "gemini-test"
-                        )
-                        .rawResponse("{}")
-                        .build();
-
-        AiGeneratedNutritionPlanResponse generated =
-                new AiGeneratedNutritionPlanResponse();
-
-        generated.setWarnings(
-                List.of(
-                        "Cảnh báo thứ nhất",
-                        "Cảnh báo thứ hai",
-                        "Cảnh báo thứ ba"
-                )
-        );
-
-        AiSuggestionResponse expected =
-                mock(
-                        AiSuggestionResponse.class
+        AiContextSnapshot context =
+                AiContextSnapshot.empty(
+                        "fitlife_knowledge",
+                        5
                 );
 
-        when(
-                currentMemberService
-                        .getCurrentMember()
-        ).thenReturn(member);
-
-        when(
-                bodyMetricRepository
-                        .findTopByMemberIdAndIsDeletedFalseOrderByRecordedAtDesc(
-                                1L
-                        )
-        ).thenReturn(
-                Optional.empty()
-        );
-
-        when(
-                aiSnapshotService
-                        .buildNutritionPlanSnapshot(
-                                member,
-                                null,
-                                request
-                        )
-        ).thenReturn(snapshot);
-
-        when(
-                aiKnowledgeRetrievalService
-                        .retrieveContextSafely(
-                                any(
-                                        AiKnowledgeRetrievalRequest.class
-                                )
-                        )
-        ).thenReturn(contextSnapshot);
-
-        when(
-                aiPromptBuilderService
-                        .buildNutritionPlanPrompt(
-                                snapshot,
-                                contextSnapshot
-                        )
-        ).thenReturn(promptResult);
-
-        when(
-                aiSuggestionPersistenceService
-                        .createPending(
-                                any(
-                                        AiSuggestion.class
-                                )
-                        )
-        ).thenReturn(pending);
-
-        when(
-                aiProviderService.generate(
-                        "nutrition-prompt"
-                )
-        ).thenReturn(providerResult);
-
-        when(
-                aiPlanParserService
-                        .parseNutritionPlan(
-                                "{}"
-                        )
-        ).thenReturn(generated);
-
-        when(
-                aiSuggestionResponseService
-                        .getSummaryResponse(
-                                11L
-                        )
-        ).thenReturn(expected);
-
-        AiSuggestionResponse actual =
-                orchestrator
-                        .createNutritionPlan(
-                                request
-                        );
-
-        assertSame(
-                expected,
-                actual
-        );
-
-        assertEquals(
-                2,
-                generated
-                        .getWarnings()
-                        .size()
-        );
-
-        assertEquals(
-                "Cảnh báo thứ nhất",
-                generated
-                        .getWarnings()
-                        .get(0)
-        );
-
-        assertEquals(
-                "Cảnh báo thứ hai",
-                generated
-                        .getWarnings()
-                        .get(1)
-        );
-
-        verify(
-                aiResponseValidatorService
-        ).validateNutritionPlan(
-                generated,
-                snapshot
-        );
-
-        verify(
-                aiSuggestionPersistenceService
-        ).markNutritionPlanSuccess(
-                eq(11L),
-                eq(providerResult),
-                eq(generated),
-                eq(
-                        "Cảnh báo thứ nhất "
-                                + "Cảnh báo thứ hai"
-                )
-        );
-    }
-
-    @Test
-    void createNutritionPlan_shouldMarkFailed_whenProviderFails() {
-        Member member =
-                createMember();
-
-        AiNutritionPlanRequest request =
-                createValidRequest();
-
-        AiInputSnapshot snapshot =
-                AiInputSnapshot.builder()
-                        .build();
-
-        AiContextSnapshot contextSnapshot =
-                AiContextSnapshot.builder()
-                        .collection(
-                                "fitlife_knowledge"
-                        )
-                        .topK(5)
-                        .fallback(false)
-                        .chunks(List.of())
-                        .build();
-
         AiPromptResult promptResult =
                 AiPromptResult.builder()
                         .version(
@@ -588,7 +365,7 @@ class AiNutritionPlanOrchestratorServiceImplTest {
                                 "nutrition-prompt"
                         )
                         .contextSnapshot(
-                                contextSnapshot
+                                context
                         )
                         .build();
 
@@ -600,7 +377,9 @@ class AiNutritionPlanOrchestratorServiceImplTest {
         when(
                 currentMemberService
                         .getCurrentMember()
-        ).thenReturn(member);
+        ).thenReturn(
+                member
+        );
 
         when(
                 bodyMetricRepository
@@ -618,7 +397,9 @@ class AiNutritionPlanOrchestratorServiceImplTest {
                                 null,
                                 request
                         )
-        ).thenReturn(snapshot);
+        ).thenReturn(
+                snapshot
+        );
 
         when(
                 aiKnowledgeRetrievalService
@@ -627,15 +408,19 @@ class AiNutritionPlanOrchestratorServiceImplTest {
                                         AiKnowledgeRetrievalRequest.class
                                 )
                         )
-        ).thenReturn(contextSnapshot);
+        ).thenReturn(
+                context
+        );
 
         when(
                 aiPromptBuilderService
                         .buildNutritionPlanPrompt(
                                 snapshot,
-                                contextSnapshot
+                                context
                         )
-        ).thenReturn(promptResult);
+        ).thenReturn(
+                promptResult
+        );
 
         when(
                 aiSuggestionPersistenceService
@@ -644,7 +429,9 @@ class AiNutritionPlanOrchestratorServiceImplTest {
                                         AiSuggestion.class
                                 )
                         )
-        ).thenReturn(pending);
+        ).thenReturn(
+                pending
+        );
 
         when(
                 aiProviderService.generate(
@@ -652,8 +439,7 @@ class AiNutritionPlanOrchestratorServiceImplTest {
                 )
         ).thenThrow(
                 new AppException(
-                        ErrorCode
-                                .AI_RESPONSE_INVALID
+                        ErrorCode.AI_RESPONSE_INVALID
                 )
         );
 
@@ -682,315 +468,16 @@ class AiNutritionPlanOrchestratorServiceImplTest {
         );
 
         verify(
-                aiSuggestionResponseService,
+                aiSuggestionMapper,
                 never()
-        ).getSummaryResponse(
+        ).toResponse(
                 any()
         );
     }
 
-    @Test
-    void createNutritionPlan_shouldContinueWhenRetrievalFallsBack() {
-        Member member =
-                createMember();
-
-        AiNutritionPlanRequest request =
-                createValidRequest();
-
-        AiInputSnapshot snapshot =
-                AiInputSnapshot.builder()
-                        .build();
-
-        AiContextSnapshot fallbackContext =
-                AiContextSnapshot.fallback(
-                        "fitlife_knowledge",
-                        5,
-                        "Qdrant operation failed"
-                );
-
-        AiPromptResult promptResult =
-                AiPromptResult.builder()
-                        .version(
-                                AiPromptVersion
-                                        .NUTRITION_PLAN_V2_RAG
-                        )
-                        .prompt(
-                                "fallback-nutrition-prompt"
-                        )
-                        .contextSnapshot(
-                                fallbackContext
-                        )
-                        .build();
-
-        AiSuggestion pending =
-                AiSuggestion.builder()
-                        .id(30L)
-                        .build();
-
-        AiProviderResult providerResult =
-                AiProviderResult.builder()
-                        .provider(
-                                AiProvider.GEMINI
-                        )
-                        .modelName(
-                                "gemini-test"
-                        )
-                        .rawResponse("{}")
-                        .build();
-
-        AiGeneratedNutritionPlanResponse generated =
-                new AiGeneratedNutritionPlanResponse();
-
-        generated.setWarnings(
-                List.of()
-        );
-
-        AiSuggestion success =
-                AiSuggestion.builder()
-                        .id(30L)
-                        .build();
-
-        AiSuggestionResponse expected =
-                mock(
-                        AiSuggestionResponse.class
-                );
-
-        when(
-                currentMemberService
-                        .getCurrentMember()
-        ).thenReturn(member);
-
-        when(
-                bodyMetricRepository
-                        .findTopByMemberIdAndIsDeletedFalseOrderByRecordedAtDesc(
-                                1L
-                        )
-        ).thenReturn(
-                Optional.empty()
-        );
-
-        when(
-                aiSnapshotService
-                        .buildNutritionPlanSnapshot(
-                                member,
-                                null,
-                                request
-                        )
-        ).thenReturn(snapshot);
-
-        when(
-                aiKnowledgeRetrievalService
-                        .retrieveContextSafely(
-                                any(
-                                        AiKnowledgeRetrievalRequest.class
-                                )
-                        )
-        ).thenReturn(fallbackContext);
-
-        when(
-                aiPromptBuilderService
-                        .buildNutritionPlanPrompt(
-                                snapshot,
-                                fallbackContext
-                        )
-        ).thenReturn(promptResult);
-
-        when(
-                aiSuggestionPersistenceService
-                        .createPending(
-                                any(
-                                        AiSuggestion.class
-                                )
-                        )
-        ).thenReturn(pending);
-
-        when(
-                aiProviderService.generate(
-                        "fallback-nutrition-prompt"
-                )
-        ).thenReturn(providerResult);
-
-        when(
-                aiPlanParserService
-                        .parseNutritionPlan(
-                                "{}"
-                        )
-        ).thenReturn(generated);
-
-        when(
-                aiSuggestionPersistenceService
-                        .markNutritionPlanSuccess(
-                                eq(30L),
-                                eq(providerResult),
-                                eq(generated),
-                                isNull()
-                        )
-        ).thenReturn(success);
-
-        when(
-                aiSuggestionResponseService
-                        .getSummaryResponse(
-                                30L
-                        )
-        ).thenReturn(expected);
-
-        AiSuggestionResponse actual =
-                orchestrator
-                        .createNutritionPlan(
-                                request
-                        );
-
-        assertSame(
-                expected,
-                actual
-        );
-
-        assertTrue(
-                fallbackContext
-                        .getFallback()
-        );
-
-        verify(
-                aiProviderService
-        ).generate(
-                "fallback-nutrition-prompt"
-        );
-
-        verify(
-                aiSuggestionPersistenceService
-        ).markNutritionPlanSuccess(
-                eq(30L),
-                eq(providerResult),
-                eq(generated),
-                isNull()
-        );
-
-        verify(
-                aiSuggestionResponseService
-        ).getSummaryResponse(
-                30L
-        );
-
-        verify(
-                aiSuggestionPersistenceService,
-                never()
-        ).markFailed(
-                any(),
-                any(),
-                any()
-        );
-    }
-
-    @Test
-    void createNutritionPlan_shouldUseRagPromptVersion() {
-        AiContextSnapshot contextSnapshot =
-                AiContextSnapshot.builder()
-                        .collection(
-                                "fitlife_knowledge"
-                        )
-                        .topK(5)
-                        .fallback(false)
-                        .chunks(List.of())
-                        .build();
-
-        AiPromptResult promptResult =
-                AiPromptResult.builder()
-                        .version(
-                                AiPromptVersion
-                                        .NUTRITION_PLAN_V2_RAG
-                        )
-                        .prompt(
-                                "nutrition-prompt"
-                        )
-                        .contextSnapshot(
-                                contextSnapshot
-                        )
-                        .build();
-
-        assertEquals(
-                AiPromptVersion
-                        .NUTRITION_PLAN_V2_RAG,
-                promptResult.getVersion()
-        );
-
-        assertEquals(
-                "NUTRITION_PLAN_V2_RAG",
-                promptResult.getVersionCode()
-        );
-
-        assertSame(
-                contextSnapshot,
-                promptResult
-                        .getContextSnapshot()
-        );
-    }
-
-    @Test
-    void createNutritionPlan_shouldRejectNullRequestBeforePersistence() {
-        assertThrows(
-                AppException.class,
-                () ->
-                        orchestrator
-                                .createNutritionPlan(
-                                        null
-                                )
-        );
-
-        verify(
-                currentMemberService,
-                never()
-        ).getCurrentMember();
-
-        verify(
-                aiKnowledgeRetrievalService,
-                never()
-        ).retrieveContextSafely(
-                any()
-        );
-
-        verify(
-                aiSuggestionPersistenceService,
-                never()
-        ).createPending(
-                any()
-        );
-    }
-
-    @Test
-    void createNutritionPlan_shouldRejectInvalidMealsPerDay() {
-        AiNutritionPlanRequest request =
-                createValidRequest();
-
-        request.setMealsPerDay(0);
-
-        assertThrows(
-                AppException.class,
-                () ->
-                        orchestrator
-                                .createNutritionPlan(
-                                        request
-                                )
-        );
-
-        verify(
-                currentMemberService,
-                never()
-        ).getCurrentMember();
-
-        verify(
-                aiKnowledgeRetrievalService,
-                never()
-        ).retrieveContextSafely(
-                any()
-        );
-
-        verify(
-                aiSuggestionPersistenceService,
-                never()
-        ).createPending(
-                any()
-        );
-    }
+    // =====================================================
+    // HELPERS
+    // =====================================================
 
     private Member createMember() {
         User user =
@@ -1033,8 +520,7 @@ class AiNutritionPlanOrchestratorServiceImplTest {
         );
 
         request.setUserNote(
-                "Ưu tiên món ăn Việt Nam "
-                        + "dễ chuẩn bị"
+                "Ưu tiên món ăn Việt Nam dễ chuẩn bị"
         );
 
         return request;

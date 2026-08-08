@@ -1,91 +1,64 @@
 package com.fitlife.ai.retrieval.controller;
 
-import com.fitlife.ai.retrieval.dto.AiKnowledgeRetrievalRequest;
-import com.fitlife.ai.retrieval.dto.AiKnowledgeSearchHit;
 import com.fitlife.ai.retrieval.dto.AiKnowledgeSearchTestRequest;
+import com.fitlife.ai.retrieval.dto.AiKnowledgeSearchTestResponse;
 import com.fitlife.ai.retrieval.service.AiKnowledgeRetrievalService;
 import com.fitlife.common.response.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/admin/ai/knowledge")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
+@Tag(
+        name = "Admin AI Knowledge Retrieval",
+        description = """
+                Admin API used to test semantic retrieval
+                from the FitLife knowledge collection in Qdrant.
+                """
+)
+@SecurityRequirement(name = "bearerAuth")
 public class AiKnowledgeRetrievalAdminController {
 
     private final AiKnowledgeRetrievalService
             retrievalService;
 
     @PostMapping("/search-test")
-    public ApiResponse<List<AiKnowledgeSearchHit>>
-    searchTest(
-            @Valid @RequestBody
+    @Operation(
+            summary = "Test AI knowledge semantic search",
+            description = """
+                    Process:
+                    1. Validate and normalize the search request.
+                    2. Generate query embedding.
+                    3. Build Qdrant metadata filters.
+                    4. Search the configured Qdrant collection.
+                    5. Return ranked knowledge results.
+
+                    This endpoint does not use fallback.
+                    Embedding or Qdrant errors are returned to Admin.
+                    """
+    )
+    public ApiResponse<
+            AiKnowledgeSearchTestResponse
+            > searchTest(
+            @Valid
+            @RequestBody
             AiKnowledgeSearchTestRequest request
     ) {
-        AiKnowledgeRetrievalRequest retrievalRequest =
-                AiKnowledgeRetrievalRequest.builder()
-                        .query(
-                                request.getQuery()
-                        )
-                        .category(
-                                request.getCategory()
-                        )
-                        .goal(
-                                normalizeUpper(
-                                        request.getGoal()
-                                )
-                        )
-                        .experienceLevel(
-                                normalizeUpper(
-                                        request.getExperienceLevel()
-                                )
-                        )
-                        .language(
-                                normalizeLanguage(
-                                        request.getLanguage()
-                                )
-                        )
-                        .limit(
-                                request.getLimit()
-                        )
-                        .scoreThreshold(
-                                request.getScoreThreshold()
-                        )
-                        .build();
-
-        List<AiKnowledgeSearchHit> results =
-                retrievalService.retrieve(
-                        retrievalRequest
-                );
-
-        return ApiResponse.success(results);
-    }
-
-    private String normalizeUpper(
-            String value
-    ) {
-        if (value == null
-                || value.isBlank()) {
-            return null;
-        }
-
-        return value.trim()
-                .toUpperCase();
-    }
-
-    private String normalizeLanguage(
-            String value
-    ) {
-        if (value == null
-                || value.isBlank()) {
-            return "vi";
-        }
-
-        return "en".equalsIgnoreCase(
-                value.trim()
-        ) ? "en" : "vi";
+        return ApiResponse.success(
+                "Search AI knowledge successfully",
+                retrievalService.searchTest(
+                        request
+                )
+        );
     }
 }

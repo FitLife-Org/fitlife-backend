@@ -10,6 +10,13 @@ import lombok.Setter;
 /**
  * Request nội bộ phục vụ semantic retrieval.
  *
+ * DTO này được dùng bởi:
+ * - Admin Search-test;
+ * - Full Plan;
+ * - Workout Plan;
+ * - Nutrition Plan;
+ * - Body Analysis.
+ *
  * Đây không phải request DTO trực tiếp từ frontend.
  */
 @Getter

@@ -13,6 +13,7 @@ import com.fitlife.ai.dto.internal.AiContextChunkSnapshot;
 import com.fitlife.ai.dto.internal.AiContextSnapshot;
 
 import java.util.List;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -306,11 +307,37 @@ public class AiPromptBuilderServiceImpl implements AiPromptBuilderService {
                 .build();
     }
 
-    private String resolveOutputLanguage(AiInputSnapshot snapshot) {
-        String language = snapshot.getRequest().getPreferredLanguage();
-        if (language == null || language.isBlank()) return DEFAULT_LANGUAGE;
-        String normalized = language.trim().toLowerCase();
-        return "en".equals(normalized) || "vi".equals(normalized) ? normalized : DEFAULT_LANGUAGE;
+    private String resolveOutputLanguage(
+            AiInputSnapshot snapshot
+    ) {
+        validateSnapshot(snapshot);
+
+        String language =
+                snapshot
+                        .getRequest()
+                        .getPreferredLanguage();
+
+        if (
+                language == null ||
+                        language.isBlank()
+        ) {
+            return DEFAULT_LANGUAGE;
+        }
+
+        String normalized =
+                language
+                        .trim()
+                        .toLowerCase(
+                                Locale.ROOT
+                        );
+
+        return switch (normalized) {
+            case "vi", "en" ->
+                    normalized;
+
+            default ->
+                    DEFAULT_LANGUAGE;
+        };
     }
 
     private String toJson(
@@ -591,44 +618,101 @@ public class AiPromptBuilderServiceImpl implements AiPromptBuilderService {
                 .build();
     }
 
-    private void validateSnapshot(AiInputSnapshot snapshot) {
-        if (snapshot == null || snapshot.getMember() == null || snapshot.getRequest() == null) {
-            throw new AppException(ErrorCode.INVALID_REQUEST);
+    private void validateSnapshot(
+            AiInputSnapshot snapshot
+    ) {
+        if (
+                snapshot == null ||
+                        snapshot.getUser() == null ||
+                        snapshot.getMember() == null ||
+                        snapshot.getRequest() == null ||
+                        snapshot.getCapturedAt() == null
+        ) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        if (
+                snapshot
+                        .getRequest()
+                        .getPreferredLanguage() == null ||
+                        snapshot
+                                .getRequest()
+                                .getPreferredLanguage()
+                                .isBlank()
+        ) {
+            snapshot
+                    .getRequest()
+                    .setPreferredLanguage(
+                            DEFAULT_LANGUAGE
+                    );
         }
     }
 
     private String formatKnowledgeContext(
             AiContextSnapshot context
     ) {
-        if (context == null || context.isEmpty()) {
-            return """
-                    FITLIFE KNOWLEDGE CONTEXT:
-                    - No relevant FitLife knowledge was retrieved.
-                    - Continue with conservative general fitness guidance.
-                    - Do not invent medical facts.
-                    - Prioritize user safety.
-                    """.trim();
+        if (
+                context == null ||
+                        context.isEmpty()
+        ) {
+            String fallbackReason =
+                    context == null
+                            ? null
+                            : context.getFallbackReason();
+
+            StringBuilder emptyContext =
+                    new StringBuilder();
+
+            emptyContext.append("""
+                FITLIFE KNOWLEDGE CONTEXT:
+                - No relevant FitLife knowledge was retrieved.
+                - Continue with conservative general fitness guidance.
+                - Do not invent medical facts.
+                - Prioritize user safety.
+                """.trim());
+
+            if (
+                    fallbackReason != null &&
+                            !fallbackReason.isBlank()
+            ) {
+                emptyContext.append("\n");
+                emptyContext.append(
+                        "- Retrieval fallback reason: "
+                );
+                emptyContext.append(
+                        truncate(
+                                fallbackReason,
+                                200
+                        )
+                );
+            }
+
+            return emptyContext.toString();
         }
 
-        StringBuilder builder = new StringBuilder();
+        StringBuilder builder =
+                new StringBuilder();
 
         builder.append("""
-                FITLIFE KNOWLEDGE CONTEXT:
-                - Use the following retrieved knowledge as supporting context.
-                - Do not copy it mechanically.
-                - Do not mention Qdrant, embedding, vector search or RAG.
-                - Do not contradict safety rules.
-                - User-specific health information has higher priority.
-                
-                """);
+            FITLIFE KNOWLEDGE CONTEXT:
+            - Use the following retrieved knowledge as supporting context.
+            - Do not copy it mechanically.
+            - Do not mention Qdrant, embedding, vector search or RAG.
+            - Do not contradict safety rules.
+            - User-specific health information has higher priority.
+
+            """);
 
         List<AiContextChunkSnapshot> chunks =
-                context.getChunks();
+                context.safeChunks();
 
-        int chunkLimit = Math.min(
-                chunks.size(),
-                3
-        );
+        int chunkLimit =
+                Math.min(
+                        chunks.size(),
+                        3
+                );
 
         for (
                 int index = 0;
@@ -638,27 +722,52 @@ public class AiPromptBuilderServiceImpl implements AiPromptBuilderService {
             AiContextChunkSnapshot chunk =
                     chunks.get(index);
 
-            builder.append(
+            String formattedChunk =
                     formatKnowledgeChunk(
                             index + 1,
                             chunk
-                    )
-            );
+                    );
 
-            if (index < chunks.size() - 1) {
+            if (
+                    formattedChunk != null &&
+                            !formattedChunk.isBlank()
+            ) {
+                builder.append(
+                        formattedChunk
+                );
+            }
+
+            if (index < chunkLimit - 1) {
                 builder.append("\n\n");
             }
         }
 
-        if (Boolean.TRUE.equals(context.getFallback())) {
+        if (context.isFallback()) {
             builder.append("\n\n");
             builder.append(
                     "Retrieval fallback was used. "
                             + "Apply conservative defaults."
             );
+
+            if (
+                    context.getFallbackReason() != null &&
+                            !context
+                                    .getFallbackReason()
+                                    .isBlank()
+            ) {
+                builder.append(" Reason: ");
+                builder.append(
+                        truncate(
+                                context.getFallbackReason(),
+                                200
+                        )
+                );
+            }
         }
 
-        return builder.toString().trim();
+        return builder
+                .toString()
+                .trim();
     }
 
     private String truncate(
@@ -722,9 +831,15 @@ public class AiPromptBuilderServiceImpl implements AiPromptBuilderService {
                 : value.toString().trim();
     }
 
-    private String formatScore(Double score) {
+    private String formatScore(
+            Double score
+    ) {
         return score == null
                 ? "N/A"
-                : String.format("%.4f", score);
+                : String.format(
+                Locale.ROOT,
+                "%.4f",
+                score
+        );
     }
 }
