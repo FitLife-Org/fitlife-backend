@@ -632,13 +632,15 @@ public class AiFullPlanOrchestratorServiceImpl
                         )
                 )
                 /*
-                 * Full Plan cần cả Workout và Nutrition.
-                 * Không khóa category ở đây để retrieval
-                 * có thể lấy kiến thức thuộc nhiều category.
+                 * Full Plan cần đồng thời knowledge về:
+                 * - workout;
+                 * - nutrition;
+                 * - safety;
+                 * - recovery.
+                 *
+                 * Không khóa một category duy nhất.
                  */
-                .category(
-                        null
-                )
+                .category(null)
                 .goal(
                         request.getGoal() == null
                                 ? null
@@ -654,13 +656,15 @@ public class AiFullPlanOrchestratorServiceImpl
                                 .name()
                 )
                 .language(
-                        request.getPreferredLanguage()
+                        normalizeLanguage(
+                                request.getPreferredLanguage()
+                        )
                 )
                 .limit(
-                        10
+                        RETRIEVAL_LIMIT
                 )
                 .scoreThreshold(
-                        0.2D
+                        RETRIEVAL_SCORE_THRESHOLD
                 )
                 .build();
     }
@@ -676,13 +680,42 @@ public class AiFullPlanOrchestratorServiceImpl
                 promptResult == null ||
                         promptResult.getPrompt() == null ||
                         promptResult.getPrompt().isBlank() ||
+                        promptResult.getVersion() == null ||
                         promptResult.getVersionCode() == null ||
                         promptResult
                                 .getVersionCode()
-                                .isBlank()
+                                .isBlank() ||
+                        promptResult.getContextSnapshot() == null
         ) {
             throw new AppException(
                     ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        AiContextSnapshot context =
+                promptResult.getContextSnapshot();
+
+        if (
+                context.getTopK() == null ||
+                        context.getTopK() <= 0
+        ) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        /*
+         * Context rỗng là hợp lệ:
+         * - Qdrant chạy nhưng không có kết quả;
+         * - hoặc retrieval fallback.
+         *
+         * Không bắt buộc chunks phải có phần tử.
+         */
+        if (
+                context.getChunks() == null
+        ) {
+            context.setChunks(
+                    List.of()
             );
         }
     }
@@ -726,11 +759,28 @@ public class AiFullPlanOrchestratorServiceImpl
             AiInputSnapshot inputSnapshot,
             AiPromptResult promptResult
     ) {
+        if (
+                currentMember == null ||
+                        currentMember.getUser() == null ||
+                        latestBodyMetric == null ||
+                        inputSnapshot == null ||
+                        inputSnapshot.getRequest() == null ||
+                        promptResult == null ||
+                        promptResult.getContextSnapshot() == null
+        ) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
         User currentUser =
                 currentMember.getUser();
 
         AiInputRequestSnapshot request =
                 inputSnapshot.getRequest();
+
+        AiContextSnapshot contextSnapshot =
+                promptResult.getContextSnapshot();
 
         return AiSuggestion
                 .builder()
@@ -744,25 +794,23 @@ public class AiFullPlanOrchestratorServiceImpl
                         AiSuggestionType.FULL_PLAN
                 )
                 .goal(
-                        request
+                        request.getGoal() == null
+                                ? null
+                                : request
                                 .getGoal()
                                 .name()
                 )
                 .experienceLevel(
-                        request
-                                .getExperienceLevel()
+                        request.getExperienceLevel()
                 )
                 .activityLevel(
-                        request
-                                .getActivityLevel()
+                        request.getActivityLevel()
                 )
                 .workoutDaysPerWeek(
-                        request
-                                .getWorkoutDaysPerWeek()
+                        request.getWorkoutDaysPerWeek()
                 )
                 .workoutDurationMinutes(
-                        request
-                                .getWorkoutDurationMinutes()
+                        request.getWorkoutDurationMinutes()
                 )
                 .userNote(
                         normalizeText(
@@ -770,24 +818,49 @@ public class AiFullPlanOrchestratorServiceImpl
                         )
                 )
                 .preferredLanguage(
-                        request
-                                .getPreferredLanguage()
+                        normalizeLanguage(
+                                request.getPreferredLanguage()
+                        )
                 )
+
+                /*
+                 * Audit dữ liệu đầu vào tại thời điểm tạo.
+                 */
                 .inputSnapshot(
                         toJson(
                                 inputSnapshot
                         )
                 )
+
+                /*
+                 * Audit knowledge nào đã được retrieval.
+                 *
+                 * Kể cả fallback/rỗng vẫn phải lưu để biết
+                 * request đó không dùng được Qdrant context.
+                 */
+                .contextSnapshot(
+                        toJson(
+                                contextSnapshot
+                        )
+                )
+
+                /*
+                 * Version prompt dùng để tái hiện contract.
+                 */
                 .promptVersion(
-                        promptResult
-                                .getVersionCode()
+                        promptResult.getVersionCode()
                 )
                 .status(
                         AiSuggestionStatus.PENDING
                 )
                 .warningMessage(
-                        buildInitialWarningMessage(
-                                currentMember
+                        mergeWarnings(
+                                buildInitialWarningMessage(
+                                        currentMember
+                                ),
+                                buildRetrievalWarning(
+                                        contextSnapshot
+                                )
                         )
                 )
                 .createdBy(
@@ -800,6 +873,76 @@ public class AiFullPlanOrchestratorServiceImpl
                         false
                 )
                 .build();
+    }
+
+    private String buildRetrievalWarning(
+            AiContextSnapshot context
+    ) {
+        if (context == null) {
+            return "Không có dữ liệu retrieval để kiểm tra.";
+        }
+
+        if (
+                Boolean.TRUE.equals(
+                        context.getFallback()
+                )
+        ) {
+            String reason =
+                    normalizeText(
+                            context.getFallbackReason()
+                    );
+
+            if (reason == null) {
+                return """
+                    Hệ thống không truy xuất được kho kiến thức; \
+                    kế hoạch được tạo bằng hướng dẫn an toàn tổng quát.
+                    """.trim();
+            }
+
+            return """
+                Hệ thống không truy xuất được kho kiến thức; \
+                kế hoạch được tạo bằng hướng dẫn an toàn tổng quát. \
+                Lý do: %s
+                """.formatted(
+                    truncateText(
+                            reason,
+                            150
+                    )
+            ).trim();
+        }
+
+        if (context.isEmpty()) {
+            return """
+                Không tìm thấy kiến thức phù hợp trong kho FitLife; \
+                kế hoạch được tạo bằng hướng dẫn an toàn tổng quát.
+                """.trim();
+        }
+
+        return null;
+    }
+
+    private String truncateText(
+            String value,
+            int maxLength
+    ) {
+        String normalized =
+                normalizeText(value);
+
+        if (normalized == null) {
+            return null;
+        }
+
+        if (
+                maxLength <= 0 ||
+                        normalized.length() <= maxLength
+        ) {
+            return normalized;
+        }
+
+        return normalized.substring(
+                0,
+                maxLength
+        );
     }
 
     // =====================================================
@@ -1168,5 +1311,30 @@ public class AiFullPlanOrchestratorServiceImpl
         return value == null
                 ? ""
                 : value.toString();
+    }
+
+    private String normalizeLanguage(
+            String language
+    ) {
+        if (
+                language == null ||
+                        language.isBlank()
+        ) {
+            return "vi";
+        }
+
+        String normalized =
+                language.trim()
+                        .toLowerCase(
+                                Locale.ROOT
+                        );
+
+        return switch (normalized) {
+            case "vi", "en" ->
+                    normalized;
+
+            default ->
+                    "vi";
+        };
     }
 }

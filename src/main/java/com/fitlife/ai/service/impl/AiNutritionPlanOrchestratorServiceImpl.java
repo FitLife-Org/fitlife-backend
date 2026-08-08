@@ -12,6 +12,7 @@ import com.fitlife.ai.entity.AiSuggestion;
 import com.fitlife.ai.enums.AiSuggestionStatus;
 import com.fitlife.ai.enums.AiSuggestionType;
 import com.fitlife.ai.knowledge.enums.AiKnowledgeCategory;
+import com.fitlife.ai.mapper.AiSuggestionMapper;
 import com.fitlife.ai.retrieval.dto.AiKnowledgeRetrievalRequest;
 import com.fitlife.ai.retrieval.service.AiKnowledgeRetrievalService;
 import com.fitlife.ai.service.AiNutritionPlanOrchestratorService;
@@ -21,21 +22,20 @@ import com.fitlife.ai.service.AiProviderService;
 import com.fitlife.ai.service.AiResponseValidatorService;
 import com.fitlife.ai.service.AiSnapshotService;
 import com.fitlife.ai.service.AiSuggestionPersistenceService;
-import com.fitlife.ai.service.AiSuggestionResponseService;
 import com.fitlife.ai.service.AiUsageService;
+import com.fitlife.member.service.CurrentMemberService;
 import com.fitlife.bodymetric.entity.BodyMetric;
 import com.fitlife.bodymetric.repository.BodyMetricRepository;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.member.entity.Member;
-import com.fitlife.member.service.CurrentMemberService;
 import com.fitlife.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 @Slf4j
 @Service
@@ -46,7 +46,10 @@ public class AiNutritionPlanOrchestratorServiceImpl
     private static final int MIN_MEALS_PER_DAY = 1;
     private static final int MAX_MEALS_PER_DAY = 10;
 
-    private static final int MAX_WARNINGS = 2;
+    private static final int RETRIEVAL_LIMIT = 5;
+
+    private static final double RETRIEVAL_SCORE_THRESHOLD =
+            0.3D;
 
     private final CurrentMemberService
             currentMemberService;
@@ -59,6 +62,9 @@ public class AiNutritionPlanOrchestratorServiceImpl
 
     private final AiSnapshotService
             aiSnapshotService;
+
+    private final AiKnowledgeRetrievalService
+            aiKnowledgeRetrievalService;
 
     private final AiPromptBuilderService
             aiPromptBuilderService;
@@ -75,11 +81,8 @@ public class AiNutritionPlanOrchestratorServiceImpl
     private final AiSuggestionPersistenceService
             aiSuggestionPersistenceService;
 
-    private final AiSuggestionResponseService
-            aiSuggestionResponseService;
-
-    private final AiKnowledgeRetrievalService
-            aiKnowledgeRetrievalService;
+    private final AiSuggestionMapper
+            aiSuggestionMapper;
 
     private final ObjectMapper
             objectMapper;
@@ -129,6 +132,10 @@ public class AiNutritionPlanOrchestratorServiceImpl
                                 contextSnapshot
                         );
 
+        validatePromptResult(
+                promptResult
+        );
+
         AiSuggestion pending =
                 aiSuggestionPersistenceService
                         .createPending(
@@ -141,29 +148,18 @@ public class AiNutritionPlanOrchestratorServiceImpl
                                 )
                         );
 
-        AiProviderResult providerResult;
-        AiGeneratedNutritionPlanResponse generated;
-
-        /*
-         * Giai đoạn 1:
-         * Gọi provider, parse, normalize và validate.
-         *
-         * Chỉ lỗi trong giai đoạn này mới làm suggestion FAILED.
-         */
         try {
-            providerResult =
+            AiProviderResult providerResult =
                     aiProviderService.generate(
                             promptResult.getPrompt()
                     );
 
-            generated =
+            AiGeneratedNutritionPlanResponse generated =
                     aiPlanParserService
                             .parseNutritionPlan(
                                     providerResult
                                             .getRawResponse()
                             );
-
-            normalizeWarnings(generated);
 
             aiResponseValidatorService
                     .validateNutritionPlan(
@@ -171,21 +167,42 @@ public class AiNutritionPlanOrchestratorServiceImpl
                             snapshot
                     );
 
+            String finalWarning =
+                    mergeWarnings(
+                            pending.getWarningMessage(),
+                            joinWarnings(
+                                    generated.getWarnings()
+                            )
+                    );
+
+            AiSuggestion success =
+                    aiSuggestionPersistenceService
+                            .markNutritionPlanSuccess(
+                                    pending.getId(),
+                                    providerResult,
+                                    generated,
+                                    finalWarning
+                            );
+
+            return aiSuggestionMapper
+                    .toResponse(
+                            success
+                    );
+
         } catch (AppException exception) {
             safeMarkFailed(
                     pending.getId(),
-                    resolveFailureCode(exception)
+                    resolveFailureCode(
+                            exception
+                    )
             );
 
             throw exception;
 
         } catch (Exception exception) {
             log.error(
-                    "Unexpected nutrition AI generation error. "
-                            + "suggestionId={}, type={}, message={}",
+                    "Unexpected nutrition-plan generation error. suggestionId={}",
                     pending.getId(),
-                    exception.getClass().getName(),
-                    exception.getMessage(),
                     exception
             );
 
@@ -198,106 +215,6 @@ public class AiNutritionPlanOrchestratorServiceImpl
                     ErrorCode.AI_RESPONSE_INVALID
             );
         }
-
-        String finalWarning =
-                mergeWarnings(
-                        pending.getWarningMessage(),
-                        joinWarnings(
-                                generated.getWarnings()
-                        )
-                );
-
-        /*
-         * Giai đoạn 2:
-         * Persist SUCCESS rồi tải lại entity để map response.
-         *
-         * Không được mark FAILED nếu lỗi xảy ra sau khi
-         * kết quả đã được lưu thành công.
-         */
-        try {
-            aiSuggestionPersistenceService
-                    .markNutritionPlanSuccess(
-                            pending.getId(),
-                            providerResult,
-                            generated,
-                            finalWarning
-                    );
-
-            return aiSuggestionResponseService
-                    .getSummaryResponse(
-                            pending.getId()
-                    );
-
-        } catch (AppException exception) {
-            log.error(
-                    "Nutrition plan persistence or response error. "
-                            + "suggestionId={}, errorCode={}, message={}",
-                    pending.getId(),
-                    exception.getErrorCode(),
-                    exception.getMessage(),
-                    exception
-            );
-
-            throw exception;
-
-        } catch (Exception exception) {
-            log.error(
-                    "Nutrition plan was generated but response "
-                            + "mapping failed. suggestionId={}, "
-                            + "type={}, message={}",
-                    pending.getId(),
-                    exception.getClass().getName(),
-                    exception.getMessage(),
-                    exception
-            );
-
-            /*
-             * Không gọi safeMarkFailed tại đây.
-             * Suggestion có thể đã SUCCESS.
-             */
-            throw new AppException(
-                    ErrorCode.AI_RESPONSE_INVALID
-            );
-        }
-    }
-
-    private void normalizeWarnings(
-            AiGeneratedNutritionPlanResponse generated
-    ) {
-        if (generated == null) {
-            return;
-        }
-
-        List<String> warnings =
-                generated.getWarnings();
-
-        if (warnings == null
-                || warnings.isEmpty()) {
-            generated.setWarnings(
-                    new ArrayList<>()
-            );
-            return;
-        }
-
-        List<String> normalized =
-                warnings.stream()
-                        .filter(value ->
-                                value != null
-                                        && !value.isBlank()
-                        )
-                        .map(String::trim)
-                        .distinct()
-                        .limit(MAX_WARNINGS)
-                        .toList();
-
-        generated.setWarnings(
-                new ArrayList<>(normalized)
-        );
-
-        log.debug(
-                "Nutrition warnings normalized. count={}",
-                normalized.size()
-        );
     }
 
     private AiKnowledgeRetrievalRequest
@@ -309,17 +226,23 @@ public class AiNutritionPlanOrchestratorServiceImpl
                 .builder()
                 .query(
                         """
-                        Xây dựng kế hoạch dinh dưỡng phù hợp.
+                        Xây dựng kế hoạch dinh dưỡng an toàn,
+                        đủ calorie và macro phù hợp.
 
                         Goal: %s
                         Activity level: %s
                         Meals per day: %s
-                        Body metric and health context:
+                        User note: %s
+
+                        Member and body metric context:
                         %s
                         """.formatted(
                                 request.getGoal(),
                                 request.getActivityLevel(),
                                 request.getMealsPerDay(),
+                                safe(
+                                        request.getUserNote()
+                                ),
                                 toJson(snapshot)
                         ).trim()
                 )
@@ -327,7 +250,9 @@ public class AiNutritionPlanOrchestratorServiceImpl
                         AiKnowledgeCategory.NUTRITION
                 )
                 .goal(
-                        request.getGoal().name()
+                        request
+                                .getGoal()
+                                .name()
                 )
                 .experienceLevel(null)
                 .language(
@@ -336,8 +261,12 @@ public class AiNutritionPlanOrchestratorServiceImpl
                                         .getPreferredLanguage()
                         )
                 )
-                .limit(5)
-                .scoreThreshold(0.3)
+                .limit(
+                        RETRIEVAL_LIMIT
+                )
+                .scoreThreshold(
+                        RETRIEVAL_SCORE_THRESHOLD
+                )
                 .build();
     }
 
@@ -348,9 +277,22 @@ public class AiNutritionPlanOrchestratorServiceImpl
             AiInputSnapshot snapshot,
             AiPromptResult promptResult
     ) {
-        User user = member.getUser();
+        validatePendingInput(
+                member,
+                request,
+                snapshot,
+                promptResult
+        );
 
-        return AiSuggestion.builder()
+        User user =
+                member.getUser();
+
+        AiContextSnapshot context =
+                promptResult
+                        .getContextSnapshot();
+
+        return AiSuggestion
+                .builder()
                 .member(member)
                 .latestBodyMetric(
                         latestBodyMetric
@@ -359,10 +301,13 @@ public class AiNutritionPlanOrchestratorServiceImpl
                         AiSuggestionType.NUTRITION_PLAN
                 )
                 .goal(
-                        request.getGoal().name()
+                        request
+                                .getGoal()
+                                .name()
                 )
                 .activityLevel(
-                        request.getActivityLevel()
+                        request
+                                .getActivityLevel()
                 )
                 .userNote(
                         normalizeText(
@@ -378,16 +323,25 @@ public class AiNutritionPlanOrchestratorServiceImpl
                 .inputSnapshot(
                         toJson(snapshot)
                 )
+                .contextSnapshot(
+                        toJson(context)
+                )
                 .promptVersion(
-                        promptResult.getVersionCode()
+                        promptResult
+                                .getVersionCode()
                 )
                 .status(
                         AiSuggestionStatus.PENDING
                 )
                 .warningMessage(
-                        buildInitialWarningMessage(
-                                member,
-                                latestBodyMetric
+                        mergeWarnings(
+                                buildInitialWarningMessage(
+                                        member,
+                                        latestBodyMetric
+                                ),
+                                buildRetrievalWarning(
+                                        context
+                                )
                         )
                 )
                 .createdBy(user)
@@ -399,10 +353,12 @@ public class AiNutritionPlanOrchestratorServiceImpl
     private void validateRequest(
             AiNutritionPlanRequest request
     ) {
-        if (request == null
-                || request.getGoal() == null
-                || request.getActivityLevel() == null
-                || request.getMealsPerDay() == null) {
+        if (
+                request == null ||
+                        request.getGoal() == null ||
+                        request.getActivityLevel() == null ||
+                        request.getMealsPerDay() == null
+        ) {
             throw new AppException(
                     ErrorCode.INVALID_REQUEST
             );
@@ -411,33 +367,150 @@ public class AiNutritionPlanOrchestratorServiceImpl
         int mealsPerDay =
                 request.getMealsPerDay();
 
-        if (mealsPerDay < MIN_MEALS_PER_DAY
-                || mealsPerDay > MAX_MEALS_PER_DAY) {
+        if (
+                mealsPerDay < MIN_MEALS_PER_DAY ||
+                        mealsPerDay > MAX_MEALS_PER_DAY
+        ) {
             throw new AppException(
                     ErrorCode.INVALID_REQUEST
             );
         }
     }
 
+    private void validatePromptResult(
+            AiPromptResult promptResult
+    ) {
+        if (
+                promptResult == null ||
+                        !hasText(
+                                promptResult.getPrompt()
+                        ) ||
+                        promptResult.getVersion() == null ||
+                        !hasText(
+                                promptResult.getVersionCode()
+                        ) ||
+                        promptResult.getContextSnapshot() == null
+        ) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+    }
+
+    private void validatePendingInput(
+            Member member,
+            AiNutritionPlanRequest request,
+            AiInputSnapshot snapshot,
+            AiPromptResult promptResult
+    ) {
+        if (
+                member == null ||
+                        member.getUser() == null ||
+                        request == null ||
+                        snapshot == null ||
+                        promptResult == null ||
+                        promptResult.getContextSnapshot() == null
+        ) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+    }
+
+    private String buildInitialWarningMessage(
+            Member member,
+            BodyMetric latestBodyMetric
+    ) {
+        StringBuilder warning =
+                new StringBuilder();
+
+        if (latestBodyMetric == null) {
+            warning.append(
+                    "Member chưa có Body Metric mới nhất. "
+            );
+
+            warning.append(
+                    "Kế hoạch dinh dưỡng chỉ mang tính tham khảo."
+            );
+        }
+
+        if (
+                member.getHealthNote() != null &&
+                        !member
+                                .getHealthNote()
+                                .isBlank()
+        ) {
+            if (!warning.isEmpty()) {
+                warning.append(" ");
+            }
+
+            warning.append(
+                    "Member có ghi chú sức khỏe, "
+            );
+
+            warning.append(
+                    "nên hỏi chuyên gia dinh dưỡng hoặc bác sĩ "
+            );
+
+            warning.append(
+                    "trước khi áp dụng."
+            );
+        }
+
+        return normalizeText(
+                warning.toString()
+        );
+    }
+
+    private String buildRetrievalWarning(
+            AiContextSnapshot context
+    ) {
+        if (context == null) {
+            return "Không có dữ liệu retrieval.";
+        }
+
+        if (context.isFallback()) {
+            String reason =
+                    normalizeText(
+                            context.getFallbackReason()
+                    );
+
+            return reason == null
+                    ? "Không truy xuất được kho kiến thức FitLife; kế hoạch dinh dưỡng dùng hướng dẫn an toàn tổng quát."
+                    : "Không truy xuất được kho kiến thức FitLife; kế hoạch dinh dưỡng dùng hướng dẫn an toàn tổng quát. Lý do: "
+                    + truncate(
+                    reason,
+                    150
+            );
+        }
+
+        if (context.isEmpty()) {
+            return "Không tìm thấy kiến thức dinh dưỡng phù hợp; kế hoạch dùng hướng dẫn an toàn tổng quát.";
+        }
+
+        return null;
+    }
+
     private void safeMarkFailed(
             Long suggestionId,
             String errorCode
     ) {
+        if (suggestionId == null) {
+            return;
+        }
+
         try {
             aiSuggestionPersistenceService
                     .markFailed(
                             suggestionId,
                             errorCode,
-                            "Không thể xử lý yêu cầu AI "
-                                    + "vào lúc này."
+                            "Không thể xử lý yêu cầu AI vào lúc này."
                     );
-        } catch (Exception exception) {
+        } catch (Exception persistenceException) {
             log.error(
-                    "Cannot mark nutrition suggestion as failed. "
-                            + "suggestionId={}, message={}",
+                    "Cannot mark nutrition suggestion as FAILED. suggestionId={}",
                     suggestionId,
-                    exception.getMessage(),
-                    exception
+                    persistenceException
             );
         }
     }
@@ -445,8 +518,10 @@ public class AiNutritionPlanOrchestratorServiceImpl
     private String resolveFailureCode(
             AppException exception
     ) {
-        if (exception == null
-                || exception.getErrorCode() == null) {
+        if (
+                exception == null ||
+                        exception.getErrorCode() == null
+        ) {
             return "AI_REQUEST_FAILED";
         }
 
@@ -458,49 +533,38 @@ public class AiNutritionPlanOrchestratorServiceImpl
     private String resolveLanguage(
             String value
     ) {
-        if (value == null
-                || value.isBlank()) {
+        if (
+                value == null ||
+                        value.isBlank()
+        ) {
             return "vi";
         }
 
-        return "en".equalsIgnoreCase(
+        String normalized =
                 value.trim()
-        )
+                        .toLowerCase(
+                                Locale.ROOT
+                        );
+
+        return "en".equals(normalized)
                 ? "en"
                 : "vi";
-    }
-
-    private String normalizeText(
-            String value
-    ) {
-        if (value == null) {
-            return null;
-        }
-
-        String normalized =
-                value.trim();
-
-        return normalized.isEmpty()
-                ? null
-                : normalized;
     }
 
     private String joinWarnings(
             List<String> warnings
     ) {
-        if (warnings == null
-                || warnings.isEmpty()) {
+        if (
+                warnings == null ||
+                        warnings.isEmpty()
+        ) {
             return null;
         }
 
         return warnings.stream()
-                .filter(value ->
-                        value != null
-                                && !value.isBlank()
-                )
+                .filter(this::hasText)
                 .map(String::trim)
                 .distinct()
-                .limit(MAX_WARNINGS)
                 .reduce(
                         (first, second) ->
                                 first + " " + second
@@ -526,50 +590,67 @@ public class AiNutritionPlanOrchestratorServiceImpl
             return normalizedFirst;
         }
 
+        if (
+                normalizedFirst.equalsIgnoreCase(
+                        normalizedSecond
+                )
+        ) {
+            return normalizedFirst;
+        }
+
         return normalizedFirst
                 + " "
                 + normalizedSecond;
     }
 
-    private String buildInitialWarningMessage(
-            Member member,
-            BodyMetric latestBodyMetric
+    private boolean hasText(
+            String value
     ) {
-        StringBuilder warning =
-                new StringBuilder();
+        return value != null &&
+                !value.isBlank();
+    }
 
-        if (latestBodyMetric == null) {
-            warning.append(
-                    "Member chưa có Body Metric mới nhất. "
-            );
-
-            warning.append(
-                    "Kế hoạch dinh dưỡng chỉ mang "
-                            + "tính tham khảo."
-            );
+    private String normalizeText(
+            String value
+    ) {
+        if (value == null) {
+            return null;
         }
 
-        if (member.getHealthNote() != null
-                && !member
-                .getHealthNote()
-                .isBlank()) {
-            if (!warning.isEmpty()) {
-                warning.append(" ");
-            }
+        String normalized =
+                value.trim();
 
-            warning.append(
-                    "Member có ghi chú sức khỏe, "
-            );
+        return normalized.isEmpty()
+                ? null
+                : normalized;
+    }
 
-            warning.append(
-                    "nên hỏi chuyên gia dinh dưỡng "
-                            + "hoặc bác sĩ trước khi áp dụng."
-            );
+    private String truncate(
+            String value,
+            int maxLength
+    ) {
+        String normalized =
+                normalizeText(value);
+
+        if (
+                normalized == null ||
+                        normalized.length() <= maxLength
+        ) {
+            return normalized;
         }
 
-        return normalizeText(
-                warning.toString()
+        return normalized.substring(
+                0,
+                maxLength
         );
+    }
+
+    private String safe(
+            Object value
+    ) {
+        return value == null
+                ? ""
+                : value.toString().trim();
     }
 
     private String toJson(
@@ -577,14 +658,10 @@ public class AiNutritionPlanOrchestratorServiceImpl
     ) {
         try {
             return objectMapper
-                    .writeValueAsString(value);
-
+                    .writeValueAsString(
+                            value
+                    );
         } catch (Exception exception) {
-            log.error(
-                    "Cannot serialize nutrition AI input snapshot.",
-                    exception
-            );
-
             throw new AppException(
                     ErrorCode.AI_RESPONSE_INVALID
             );

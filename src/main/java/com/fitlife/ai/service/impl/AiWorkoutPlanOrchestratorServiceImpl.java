@@ -12,27 +12,47 @@ import com.fitlife.ai.entity.AiSuggestion;
 import com.fitlife.ai.enums.AiSuggestionStatus;
 import com.fitlife.ai.enums.AiSuggestionType;
 import com.fitlife.ai.knowledge.enums.AiKnowledgeCategory;
+import com.fitlife.ai.mapper.AiSuggestionMapper;
 import com.fitlife.ai.retrieval.dto.AiKnowledgeRetrievalRequest;
 import com.fitlife.ai.retrieval.service.AiKnowledgeRetrievalService;
-import com.fitlife.ai.service.*;
+import com.fitlife.ai.service.AiPlanParserService;
+import com.fitlife.ai.service.AiPromptBuilderService;
+import com.fitlife.ai.service.AiProviderService;
+import com.fitlife.ai.service.AiResponseValidatorService;
+import com.fitlife.ai.service.AiSnapshotService;
+import com.fitlife.ai.service.AiSuggestionPersistenceService;
+import com.fitlife.ai.service.AiUsageService;
+import com.fitlife.ai.service.AiWorkoutPlanOrchestratorService;
+import com.fitlife.member.service.CurrentMemberService;
 import com.fitlife.bodymetric.entity.BodyMetric;
 import com.fitlife.bodymetric.repository.BodyMetricRepository;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.member.entity.Member;
-import com.fitlife.member.service.CurrentMemberService;
 import com.fitlife.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Locale;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AiWorkoutPlanOrchestratorServiceImpl
         implements AiWorkoutPlanOrchestratorService {
+
+    private static final int MIN_WORKOUT_DAYS = 1;
+    private static final int MAX_WORKOUT_DAYS = 7;
+
+    private static final int MIN_WORKOUT_DURATION = 15;
+    private static final int MAX_WORKOUT_DURATION = 180;
+
+    private static final int RETRIEVAL_LIMIT = 5;
+
+    private static final double RETRIEVAL_SCORE_THRESHOLD =
+            0.3D;
 
     private final CurrentMemberService
             currentMemberService;
@@ -45,6 +65,9 @@ public class AiWorkoutPlanOrchestratorServiceImpl
 
     private final AiSnapshotService
             aiSnapshotService;
+
+    private final AiKnowledgeRetrievalService
+            aiKnowledgeRetrievalService;
 
     private final AiPromptBuilderService
             aiPromptBuilderService;
@@ -61,19 +84,11 @@ public class AiWorkoutPlanOrchestratorServiceImpl
     private final AiSuggestionPersistenceService
             aiSuggestionPersistenceService;
 
-    private final AiSuggestionResponseService
-            aiSuggestionResponseService;
-
-    private final AiKnowledgeRetrievalService
-            aiKnowledgeRetrievalService;
+    private final AiSuggestionMapper
+            aiSuggestionMapper;
 
     private final ObjectMapper
             objectMapper;
-
-    private static final int MIN_WORKOUT_DAYS = 1;
-    private static final int MAX_WORKOUT_DAYS = 7;
-    private static final int MIN_WORKOUT_DURATION = 15;
-    private static final int MAX_WORKOUT_DURATION = 180;
 
     @Override
     public AiSuggestionResponse createWorkoutPlan(
@@ -82,24 +97,27 @@ public class AiWorkoutPlanOrchestratorServiceImpl
         validateRequest(request);
 
         Member member =
-                currentMemberService.getCurrentMember();
+                currentMemberService
+                        .getCurrentMember();
 
         aiUsageService.validateDailyLimit(
                 member.getId()
         );
 
-        BodyMetric latestBodyMetric = bodyMetricRepository
-                .findTopByMemberIdAndIsDeletedFalseOrderByRecordedAtDesc(
-                        member.getId()
-                )
-                .orElse(null);
+        BodyMetric latestBodyMetric =
+                bodyMetricRepository
+                        .findTopByMemberIdAndIsDeletedFalseOrderByRecordedAtDesc(
+                                member.getId()
+                        )
+                        .orElse(null);
 
         AiInputSnapshot snapshot =
-                aiSnapshotService.buildWorkoutPlanSnapshot(
-                        member,
-                        latestBodyMetric,
-                        request
-                );
+                aiSnapshotService
+                        .buildWorkoutPlanSnapshot(
+                                member,
+                                latestBodyMetric,
+                                request
+                        );
 
         AiContextSnapshot contextSnapshot =
                 aiKnowledgeRetrievalService
@@ -117,37 +135,34 @@ public class AiWorkoutPlanOrchestratorServiceImpl
                                 contextSnapshot
                         );
 
-        AiSuggestion pending =
-                aiSuggestionPersistenceService.createPending(
-                        buildPendingSuggestion(
-                                member,
-                                latestBodyMetric,
-                                request,
-                                snapshot,
-                                promptResult
-                        )
-                );
+        validatePromptResult(
+                promptResult
+        );
 
-        AiProviderResult providerResult;
-        AiGeneratedWorkoutPlanResponse generated;
+        AiSuggestion pending =
+                aiSuggestionPersistenceService
+                        .createPending(
+                                buildPendingSuggestion(
+                                        member,
+                                        latestBodyMetric,
+                                        request,
+                                        snapshot,
+                                        promptResult
+                                )
+                        );
 
         try {
-            /*
-             * Giai đoạn 1:
-             * gọi AI, parse và validate.
-             *
-             * Chỉ các lỗi trong giai đoạn này mới được
-             * đánh dấu suggestion FAILED.
-             */
-            providerResult =
+            AiProviderResult providerResult =
                     aiProviderService.generate(
                             promptResult.getPrompt()
                     );
 
-            generated =
-                    aiPlanParserService.parseWorkoutPlan(
-                            providerResult.getRawResponse()
-                    );
+            AiGeneratedWorkoutPlanResponse generated =
+                    aiPlanParserService
+                            .parseWorkoutPlan(
+                                    providerResult
+                                            .getRawResponse()
+                            );
 
             aiResponseValidatorService
                     .validateWorkoutPlan(
@@ -155,21 +170,42 @@ public class AiWorkoutPlanOrchestratorServiceImpl
                             snapshot
                     );
 
+            String finalWarning =
+                    mergeWarnings(
+                            pending.getWarningMessage(),
+                            joinWarnings(
+                                    generated.getWarnings()
+                            )
+                    );
+
+            AiSuggestion success =
+                    aiSuggestionPersistenceService
+                            .markWorkoutPlanSuccess(
+                                    pending.getId(),
+                                    providerResult,
+                                    generated,
+                                    finalWarning
+                            );
+
+            return aiSuggestionMapper
+                    .toResponse(
+                            success
+                    );
+
         } catch (AppException exception) {
             safeMarkFailed(
                     pending.getId(),
-                    resolveFailureCode(exception)
+                    resolveFailureCode(
+                            exception
+                    )
             );
 
             throw exception;
 
         } catch (Exception exception) {
             log.error(
-                    "Unexpected workout AI generation error. "
-                            + "suggestionId={}, type={}, message={}",
+                    "Unexpected workout-plan generation error. suggestionId={}",
                     pending.getId(),
-                    exception.getClass().getName(),
-                    exception.getMessage(),
                     exception
             );
 
@@ -182,76 +218,6 @@ public class AiWorkoutPlanOrchestratorServiceImpl
                     ErrorCode.AI_RESPONSE_INVALID
             );
         }
-
-        String finalWarning =
-                mergeWarnings(
-                        pending.getWarningMessage(),
-                        joinWarnings(
-                                generated.getWarnings()
-                        )
-                );
-
-        try {
-            /*
-             * Giai đoạn 2:
-             * lưu SUCCESS và các plan items.
-             */
-            aiSuggestionPersistenceService
-                    .markWorkoutPlanSuccess(
-                            pending.getId(),
-                            providerResult,
-                            generated,
-                            finalWarning
-                    );
-
-            /*
-             * Tải lại suggestion đầy đủ và map response
-             * trong transaction read-only riêng.
-             */
-            return aiSuggestionResponseService
-                    .getSummaryResponse(
-                            pending.getId()
-                    );
-
-        } catch (AppException exception) {
-            /*
-             * Không gọi safeMarkFailed tại đây.
-             *
-             * markWorkoutPlanSuccess có thể đã hoàn tất.
-             * Không được biến SUCCESS thành FAILED chỉ vì
-             * bước tạo API response gặp lỗi.
-             */
-            log.error(
-                    "Workout plan persistence or response error. "
-                            + "suggestionId={}, errorCode={}, message={}",
-                    pending.getId(),
-                    exception.getErrorCode(),
-                    exception.getMessage(),
-                    exception
-            );
-
-            throw exception;
-
-        } catch (Exception exception) {
-            log.error(
-                    "Workout plan was generated but response mapping failed. "
-                            + "suggestionId={}, type={}, message={}",
-                    pending.getId(),
-                    exception.getClass().getName(),
-                    exception.getMessage(),
-                    exception
-            );
-
-            /*
-             * Tạm dùng AI_RESPONSE_INVALID nếu ErrorCode
-             * chưa có INTERNAL_SERVER_ERROR.
-             *
-             * Quan trọng: không mark FAILED nữa.
-             */
-            throw new AppException(
-                    ErrorCode.AI_RESPONSE_INVALID
-            );
-        }
     }
 
     private AiKnowledgeRetrievalRequest
@@ -259,41 +225,61 @@ public class AiWorkoutPlanOrchestratorServiceImpl
             AiInputSnapshot snapshot,
             AiWorkoutPlanRequest request
     ) {
-        return AiKnowledgeRetrievalRequest.builder()
+        return AiKnowledgeRetrievalRequest
+                .builder()
                 .query(
                         """
-                        Xây dựng lịch tập luyện phù hợp.
-    
+                        Xây dựng kế hoạch tập luyện an toàn
+                        và phù hợp với người dùng.
+
                         Goal: %s
                         Experience level: %s
                         Activity level: %s
                         Workout days per week: %s
                         Workout duration minutes: %s
-                        Health note and body metric:
+                        User note: %s
+
+                        Member and body metric context:
                         %s
                         """.formatted(
                                 request.getGoal(),
                                 request.getExperienceLevel(),
                                 request.getActivityLevel(),
-                                request.getWorkoutDaysPerWeek(),
-                                request.getWorkoutDurationMinutes(),
+                                request
+                                        .getWorkoutDaysPerWeek(),
+                                request
+                                        .getWorkoutDurationMinutes(),
+                                safe(
+                                        request.getUserNote()
+                                ),
                                 toJson(snapshot)
                         ).trim()
                 )
                 .category(
                         AiKnowledgeCategory.WORKOUT
                 )
-                .goal(request.getGoal().name())
+                .goal(
+                        request
+                                .getGoal()
+                                .name()
+                )
                 .experienceLevel(
-                        request.getExperienceLevel().name()
+                        request
+                                .getExperienceLevel()
+                                .name()
                 )
                 .language(
                         resolveLanguage(
-                                request.getPreferredLanguage()
+                                request
+                                        .getPreferredLanguage()
                         )
                 )
-                .limit(5)
-                .scoreThreshold(0.3)
+                .limit(
+                        RETRIEVAL_LIMIT
+                )
+                .scoreThreshold(
+                        RETRIEVAL_SCORE_THRESHOLD
+                )
                 .build();
     }
 
@@ -304,42 +290,83 @@ public class AiWorkoutPlanOrchestratorServiceImpl
             AiInputSnapshot snapshot,
             AiPromptResult promptResult
     ) {
-        User user = member.getUser();
+        validatePendingInput(
+                member,
+                request,
+                snapshot,
+                promptResult
+        );
 
-        return AiSuggestion.builder()
+        User user =
+                member.getUser();
+
+        AiContextSnapshot context =
+                promptResult
+                        .getContextSnapshot();
+
+        return AiSuggestion
+                .builder()
                 .member(member)
-                .latestBodyMetric(latestBodyMetric)
+                .latestBodyMetric(
+                        latestBodyMetric
+                )
                 .suggestionType(
                         AiSuggestionType.WORKOUT_PLAN
                 )
-                .goal(request.getGoal().name())
+                .goal(
+                        request
+                                .getGoal()
+                                .name()
+                )
                 .experienceLevel(
-                        request.getExperienceLevel()
+                        request
+                                .getExperienceLevel()
                 )
                 .activityLevel(
-                        request.getActivityLevel()
+                        request
+                                .getActivityLevel()
                 )
                 .workoutDaysPerWeek(
-                        request.getWorkoutDaysPerWeek()
+                        request
+                                .getWorkoutDaysPerWeek()
                 )
                 .workoutDurationMinutes(
-                        request.getWorkoutDurationMinutes()
+                        request
+                                .getWorkoutDurationMinutes()
                 )
-                .userNote(normalizeText(
-                        request.getUserNote()
-                ))
-                .preferredLanguage(resolveLanguage(
-                        request.getPreferredLanguage()
-                ))
-                .inputSnapshot(toJson(snapshot))
+                .userNote(
+                        normalizeText(
+                                request.getUserNote()
+                        )
+                )
+                .preferredLanguage(
+                        resolveLanguage(
+                                request
+                                        .getPreferredLanguage()
+                        )
+                )
+                .inputSnapshot(
+                        toJson(snapshot)
+                )
+                .contextSnapshot(
+                        toJson(context)
+                )
                 .promptVersion(
-                        promptResult.getVersionCode()
+                        promptResult
+                                .getVersionCode()
                 )
-                .status(AiSuggestionStatus.PENDING)
+                .status(
+                        AiSuggestionStatus.PENDING
+                )
                 .warningMessage(
-                        buildInitialWarningMessage(
-                                member,
-                                latestBodyMetric
+                        mergeWarnings(
+                                buildInitialWarningMessage(
+                                        member,
+                                        latestBodyMetric
+                                ),
+                                buildRetrievalWarning(
+                                        context
+                                )
                         )
                 )
                 .createdBy(user)
@@ -351,113 +378,82 @@ public class AiWorkoutPlanOrchestratorServiceImpl
     private void validateRequest(
             AiWorkoutPlanRequest request
     ) {
-        if (request == null
-                || request.getGoal() == null
-                || request.getExperienceLevel() == null
-                || request.getActivityLevel() == null
-                || request.getWorkoutDaysPerWeek() == null
-                || request.getWorkoutDurationMinutes() == null) {
+        if (
+                request == null ||
+                        request.getGoal() == null ||
+                        request.getExperienceLevel() == null ||
+                        request.getActivityLevel() == null ||
+                        request.getWorkoutDaysPerWeek() == null ||
+                        request.getWorkoutDurationMinutes() == null
+        ) {
             throw new AppException(
                     ErrorCode.INVALID_REQUEST
             );
         }
 
-        if (request.getWorkoutDaysPerWeek() < 1
-                || request.getWorkoutDaysPerWeek() > 7) {
+        int days =
+                request.getWorkoutDaysPerWeek();
+
+        if (
+                days < MIN_WORKOUT_DAYS ||
+                        days > MAX_WORKOUT_DAYS
+        ) {
             throw new AppException(
                     ErrorCode.INVALID_REQUEST
             );
         }
 
-        if (request.getWorkoutDurationMinutes() < 15
-                || request.getWorkoutDurationMinutes() > 180) {
+        int duration =
+                request.getWorkoutDurationMinutes();
+
+        if (
+                duration < MIN_WORKOUT_DURATION ||
+                        duration > MAX_WORKOUT_DURATION
+        ) {
             throw new AppException(
                     ErrorCode.INVALID_REQUEST
             );
         }
     }
 
-    private void safeMarkFailed(
-            Long suggestionId,
-            String errorCode
+    private void validatePromptResult(
+            AiPromptResult promptResult
     ) {
-        try {
-            aiSuggestionPersistenceService.markFailed(
-                    suggestionId,
-                    errorCode,
-                    "Không thể xử lý yêu cầu AI vào lúc này."
+        if (
+                promptResult == null ||
+                        !hasText(
+                                promptResult.getPrompt()
+                        ) ||
+                        promptResult.getVersion() == null ||
+                        !hasText(
+                                promptResult.getVersionCode()
+                        ) ||
+                        promptResult.getContextSnapshot() == null
+        ) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
             );
-        } catch (Exception ignored) {
         }
     }
 
-    private String resolveFailureCode(
-            AppException exception
+    private void validatePendingInput(
+            Member member,
+            AiWorkoutPlanRequest request,
+            AiInputSnapshot snapshot,
+            AiPromptResult promptResult
     ) {
-        if (exception == null
-                || exception.getErrorCode() == null) {
-            return "AI_REQUEST_FAILED";
+        if (
+                member == null ||
+                        member.getUser() == null ||
+                        request == null ||
+                        snapshot == null ||
+                        promptResult == null ||
+                        promptResult.getContextSnapshot() == null
+        ) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
         }
-
-        return exception.getErrorCode().name();
-    }
-
-    private String resolveLanguage(String value) {
-        if (value == null || value.isBlank()) {
-            return "vi";
-        }
-
-        return "en".equalsIgnoreCase(value.trim())
-                ? "en"
-                : "vi";
-    }
-
-    private String normalizeText(String value) {
-        if (value == null) {
-            return null;
-        }
-
-        String normalized = value.trim();
-        return normalized.isEmpty() ? null : normalized;
-    }
-
-    private String joinWarnings(List<String> warnings) {
-        if (warnings == null || warnings.isEmpty()) {
-            return null;
-        }
-
-        return warnings.stream()
-                .filter(value ->
-                        value != null && !value.isBlank()
-                )
-                .map(String::trim)
-                .reduce(
-                        (first, second) ->
-                                first + " " + second
-                )
-                .orElse(null);
-    }
-
-    private String mergeWarnings(
-            String first,
-            String second
-    ) {
-        String normalizedFirst =
-                normalizeText(first);
-        String normalizedSecond =
-                normalizeText(second);
-
-        if (normalizedFirst == null) {
-            return normalizedSecond;
-        }
-
-        if (normalizedSecond == null) {
-            return normalizedFirst;
-        }
-
-        return normalizedFirst
-                + " "
-                + normalizedSecond;
     }
 
     private String buildInitialWarningMessage(
@@ -471,13 +467,18 @@ public class AiWorkoutPlanOrchestratorServiceImpl
             warning.append(
                     "Member chưa có Body Metric mới nhất. "
             );
+
             warning.append(
                     "Kế hoạch chỉ mang tính tham khảo."
             );
         }
 
-        if (member.getHealthNote() != null
-                && !member.getHealthNote().isBlank()) {
+        if (
+                member.getHealthNote() != null &&
+                        !member
+                                .getHealthNote()
+                                .isBlank()
+        ) {
             if (!warning.isEmpty()) {
                 warning.append(" ");
             }
@@ -485,20 +486,220 @@ public class AiWorkoutPlanOrchestratorServiceImpl
             warning.append(
                     "Member có ghi chú sức khỏe, "
             );
+
             warning.append(
                     "nên hỏi huấn luyện viên hoặc bác sĩ "
             );
+
             warning.append(
                     "trước khi áp dụng."
             );
         }
 
-        return normalizeText(warning.toString());
+        return normalizeText(
+                warning.toString()
+        );
     }
 
-    private String toJson(Object value) {
+    private String buildRetrievalWarning(
+            AiContextSnapshot context
+    ) {
+        if (context == null) {
+            return "Không có dữ liệu retrieval.";
+        }
+
+        if (context.isFallback()) {
+            String reason =
+                    normalizeText(
+                            context.getFallbackReason()
+                    );
+
+            return reason == null
+                    ? "Không truy xuất được kho kiến thức FitLife; kế hoạch dùng hướng dẫn an toàn tổng quát."
+                    : "Không truy xuất được kho kiến thức FitLife; kế hoạch dùng hướng dẫn an toàn tổng quát. Lý do: "
+                    + truncate(
+                    reason,
+                    150
+            );
+        }
+
+        if (context.isEmpty()) {
+            return "Không tìm thấy kiến thức tập luyện phù hợp; kế hoạch dùng hướng dẫn an toàn tổng quát.";
+        }
+
+        return null;
+    }
+
+    private void safeMarkFailed(
+            Long suggestionId,
+            String errorCode
+    ) {
+        if (suggestionId == null) {
+            return;
+        }
+
         try {
-            return objectMapper.writeValueAsString(value);
+            aiSuggestionPersistenceService
+                    .markFailed(
+                            suggestionId,
+                            errorCode,
+                            "Không thể xử lý yêu cầu AI vào lúc này."
+                    );
+        } catch (Exception persistenceException) {
+            log.error(
+                    "Cannot mark workout suggestion as FAILED. suggestionId={}",
+                    suggestionId,
+                    persistenceException
+            );
+        }
+    }
+
+    private String resolveFailureCode(
+            AppException exception
+    ) {
+        if (
+                exception == null ||
+                        exception.getErrorCode() == null
+        ) {
+            return "AI_REQUEST_FAILED";
+        }
+
+        return exception
+                .getErrorCode()
+                .name();
+    }
+
+    private String resolveLanguage(
+            String value
+    ) {
+        if (
+                value == null ||
+                        value.isBlank()
+        ) {
+            return "vi";
+        }
+
+        String normalized =
+                value.trim()
+                        .toLowerCase(
+                                Locale.ROOT
+                        );
+
+        return "en".equals(normalized)
+                ? "en"
+                : "vi";
+    }
+
+    private String joinWarnings(
+            List<String> warnings
+    ) {
+        if (
+                warnings == null ||
+                        warnings.isEmpty()
+        ) {
+            return null;
+        }
+
+        return warnings.stream()
+                .filter(this::hasText)
+                .map(String::trim)
+                .distinct()
+                .reduce(
+                        (first, second) ->
+                                first + " " + second
+                )
+                .orElse(null);
+    }
+
+    private String mergeWarnings(
+            String first,
+            String second
+    ) {
+        String normalizedFirst =
+                normalizeText(first);
+
+        String normalizedSecond =
+                normalizeText(second);
+
+        if (normalizedFirst == null) {
+            return normalizedSecond;
+        }
+
+        if (normalizedSecond == null) {
+            return normalizedFirst;
+        }
+
+        if (
+                normalizedFirst.equalsIgnoreCase(
+                        normalizedSecond
+                )
+        ) {
+            return normalizedFirst;
+        }
+
+        return normalizedFirst
+                + " "
+                + normalizedSecond;
+    }
+
+    private boolean hasText(
+            String value
+    ) {
+        return value != null &&
+                !value.isBlank();
+    }
+
+    private String normalizeText(
+            String value
+    ) {
+        if (value == null) {
+            return null;
+        }
+
+        String normalized =
+                value.trim();
+
+        return normalized.isEmpty()
+                ? null
+                : normalized;
+    }
+
+    private String truncate(
+            String value,
+            int maxLength
+    ) {
+        String normalized =
+                normalizeText(value);
+
+        if (
+                normalized == null ||
+                        normalized.length() <= maxLength
+        ) {
+            return normalized;
+        }
+
+        return normalized.substring(
+                0,
+                maxLength
+        );
+    }
+
+    private String safe(
+            Object value
+    ) {
+        return value == null
+                ? ""
+                : value.toString().trim();
+    }
+
+    private String toJson(
+            Object value
+    ) {
+        try {
+            return objectMapper
+                    .writeValueAsString(
+                            value
+                    );
         } catch (Exception exception) {
             throw new AppException(
                     ErrorCode.AI_RESPONSE_INVALID
