@@ -8,12 +8,9 @@ import com.fitlife.ai.dto.internal.AiProviderResult;
 import com.fitlife.ai.dto.request.AiBodyAnalysisRequest;
 import com.fitlife.ai.dto.response.AiGeneratedBodyAnalysisResponse;
 import com.fitlife.ai.dto.response.AiSuggestionDetailResponse;
-import com.fitlife.ai.entity.AiPlanItem;
 import com.fitlife.ai.entity.AiSuggestion;
 import com.fitlife.ai.enums.AiSuggestionStatus;
 import com.fitlife.ai.enums.AiSuggestionType;
-import com.fitlife.ai.mapper.AiSuggestionMapper;
-import com.fitlife.ai.repository.AiPlanItemRepository;
 import com.fitlife.ai.retrieval.dto.AiKnowledgeRetrievalRequest;
 import com.fitlife.ai.retrieval.service.AiKnowledgeRetrievalService;
 import com.fitlife.ai.service.AiBodyAnalysisOrchestratorService;
@@ -23,14 +20,15 @@ import com.fitlife.ai.service.AiProviderService;
 import com.fitlife.ai.service.AiResponseValidatorService;
 import com.fitlife.ai.service.AiSnapshotService;
 import com.fitlife.ai.service.AiSuggestionPersistenceService;
+import com.fitlife.ai.service.AiSuggestionResponseService;
 import com.fitlife.ai.service.AiUsageService;
-import com.fitlife.member.service.CurrentMemberService;
 import com.fitlife.bodymetric.entity.BodyMetric;
 import com.fitlife.bodymetric.repository.BodyMetricRepository;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
 import com.fitlife.member.entity.Member;
 import com.fitlife.member.enums.FitnessGoal;
+import com.fitlife.member.service.CurrentMemberService;
 import com.fitlife.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,9 +43,11 @@ import java.util.Locale;
 public class AiBodyAnalysisOrchestratorServiceImpl
         implements AiBodyAnalysisOrchestratorService {
 
-    private static final int RETRIEVAL_LIMIT = 5;
+    private static final int RETRIEVAL_LIMIT =
+            5;
 
-    private static final double RETRIEVAL_SCORE_THRESHOLD =
+    private static final double
+            RETRIEVAL_SCORE_THRESHOLD =
             0.3D;
 
     private final CurrentMemberService
@@ -80,28 +80,29 @@ public class AiBodyAnalysisOrchestratorServiceImpl
     private final AiSuggestionPersistenceService
             aiSuggestionPersistenceService;
 
-    private final AiPlanItemRepository
-            aiPlanItemRepository;
-
-    private final AiSuggestionMapper
-            aiSuggestionMapper;
+    private final AiSuggestionResponseService
+            aiSuggestionResponseService;
 
     private final ObjectMapper
             objectMapper;
 
     @Override
-    public AiSuggestionDetailResponse analyzeBodyMetric(
+    public AiSuggestionDetailResponse
+    analyzeBodyMetric(
             AiBodyAnalysisRequest request
     ) {
-        validateRequest(request);
+        validateRequest(
+                request
+        );
 
         Member member =
                 currentMemberService
                         .getCurrentMember();
 
-        aiUsageService.validateDailyLimit(
-                member.getId()
-        );
+        aiUsageService
+                .validateDailyLimit(
+                        member.getId()
+                );
 
         BodyMetric metric =
                 bodyMetricRepository
@@ -110,7 +111,8 @@ public class AiBodyAnalysisOrchestratorServiceImpl
                         )
                         .orElseThrow(() ->
                                 new AppException(
-                                        ErrorCode.BODY_METRIC_NOT_FOUND
+                                        ErrorCode
+                                                .BODY_METRIC_NOT_FOUND
                                 )
                         );
 
@@ -126,8 +128,7 @@ public class AiBodyAnalysisOrchestratorServiceImpl
                 aiKnowledgeRetrievalService
                         .retrieveContextSafely(
                                 buildBodyAnalysisRetrievalRequest(
-                                        snapshot,
-                                        request
+                                        snapshot
                                 )
                         );
 
@@ -154,15 +155,19 @@ public class AiBodyAnalysisOrchestratorServiceImpl
                                 )
                         );
 
-        AiSuggestion success;
+        Long suggestionId =
+                pending.getId();
 
         try {
             AiProviderResult providerResult =
-                    aiProviderService.generate(
-                            promptResult.getPrompt()
-                    );
+                    aiProviderService
+                            .generate(
+                                    promptResult
+                                            .getPrompt()
+                            );
 
-            AiGeneratedBodyAnalysisResponse analysis =
+            AiGeneratedBodyAnalysisResponse
+                    analysis =
                     aiPlanParserService
                             .parseBodyAnalysis(
                                     providerResult
@@ -177,24 +182,26 @@ public class AiBodyAnalysisOrchestratorServiceImpl
 
             String finalWarning =
                     mergeWarnings(
-                            pending.getWarningMessage(),
+                            pending
+                                    .getWarningMessage(),
                             joinWarnings(
-                                    analysis.getWarnings()
+                                    analysis
+                                            .getWarnings()
                             )
                     );
 
-            success =
-                    aiSuggestionPersistenceService
-                            .markBodyAnalysisSuccess(
-                                    pending.getId(),
-                                    providerResult,
-                                    analysis,
-                                    finalWarning
-                            );
+            aiSuggestionPersistenceService
+                    .markBodyAnalysisSuccess(
+                            suggestionId,
+                            providerResult,
+                            analysis,
+                            finalWarning
+                    );
 
         } catch (AppException exception) {
+
             safeMarkFailed(
-                    pending.getId(),
+                    suggestionId,
                     resolveFailureCode(
                             exception
                     )
@@ -203,14 +210,15 @@ public class AiBodyAnalysisOrchestratorServiceImpl
             throw exception;
 
         } catch (Exception exception) {
+
             log.error(
                     "Unexpected body-analysis generation error. suggestionId={}",
-                    pending.getId(),
+                    suggestionId,
                     exception
             );
 
             safeMarkFailed(
-                    pending.getId(),
+                    suggestionId,
                     "AI_RESPONSE_INVALID"
             );
 
@@ -220,51 +228,47 @@ public class AiBodyAnalysisOrchestratorServiceImpl
         }
 
         /*
-         * Tạo response sau khi suggestion đã SUCCESS.
-         * Nếu mapper lỗi thì không chuyển suggestion về FAILED.
+         * Không dùng entity success trả trực tiếp từ
+         * PersistenceService.
+         *
+         * ResponseService reload entity trong một
+         * transaction mới rồi mapper mới chạy.
          */
-        try {
-            List<AiPlanItem> items =
-                    aiPlanItemRepository
-                            .findByAiSuggestionIdOrderBySortOrderAscIdAsc(
-                                    success.getId()
-                            );
-
-            return aiSuggestionMapper
-                    .toDetailResponse(
-                            success,
-                            items,
-                            null
-                    );
-
-        } catch (AppException exception) {
-            throw exception;
-
-        } catch (Exception exception) {
-            log.error(
-                    "Cannot build body-analysis response. suggestionId={}",
-                    success.getId(),
-                    exception
-            );
-
-            throw new AppException(
-                    ErrorCode.UNCATEGORIZED_EXCEPTION
-            );
-        }
+        return aiSuggestionResponseService
+                .getDetailResponse(
+                        suggestionId
+                );
     }
+
+    // =====================================================
+    // RETRIEVAL
+    // =====================================================
 
     private AiKnowledgeRetrievalRequest
     buildBodyAnalysisRetrievalRequest(
-            AiInputSnapshot snapshot,
-            AiBodyAnalysisRequest request
+            AiInputSnapshot snapshot
     ) {
+        if (
+                snapshot == null ||
+                        snapshot.getRequest() == null
+        ) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        String goal =
+                resolveGoalFromSnapshot(
+                        snapshot
+                );
+
         return AiKnowledgeRetrievalRequest
                 .builder()
                 .query(
                         """
-                        Phân tích chỉ số cơ thể và đưa ra
-                        khuyến nghị tập luyện, dinh dưỡng,
-                        phục hồi và an toàn phù hợp.
+                        Phân tích chỉ số cơ thể hiện tại
+                        và đưa ra khuyến nghị tập luyện,
+                        dinh dưỡng, phục hồi và an toàn.
 
                         Fitness goal: %s
                         User note: %s
@@ -272,29 +276,34 @@ public class AiBodyAnalysisOrchestratorServiceImpl
                         Input snapshot:
                         %s
                         """.formatted(
-                                resolveGoalFromSnapshot(
-                                        snapshot
-                                ),
+                                goal,
                                 safe(
-                                        request.getUserNote()
+                                        snapshot
+                                                .getRequest()
+                                                .getUserNote()
                                 ),
-                                toJson(snapshot)
+                                toJson(
+                                        snapshot
+                                )
                         ).trim()
                 )
                 /*
-                 * Body Analysis cần nhiều nhóm knowledge:
-                 * BODY_ANALYSIS, SAFETY, NUTRITION, WORKOUT.
+                 * Body analysis có thể sử dụng knowledge
+                 * từ nhiều category.
                  */
-                .category(null)
-                .goal(
-                        resolveGoalFromSnapshot(
-                                snapshot
-                        )
+                .category(
+                        null
                 )
-                .experienceLevel(null)
+                .goal(
+                        goal
+                )
+                .experienceLevel(
+                        null
+                )
                 .language(
                         resolveLanguage(
-                                request
+                                snapshot
+                                        .getRequest()
                                         .getPreferredLanguage()
                         )
                 )
@@ -307,6 +316,10 @@ public class AiBodyAnalysisOrchestratorServiceImpl
                 .build();
     }
 
+    // =====================================================
+    // PENDING
+    // =====================================================
+
     private AiSuggestion buildPendingSuggestion(
             Member member,
             BodyMetric metric,
@@ -317,7 +330,6 @@ public class AiBodyAnalysisOrchestratorServiceImpl
         validatePendingInput(
                 member,
                 metric,
-                request,
                 snapshot,
                 promptResult
         );
@@ -331,37 +343,51 @@ public class AiBodyAnalysisOrchestratorServiceImpl
 
         return AiSuggestion
                 .builder()
-                .member(member)
-                .latestBodyMetric(metric)
+                .member(
+                        member
+                )
+                .latestBodyMetric(
+                        metric
+                )
                 .suggestionType(
-                        AiSuggestionType.BODY_ANALYSIS
+                        AiSuggestionType
+                                .BODY_ANALYSIS
                 )
                 .goal(
-                        resolveGoal(member)
+                        resolveGoalFromSnapshot(
+                                snapshot
+                        )
                 )
                 .userNote(
                         normalizeText(
-                                request.getUserNote()
+                                request
+                                        .getUserNote()
                         )
                 )
                 .preferredLanguage(
                         resolveLanguage(
-                                request
+                                snapshot
+                                        .getRequest()
                                         .getPreferredLanguage()
                         )
                 )
                 .inputSnapshot(
-                        toJson(snapshot)
+                        toJson(
+                                snapshot
+                        )
                 )
                 .contextSnapshot(
-                        toJson(context)
+                        toJson(
+                                context
+                        )
                 )
                 .promptVersion(
                         promptResult
                                 .getVersionCode()
                 )
                 .status(
-                        AiSuggestionStatus.PENDING
+                        AiSuggestionStatus
+                                .PENDING
                 )
                 .warningMessage(
                         mergeWarnings(
@@ -373,11 +399,59 @@ public class AiBodyAnalysisOrchestratorServiceImpl
                                 )
                         )
                 )
-                .createdBy(user)
-                .updatedBy(user)
-                .deleted(false)
+                .createdBy(
+                        user
+                )
+                .updatedBy(
+                        user
+                )
+                .deleted(
+                        false
+                )
                 .build();
     }
+
+    // =====================================================
+    // GOAL
+    // =====================================================
+
+    private String resolveGoalFromSnapshot(
+            AiInputSnapshot snapshot
+    ) {
+        /*
+         * FIX QUAN TRỌNG:
+         *
+         * Goal phải đọc từ request snapshot.
+         *
+         * SnapshotService đã resolve:
+         * member goal
+         * hoặc fallback IMPROVE_HEALTH.
+         *
+         * Không đọc snapshot.member.fitnessGoal nữa,
+         * vì field đó phản ánh dữ liệu member gốc và
+         * hoàn toàn có thể null.
+         */
+        if (
+                snapshot != null &&
+                        snapshot.getRequest() != null &&
+                        snapshot
+                                .getRequest()
+                                .getGoal() != null
+        ) {
+            return snapshot
+                    .getRequest()
+                    .getGoal()
+                    .name();
+        }
+
+        return FitnessGoal
+                .IMPROVE_HEALTH
+                .name();
+    }
+
+    // =====================================================
+    // VALIDATION
+    // =====================================================
 
     private void validateRequest(
             AiBodyAnalysisRequest request
@@ -395,13 +469,18 @@ public class AiBodyAnalysisOrchestratorServiceImpl
         if (
                 promptResult == null ||
                         !hasText(
-                                promptResult.getPrompt()
+                                promptResult
+                                        .getPrompt()
                         ) ||
-                        promptResult.getVersion() == null ||
+                        promptResult.getVersion()
+                                == null ||
                         !hasText(
-                                promptResult.getVersionCode()
+                                promptResult
+                                        .getVersionCode()
                         ) ||
-                        promptResult.getContextSnapshot() == null
+                        promptResult
+                                .getContextSnapshot()
+                                == null
         ) {
             throw new AppException(
                     ErrorCode.INVALID_REQUEST
@@ -412,7 +491,6 @@ public class AiBodyAnalysisOrchestratorServiceImpl
     private void validatePendingInput(
             Member member,
             BodyMetric metric,
-            AiBodyAnalysisRequest request,
             AiInputSnapshot snapshot,
             AiPromptResult promptResult
     ) {
@@ -420,10 +498,14 @@ public class AiBodyAnalysisOrchestratorServiceImpl
                 member == null ||
                         member.getUser() == null ||
                         metric == null ||
-                        request == null ||
                         snapshot == null ||
+                        snapshot.getRequest() == null ||
+                        snapshot.getRequest()
+                                .getGoal() == null ||
                         promptResult == null ||
-                        promptResult.getContextSnapshot() == null
+                        promptResult
+                                .getContextSnapshot()
+                                == null
         ) {
             throw new AppException(
                     ErrorCode.INVALID_REQUEST
@@ -431,62 +513,24 @@ public class AiBodyAnalysisOrchestratorServiceImpl
         }
     }
 
-    private String resolveGoalFromSnapshot(
-            AiInputSnapshot snapshot
-    ) {
-        if (
-                snapshot == null ||
-                        snapshot.getMember() == null ||
-                        snapshot
-                                .getMember()
-                                .getFitnessGoal() == null
-        ) {
-            return null;
-        }
-
-        return snapshot
-                .getMember()
-                .getFitnessGoal()
-                .toString()
-                .trim()
-                .toUpperCase(
-                        Locale.ROOT
-                );
-    }
-
-    private String resolveGoal(
-            Member member
-    ) {
-        if (
-                member == null ||
-                        member.getFitnessGoal() == null
-        ) {
-            return FitnessGoal
-                    .IMPROVE_HEALTH
-                    .name();
-        }
-
-        return member
-                .getFitnessGoal()
-                .name();
-    }
+    // =====================================================
+    // WARNINGS
+    // =====================================================
 
     private String buildInitialWarning(
             Member member
     ) {
         if (
-                member.getHealthNote() == null ||
-                        member
-                                .getHealthNote()
-                                .isBlank()
+                member == null ||
+                        !hasText(
+                                member.getHealthNote()
+                        )
         ) {
             return null;
         }
 
-        return """
-                Member có ghi chú sức khỏe, nên hỏi \
-                huấn luyện viên hoặc bác sĩ trước khi áp dụng.
-                """.trim();
+        return "Member có ghi chú sức khỏe, nên hỏi "
+                + "huấn luyện viên hoặc bác sĩ trước khi áp dụng.";
     }
 
     private String buildRetrievalWarning(
@@ -497,14 +541,21 @@ public class AiBodyAnalysisOrchestratorServiceImpl
         }
 
         if (context.isFallback()) {
+
             String reason =
                     normalizeText(
-                            context.getFallbackReason()
+                            context
+                                    .getFallbackReason()
                     );
 
-            return reason == null
-                    ? "Không truy xuất được kho kiến thức FitLife; phân tích dùng hướng dẫn an toàn tổng quát."
-                    : "Không truy xuất được kho kiến thức FitLife; phân tích dùng hướng dẫn an toàn tổng quát. Lý do: "
+            if (reason == null) {
+                return "Không truy xuất được kho kiến thức FitLife; "
+                        + "phân tích dùng hướng dẫn an toàn tổng quát.";
+            }
+
+            return "Không truy xuất được kho kiến thức FitLife; "
+                    + "phân tích dùng hướng dẫn an toàn tổng quát. "
+                    + "Lý do: "
                     + truncate(
                     reason,
                     150
@@ -512,11 +563,16 @@ public class AiBodyAnalysisOrchestratorServiceImpl
         }
 
         if (context.isEmpty()) {
-            return "Không tìm thấy kiến thức phù hợp; phân tích dùng hướng dẫn an toàn tổng quát.";
+            return "Không tìm thấy kiến thức phù hợp; "
+                    + "phân tích dùng hướng dẫn an toàn tổng quát.";
         }
 
         return null;
     }
+
+    // =====================================================
+    // FAILED
+    // =====================================================
 
     private void safeMarkFailed(
             Long suggestionId,
@@ -533,11 +589,13 @@ public class AiBodyAnalysisOrchestratorServiceImpl
                             errorCode,
                             "Không thể xử lý yêu cầu AI vào lúc này."
                     );
-        } catch (Exception persistenceException) {
+
+        } catch (Exception exception) {
+
             log.error(
                     "Cannot mark body-analysis suggestion as FAILED. suggestionId={}",
                     suggestionId,
-                    persistenceException
+                    exception
             );
         }
     }
@@ -557,6 +615,10 @@ public class AiBodyAnalysisOrchestratorServiceImpl
                 .name();
     }
 
+    // =====================================================
+    // UTILS
+    // =====================================================
+
     private String resolveLanguage(
             String language
     ) {
@@ -568,12 +630,15 @@ public class AiBodyAnalysisOrchestratorServiceImpl
         }
 
         String normalized =
-                language.trim()
+                language
+                        .trim()
                         .toLowerCase(
                                 Locale.ROOT
                         );
 
-        return "en".equals(normalized)
+        return "en".equals(
+                normalized
+        )
                 ? "en"
                 : "vi";
     }
@@ -588,15 +653,24 @@ public class AiBodyAnalysisOrchestratorServiceImpl
             return null;
         }
 
-        return warnings.stream()
-                .filter(this::hasText)
-                .map(String::trim)
+        return warnings
+                .stream()
+                .filter(
+                        this::hasText
+                )
+                .map(
+                        String::trim
+                )
                 .distinct()
                 .reduce(
                         (first, second) ->
-                                first + " " + second
+                                first
+                                        + " "
+                                        + second
                 )
-                .orElse(null);
+                .orElse(
+                        null
+                );
     }
 
     private String mergeWarnings(
@@ -604,10 +678,14 @@ public class AiBodyAnalysisOrchestratorServiceImpl
             String second
     ) {
         String normalizedFirst =
-                normalizeText(first);
+                normalizeText(
+                        first
+                );
 
         String normalizedSecond =
-                normalizeText(second);
+                normalizeText(
+                        second
+                );
 
         if (normalizedFirst == null) {
             return normalizedSecond;
@@ -618,9 +696,10 @@ public class AiBodyAnalysisOrchestratorServiceImpl
         }
 
         if (
-                normalizedFirst.equalsIgnoreCase(
-                        normalizedSecond
-                )
+                normalizedFirst
+                        .equalsIgnoreCase(
+                                normalizedSecond
+                        )
         ) {
             return normalizedFirst;
         }
@@ -657,11 +736,14 @@ public class AiBodyAnalysisOrchestratorServiceImpl
             int maxLength
     ) {
         String normalized =
-                normalizeText(value);
+                normalizeText(
+                        value
+                );
 
         if (
                 normalized == null ||
-                        normalized.length() <= maxLength
+                        normalized.length()
+                                <= maxLength
         ) {
             return normalized;
         }
@@ -677,7 +759,9 @@ public class AiBodyAnalysisOrchestratorServiceImpl
     ) {
         return value == null
                 ? ""
-                : value.toString().trim();
+                : value
+                .toString()
+                .trim();
     }
 
     private String toJson(
@@ -688,7 +772,19 @@ public class AiBodyAnalysisOrchestratorServiceImpl
                     .writeValueAsString(
                             value
                     );
+
         } catch (Exception exception) {
+
+            log.error(
+                    "Cannot serialize body-analysis AI data. type={}",
+                    value == null
+                            ? "null"
+                            : value
+                            .getClass()
+                            .getName(),
+                    exception
+            );
+
             throw new AppException(
                     ErrorCode.AI_RESPONSE_INVALID
             );

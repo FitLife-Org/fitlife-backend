@@ -3,7 +3,9 @@ package com.fitlife.ai.service.impl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fitlife.ai.dto.internal.AiProviderResult;
 import com.fitlife.ai.dto.response.AiGeneratedBodyAnalysisResponse;
+import com.fitlife.ai.dto.response.AiGeneratedNutritionPlanResponse;
 import com.fitlife.ai.dto.response.AiGeneratedPlanResponse;
+import com.fitlife.ai.dto.response.AiGeneratedWorkoutPlanResponse;
 import com.fitlife.ai.entity.AiSuggestion;
 import com.fitlife.ai.enums.AiProvider;
 import com.fitlife.ai.enums.AiSuggestionStatus;
@@ -34,12 +36,15 @@ import static org.mockito.Mockito.when;
 class AiSuggestionPersistenceServiceImplTest {
 
     @Mock
-    private AiSuggestionRepository aiSuggestionRepository;
+    private AiSuggestionRepository
+            aiSuggestionRepository;
 
     @Mock
-    private AiPlanParserService aiPlanParserService;
+    private AiPlanParserService
+            aiPlanParserService;
 
-    private AiSuggestionPersistenceServiceImpl persistenceService;
+    private AiSuggestionPersistenceServiceImpl
+            persistenceService;
 
     @BeforeEach
     void setUp() {
@@ -51,8 +56,12 @@ class AiSuggestionPersistenceServiceImplTest {
                 );
     }
 
+    // =====================================================
+    // CREATE PENDING
+    // =====================================================
+
     @Test
-    void createPending_shouldSaveAndFlush() {
+    void createPending_shouldSaveSuggestion() {
         AiSuggestion suggestion =
                 createPendingSuggestion(
                         null,
@@ -60,14 +69,20 @@ class AiSuggestionPersistenceServiceImplTest {
                         "FULL_PLAN_V2_RAG"
                 );
 
-        when(aiSuggestionRepository.saveAndFlush(
+        when(
+                aiSuggestionRepository
+                        .saveAndFlush(
+                                suggestion
+                        )
+        ).thenReturn(
                 suggestion
-        )).thenReturn(suggestion);
+        );
 
         AiSuggestion result =
-                persistenceService.createPending(
-                        suggestion
-                );
+                persistenceService
+                        .createPending(
+                                suggestion
+                        );
 
         assertEquals(
                 AiSuggestionStatus.PENDING,
@@ -84,23 +99,42 @@ class AiSuggestionPersistenceServiceImplTest {
                 result.getPromptVersion()
         );
 
-        verify(aiSuggestionRepository)
-                .saveAndFlush(suggestion);
+        assertNotNull(
+                result.getMember()
+        );
+
+        verify(
+                aiSuggestionRepository
+        ).saveAndFlush(
+                suggestion
+        );
     }
 
     @Test
     void createPending_shouldRejectNull() {
         assertThrows(
                 AppException.class,
-                () -> persistenceService.createPending(null)
+                () ->
+                        persistenceService
+                                .createPending(
+                                        null
+                                )
         );
 
-        verify(aiSuggestionRepository, never())
-                .saveAndFlush(any());
+        verify(
+                aiSuggestionRepository,
+                never()
+        ).saveAndFlush(
+                any()
+        );
     }
 
+    // =====================================================
+    // FULL PLAN SUCCESS
+    // =====================================================
+
     @Test
-    void markFullPlanSuccess_shouldPersistSuggestionAndItems() {
+    void markFullPlanSuccess_shouldSaveSuccessAndItems() {
         AiSuggestion suggestion =
                 createPendingSuggestion(
                         1L,
@@ -108,173 +142,258 @@ class AiSuggestionPersistenceServiceImplTest {
                         "FULL_PLAN_V2_RAG"
                 );
 
-        AiGeneratedPlanResponse plan =
+        AiGeneratedPlanResponse generated =
                 new AiGeneratedPlanResponse();
 
-        plan.setSummary("Kế hoạch phù hợp");
+        generated.setSummary(
+                "Kế hoạch tổng thể phù hợp"
+        );
 
         AiProviderResult providerResult =
-                AiProviderResult.builder()
-                        .provider(AiProvider.GEMINI)
-                        .modelName("gemini-test")
-                        .providerRequestId("request-1")
-                        .rawResponse("{}")
-                        .build();
+                createProviderResult(
+                        "request-full"
+                );
 
-        when(aiSuggestionRepository.findById(1L))
-                .thenReturn(Optional.of(suggestion));
-
-        when(aiSuggestionRepository.saveAndFlush(
-                any(AiSuggestion.class)
-        )).thenAnswer(invocation ->
-                invocation.getArgument(0)
+        mockSuggestionLookup(
+                1L,
+                suggestion
         );
 
         AiSuggestion result =
-                persistenceService.markFullPlanSuccess(
-                        1L,
-                        providerResult,
-                        plan,
-                        "Chỉ mang tính tham khảo"
-                );
+                persistenceService
+                        .markFullPlanSuccess(
+                                1L,
+                                providerResult,
+                                generated,
+                                "Chỉ mang tính tham khảo"
+                        );
 
-        assertEquals(
-                AiSuggestionStatus.SUCCESS,
-                result.getStatus()
-        );
-
-        assertEquals(
-                AiProvider.GEMINI,
-                result.getProvider()
-        );
-
-        assertEquals(
-                "gemini-test",
-                result.getModelName()
-        );
-
-        assertEquals(
-                "request-1",
-                result.getProviderRequestId()
-        );
-
-        assertEquals(
-                "Kế hoạch phù hợp",
-                result.getSummary()
-        );
-
-        assertEquals(
+        assertSuccessState(
+                result,
+                "Kế hoạch tổng thể phù hợp",
                 "Chỉ mang tính tham khảo",
-                result.getWarningMessage()
+                "request-full"
         );
 
-        assertNotNull(result.getCompletedAt());
+        verify(
+                aiPlanParserService
+        ).savePlanItems(
+                result,
+                generated
+        );
 
-        verify(aiPlanParserService)
-                .savePlanItems(
-                        result,
-                        plan
-                );
-
-        verify(aiSuggestionRepository)
-                .saveAndFlush(result);
+        verify(
+                aiSuggestionRepository
+        ).saveAndFlush(
+                result
+        );
     }
 
+    // =====================================================
+    // WORKOUT PLAN SUCCESS
+    // =====================================================
+
     @Test
-    void markBodyAnalysisSuccess_shouldPersistItems() {
+    void markWorkoutPlanSuccess_shouldSaveSuccessAndItems() {
         AiSuggestion suggestion =
                 createPendingSuggestion(
                         2L,
+                        AiSuggestionType.WORKOUT_PLAN,
+                        "WORKOUT_PLAN_V2_RAG"
+                );
+
+        AiGeneratedWorkoutPlanResponse generated =
+                new AiGeneratedWorkoutPlanResponse();
+
+        generated.setSummary(
+                "Kế hoạch tập luyện phù hợp"
+        );
+
+        AiProviderResult providerResult =
+                createProviderResult(
+                        "request-workout"
+                );
+
+        mockSuggestionLookup(
+                2L,
+                suggestion
+        );
+
+        AiSuggestion result =
+                persistenceService
+                        .markWorkoutPlanSuccess(
+                                2L,
+                                providerResult,
+                                generated,
+                                null
+                        );
+
+        assertSuccessState(
+                result,
+                "Kế hoạch tập luyện phù hợp",
+                null,
+                "request-workout"
+        );
+
+        verify(
+                aiPlanParserService
+        ).saveWorkoutPlanItems(
+                result,
+                generated
+        );
+
+        verify(
+                aiSuggestionRepository
+        ).saveAndFlush(
+                result
+        );
+    }
+
+    // =====================================================
+    // NUTRITION PLAN SUCCESS
+    // =====================================================
+
+    @Test
+    void markNutritionPlanSuccess_shouldSaveSuccessAndItems() {
+        AiSuggestion suggestion =
+                createPendingSuggestion(
+                        3L,
+                        AiSuggestionType.NUTRITION_PLAN,
+                        "NUTRITION_PLAN_V2_RAG"
+                );
+
+        AiGeneratedNutritionPlanResponse generated =
+                new AiGeneratedNutritionPlanResponse();
+
+        generated.setSummary(
+                "Kế hoạch dinh dưỡng phù hợp"
+        );
+
+        AiProviderResult providerResult =
+                createProviderResult(
+                        "request-nutrition"
+                );
+
+        mockSuggestionLookup(
+                3L,
+                suggestion
+        );
+
+        AiSuggestion result =
+                persistenceService
+                        .markNutritionPlanSuccess(
+                                3L,
+                                providerResult,
+                                generated,
+                                null
+                        );
+
+        assertSuccessState(
+                result,
+                "Kế hoạch dinh dưỡng phù hợp",
+                null,
+                "request-nutrition"
+        );
+
+        verify(
+                aiPlanParserService
+        ).saveNutritionPlanItems(
+                result,
+                generated
+        );
+
+        verify(
+                aiSuggestionRepository
+        ).saveAndFlush(
+                result
+        );
+    }
+
+    // =====================================================
+    // BODY ANALYSIS SUCCESS
+    // =====================================================
+
+    @Test
+    void markBodyAnalysisSuccess_shouldSaveSuccessAndItems() {
+        AiSuggestion suggestion =
+                createPendingSuggestion(
+                        4L,
                         AiSuggestionType.BODY_ANALYSIS,
                         "BODY_ANALYSIS_V2_RAG"
                 );
 
-        AiGeneratedBodyAnalysisResponse analysis =
+        AiGeneratedBodyAnalysisResponse generated =
                 new AiGeneratedBodyAnalysisResponse();
 
-        analysis.setSummary("Phân tích cơ thể");
+        generated.setSummary(
+                "Phân tích cơ thể hiện tại"
+        );
 
         AiProviderResult providerResult =
-                AiProviderResult.builder()
-                        .provider(AiProvider.GEMINI)
-                        .modelName("gemini-test")
-                        .providerRequestId("request-2")
-                        .rawResponse("{}")
-                        .build();
+                createProviderResult(
+                        "request-body-analysis"
+                );
 
-        when(aiSuggestionRepository.findById(2L))
-                .thenReturn(Optional.of(suggestion));
-
-        when(aiSuggestionRepository.saveAndFlush(
-                any(AiSuggestion.class)
-        )).thenAnswer(invocation ->
-                invocation.getArgument(0)
+        mockSuggestionLookup(
+                4L,
+                suggestion
         );
 
         AiSuggestion result =
-                persistenceService.markBodyAnalysisSuccess(
-                        2L,
-                        providerResult,
-                        analysis,
-                        null
-                );
+                persistenceService
+                        .markBodyAnalysisSuccess(
+                                4L,
+                                providerResult,
+                                generated,
+                                null
+                        );
 
-        assertEquals(
-                AiSuggestionStatus.SUCCESS,
-                result.getStatus()
+        assertSuccessState(
+                result,
+                "Phân tích cơ thể hiện tại",
+                null,
+                "request-body-analysis"
         );
 
-        assertEquals(
-                AiProvider.GEMINI,
-                result.getProvider()
+        verify(
+                aiPlanParserService
+        ).saveBodyAnalysisItems(
+                result,
+                generated
         );
 
-        assertEquals(
-                "gemini-test",
-                result.getModelName()
+        verify(
+                aiSuggestionRepository
+        ).saveAndFlush(
+                result
         );
-
-        assertEquals(
-                "Phân tích cơ thể",
-                result.getSummary()
-        );
-
-        assertNotNull(result.getCompletedAt());
-
-        verify(aiPlanParserService)
-                .saveBodyAnalysisItems(
-                        result,
-                        analysis
-                );
-
-        verify(aiSuggestionRepository)
-                .saveAndFlush(result);
     }
+
+    // =====================================================
+    // FAILED
+    // =====================================================
 
     @Test
     void markFailed_shouldPersistFailedState() {
         AiSuggestion suggestion =
                 createPendingSuggestion(
-                        3L,
+                        5L,
                         AiSuggestionType.FULL_PLAN,
                         "FULL_PLAN_V2_RAG"
                 );
 
-        when(aiSuggestionRepository.findById(3L))
-                .thenReturn(Optional.of(suggestion));
-
-        when(aiSuggestionRepository.saveAndFlush(
-                any(AiSuggestion.class)
-        )).thenAnswer(invocation ->
-                invocation.getArgument(0)
+        mockSuggestionLookup(
+                5L,
+                suggestion
         );
 
         AiSuggestion result =
-                persistenceService.markFailed(
-                        3L,
-                        "AI_PROVIDER_ERROR",
-                        "Provider unavailable"
-                );
+                persistenceService
+                        .markFailed(
+                                5L,
+                                "AI_PROVIDER_ERROR",
+                                "Provider unavailable"
+                        );
 
         assertEquals(
                 AiSuggestionStatus.FAILED,
@@ -291,28 +410,140 @@ class AiSuggestionPersistenceServiceImplTest {
                 result.getErrorMessage()
         );
 
-        assertNotNull(result.getCompletedAt());
+        assertNotNull(
+                result.getCompletedAt()
+        );
 
-        verify(aiSuggestionRepository)
-                .saveAndFlush(result);
+        verify(
+                aiSuggestionRepository
+        ).saveAndFlush(
+                result
+        );
     }
 
     @Test
     void markFailed_shouldRejectMissingSuggestion() {
-        when(aiSuggestionRepository.findById(99L))
-                .thenReturn(Optional.empty());
+        when(
+                aiSuggestionRepository
+                        .findById(
+                                99L
+                        )
+        ).thenReturn(
+                Optional.empty()
+        );
 
         assertThrows(
                 AppException.class,
-                () -> persistenceService.markFailed(
-                        99L,
-                        "AI_PROVIDER_ERROR",
-                        "Error"
+                () ->
+                        persistenceService
+                                .markFailed(
+                                        99L,
+                                        "AI_PROVIDER_ERROR",
+                                        "Error"
+                                )
+        );
+
+        verify(
+                aiSuggestionRepository,
+                never()
+        ).saveAndFlush(
+                any()
+        );
+    }
+
+    // =====================================================
+    // HELPERS
+    // =====================================================
+
+    private void mockSuggestionLookup(
+            Long id,
+            AiSuggestion suggestion
+    ) {
+        when(
+                aiSuggestionRepository
+                        .findById(id)
+        ).thenReturn(
+                Optional.of(
+                        suggestion
                 )
         );
 
-        verify(aiSuggestionRepository, never())
-                .saveAndFlush(any());
+        when(
+                aiSuggestionRepository
+                        .saveAndFlush(
+                                any(
+                                        AiSuggestion.class
+                                )
+                        )
+        ).thenAnswer(
+                invocation ->
+                        invocation.getArgument(0)
+        );
+    }
+
+    private AiProviderResult createProviderResult(
+            String requestId
+    ) {
+        return AiProviderResult
+                .builder()
+                .provider(
+                        AiProvider.GEMINI
+                )
+                .modelName(
+                        "gemini-test"
+                )
+                .providerRequestId(
+                        requestId
+                )
+                .rawResponse(
+                        "{}"
+                )
+                .build();
+    }
+
+    private void assertSuccessState(
+            AiSuggestion result,
+            String expectedSummary,
+            String expectedWarning,
+            String expectedRequestId
+    ) {
+        assertEquals(
+                AiSuggestionStatus.SUCCESS,
+                result.getStatus()
+        );
+
+        assertEquals(
+                AiProvider.GEMINI,
+                result.getProvider()
+        );
+
+        assertEquals(
+                "gemini-test",
+                result.getModelName()
+        );
+
+        assertEquals(
+                expectedRequestId,
+                result.getProviderRequestId()
+        );
+
+        assertEquals(
+                expectedSummary,
+                result.getSummary()
+        );
+
+        assertEquals(
+                expectedWarning,
+                result.getWarningMessage()
+        );
+
+        assertNotNull(
+                result.getAiResponse()
+        );
+
+        assertNotNull(
+                result.getCompletedAt()
+        );
     }
 
     private AiSuggestion createPendingSuggestion(
@@ -320,29 +551,79 @@ class AiSuggestionPersistenceServiceImplTest {
             AiSuggestionType suggestionType,
             String promptVersion
     ) {
-        User user = new User();
-        user.setId(100L);
-        user.setFullName("Member Test");
+        User user =
+                new User();
 
-        Member member = new Member();
-        member.setId(10L);
-        member.setUser(user);
+        user.setId(
+                100L
+        );
+
+        user.setFullName(
+                "Member Test"
+        );
+
+        Member member =
+                new Member();
+
+        member.setId(
+                10L
+        );
+
+        member.setUser(
+                user
+        );
+
         member.setFitnessGoal(
                 FitnessGoal.GAIN_MUSCLE
         );
 
-        return AiSuggestion.builder()
+        return AiSuggestion
+                .builder()
                 .id(id)
                 .member(member)
-                .suggestionType(suggestionType)
-                .goal(FitnessGoal.GAIN_MUSCLE.name())
-                .preferredLanguage("vi")
-                .inputSnapshot("{}")
-                .promptVersion(promptVersion)
-                .status(AiSuggestionStatus.PENDING)
-                .createdBy(user)
-                .updatedBy(user)
-                .deleted(false)
+                .suggestionType(
+                        suggestionType
+                )
+                /*
+                 * Entity hiện tại:
+                 * goal nullable = false.
+                 */
+                .goal(
+                        FitnessGoal
+                                .GAIN_MUSCLE
+                                .name()
+                )
+                .preferredLanguage(
+                        "vi"
+                )
+                .inputSnapshot(
+                        "{}"
+                )
+                .contextSnapshot(
+                        """
+                        {
+                          "collection": "fitlife_knowledge",
+                          "topK": 5,
+                          "fallback": false,
+                          "chunks": []
+                        }
+                        """
+                )
+                .promptVersion(
+                        promptVersion
+                )
+                .status(
+                        AiSuggestionStatus.PENDING
+                )
+                .createdBy(
+                        user
+                )
+                .updatedBy(
+                        user
+                )
+                .deleted(
+                        false
+                )
                 .build();
     }
 }

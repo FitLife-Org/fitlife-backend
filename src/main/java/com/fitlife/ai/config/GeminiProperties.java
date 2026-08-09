@@ -8,7 +8,9 @@ import java.time.Duration;
 
 @Getter
 @Setter
-@ConfigurationProperties(prefix = "fitlife.ai.gemini")
+@ConfigurationProperties(
+        prefix = "fitlife.ai.gemini"
+)
 public class GeminiProperties {
 
     private Boolean enabled = false;
