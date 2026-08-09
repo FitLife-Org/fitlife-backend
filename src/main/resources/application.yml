@@ -19,9 +19,9 @@ spring:
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: ${DB_URL:jdbc:mysql://localhost:3306/fitlife_db?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:012140268Pp}
 
     hikari:
       pool-name: FitLifeHikariPool
@@ -146,9 +146,9 @@ fitlife:
       continue-on-error: ${AI_KNOWLEDGE_CONTINUE_ON_ERROR:true}
 
 cloudinary:
-  cloud-name: ${CLOUDINARY_CLOUD_NAME:}
-  api-key: ${CLOUDINARY_API_KEY:}
-  api-secret: ${CLOUDINARY_API_SECRET:}
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:dummy_cloud_name}
+  api-key: ${CLOUDINARY_API_KEY:dummy_api_key}
+  api-secret: ${CLOUDINARY_API_SECRET:dummy_api_secret}
 
 google:
   enabled: ${GOOGLE_ENABLED:false}
@@ -170,7 +170,7 @@ vnpay:
 application:
   security:
     jwt:
-      secret: ${JWT_SECRET}
+      secret: ${JWT_SECRET:VGhpc0lzQVNlY3JldEtleUZvckp3dFdoaWNoU2hvdWxkQmVBdExlYXN0MzJCeXRlc0xvbmch}
       expiration-ms: ${JWT_EXPIRATION_MS:1800000}
 
 logging:

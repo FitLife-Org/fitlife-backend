@@ -19,7 +19,7 @@ public class VnpayController {
 
     private final VnpayService vnpayService;
 
-    @PostMapping("/payments/vnpay/create-url")
+    @PostMapping("/payments/vnpay/create")
     public ApiResponse<VnpayCreateUrlResponse> createVnpayPaymentUrl(
             @Valid @RequestBody VnpayCreateUrlRequest request,
             HttpServletRequest servletRequest

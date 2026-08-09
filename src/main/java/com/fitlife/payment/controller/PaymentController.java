@@ -27,7 +27,7 @@ public class PaymentController {
                 .build();
     }
 
-    @GetMapping("/my")
+    @GetMapping("/me")
     public ApiResponse<PageResponse<PaymentResponse>> getMyPayments(Pageable pageable) {
         return ApiResponse.<PageResponse<PaymentResponse>>builder()
                 .data(paymentService.getMyPayments(pageable))

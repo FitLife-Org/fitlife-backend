@@ -2,6 +2,7 @@ package com.fitlife.workout.controller;
 
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
+import com.fitlife.common.response.ApiResponse;
 import com.fitlife.workout.dto.request.WorkoutPlanCreateRequest;
 import com.fitlife.workout.dto.request.WorkoutPlanDayRequest;
 import com.fitlife.workout.dto.request.WorkoutPlanUpdateRequest;
@@ -27,7 +28,7 @@ public class WorkoutPlanController {
 
     @PostMapping("/workout-plans")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<WorkoutPlanResponse> createWorkoutPlan(
+    public ResponseEntity<ApiResponse<WorkoutPlanResponse>> createWorkoutPlan(
             @Valid @RequestBody WorkoutPlanCreateRequest request,
             Authentication authentication
     ) {
@@ -35,136 +36,136 @@ public class WorkoutPlanController {
                 request,
                 getPrincipal(authentication)
         );
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Success", response));
     }
 
     @GetMapping("/workout-plans/me")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<List<WorkoutPlanResponse>> getMyWorkoutPlans(
+    public ResponseEntity<ApiResponse<List<WorkoutPlanResponse>>> getMyWorkoutPlans(
             Authentication authentication
     ) {
-        return ResponseEntity.ok(
+        return ResponseEntity.ok(ApiResponse.success("Success", 
                 workoutPlanService.getMyWorkoutPlans(
                         getPrincipal(authentication)
                 )
-        );
+        ));
     }
 
     @GetMapping("/workout-plans/me/active")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<WorkoutPlanDetailResponse> getActiveWorkoutPlan(
+    public ResponseEntity<ApiResponse<WorkoutPlanDetailResponse>> getActiveWorkoutPlan(
             Authentication authentication
     ) {
-        return ResponseEntity.ok(
+        return ResponseEntity.ok(ApiResponse.success("Success", 
                 workoutPlanService.getActiveWorkoutPlan(
                         getPrincipal(authentication)
                 )
-        );
+        ));
     }
 
     @GetMapping("/workout-plans/me/today")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<WorkoutPlanDayResponse> getTodayWorkoutDay(
+    public ResponseEntity<ApiResponse<WorkoutPlanDayResponse>> getTodayWorkoutDay(
             Authentication authentication
     ) {
-        return ResponseEntity.ok(
+        return ResponseEntity.ok(ApiResponse.success("Success", 
                 workoutPlanService.getTodayWorkoutDay(
                         getPrincipal(authentication)
                 )
-        );
+        ));
     }
 
     @GetMapping("/workout-plans/{id}")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<WorkoutPlanDetailResponse> getWorkoutPlanById(
+    public ResponseEntity<ApiResponse<WorkoutPlanDetailResponse>> getWorkoutPlanById(
             @PathVariable Long id,
             Authentication authentication
     ) {
-        return ResponseEntity.ok(
+        return ResponseEntity.ok(ApiResponse.success("Success", 
                 workoutPlanService.getWorkoutPlanById(
                         id,
                         getPrincipal(authentication)
                 )
-        );
+        ));
     }
 
     @PatchMapping("/workout-plans/{id}")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<WorkoutPlanResponse> patchWorkoutPlan(
+    public ResponseEntity<ApiResponse<WorkoutPlanResponse>> patchWorkoutPlan(
             @PathVariable Long id,
             @Valid @RequestBody WorkoutPlanUpdateRequest request,
             Authentication authentication
     ) {
-        return ResponseEntity.ok(
+        return ResponseEntity.ok(ApiResponse.success("Success", 
                 workoutPlanService.patchWorkoutPlan(
                         id,
                         request,
                         getPrincipal(authentication)
                 )
-        );
+        ));
     }
 
     @PutMapping("/workout-plans/{id}/structure")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<WorkoutPlanDetailResponse> updateWorkoutPlanStructure(
+    public ResponseEntity<ApiResponse<WorkoutPlanDetailResponse>> updateWorkoutPlanStructure(
             @PathVariable Long id,
             @Valid @RequestBody List<WorkoutPlanDayRequest> daysRequest,
             Authentication authentication
     ) {
-        return ResponseEntity.ok(
+        return ResponseEntity.ok(ApiResponse.success("Success", 
                 workoutPlanService.updateWorkoutPlanStructure(
                         id,
                         daysRequest,
                         getPrincipal(authentication)
                 )
-        );
+        ));
     }
 
     @PostMapping("/workout-plans/{id}/activate")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<WorkoutPlanResponse> activateWorkoutPlan(
+    public ResponseEntity<ApiResponse<WorkoutPlanResponse>> activateWorkoutPlan(
             @PathVariable Long id,
             Authentication authentication
     ) {
-        return ResponseEntity.ok(
+        return ResponseEntity.ok(ApiResponse.success("Success", 
                 workoutPlanService.activateWorkoutPlan(
                         id,
                         getPrincipal(authentication)
                 )
-        );
+        ));
     }
 
     @PostMapping("/workout-plans/{id}/complete")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<WorkoutPlanResponse> completeWorkoutPlan(
+    public ResponseEntity<ApiResponse<WorkoutPlanResponse>> completeWorkoutPlan(
             @PathVariable Long id,
             Authentication authentication
     ) {
-        return ResponseEntity.ok(
+        return ResponseEntity.ok(ApiResponse.success("Success", 
                 workoutPlanService.completeWorkoutPlan(
                         id,
                         getPrincipal(authentication)
                 )
-        );
+        ));
     }
 
     @PostMapping("/workout-plans/{id}/archive")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<WorkoutPlanResponse> archiveWorkoutPlan(
+    public ResponseEntity<ApiResponse<WorkoutPlanResponse>> archiveWorkoutPlan(
             @PathVariable Long id,
             Authentication authentication
     ) {
-        return ResponseEntity.ok(
+        return ResponseEntity.ok(ApiResponse.success("Success", 
                 workoutPlanService.archiveWorkoutPlan(
                         id,
                         getPrincipal(authentication)
                 )
-        );
+        ));
     }
 
     @PostMapping("/workout-plans/{id}/clone")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<WorkoutPlanResponse> cloneWorkoutPlan(
+    public ResponseEntity<ApiResponse<WorkoutPlanResponse>> cloneWorkoutPlan(
             @PathVariable Long id,
             Authentication authentication
     ) {
@@ -172,12 +173,12 @@ public class WorkoutPlanController {
                 id,
                 getPrincipal(authentication)
         );
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Success", response));
     }
 
     @PostMapping("/trainer/members/{memberId}/workout-plans")
     @PreAuthorize("hasRole('TRAINER')")
-    public ResponseEntity<WorkoutPlanResponse> createWorkoutPlanForMember(
+    public ResponseEntity<ApiResponse<WorkoutPlanResponse>> createWorkoutPlanForMember(
             @PathVariable Long memberId,
             @Valid @RequestBody WorkoutPlanCreateRequest request,
             Authentication authentication
@@ -187,67 +188,67 @@ public class WorkoutPlanController {
                 request,
                 getPrincipal(authentication)
         );
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Success", response));
     }
 
     @GetMapping("/trainer/members/{memberId}/workout-plans")
     @PreAuthorize("hasRole('TRAINER')")
-    public ResponseEntity<List<WorkoutPlanResponse>> getMemberWorkoutPlansForTrainer(
+    public ResponseEntity<ApiResponse<List<WorkoutPlanResponse>>> getMemberWorkoutPlansForTrainer(
             @PathVariable Long memberId,
             Authentication authentication
     ) {
-        return ResponseEntity.ok(
+        return ResponseEntity.ok(ApiResponse.success("Success", 
                 workoutPlanService.getMemberWorkoutPlansForTrainer(
                         memberId,
                         getPrincipal(authentication)
                 )
-        );
+        ));
     }
 
     @PatchMapping("/trainer/members/{memberId}/workout-plans/{id}")
     @PreAuthorize("hasRole('TRAINER')")
-    public ResponseEntity<WorkoutPlanResponse> patchWorkoutPlanForMember(
+    public ResponseEntity<ApiResponse<WorkoutPlanResponse>> patchWorkoutPlanForMember(
             @PathVariable Long memberId,
             @PathVariable Long id,
             @Valid @RequestBody WorkoutPlanUpdateRequest request,
             Authentication authentication
     ) {
-        return ResponseEntity.ok(
+        return ResponseEntity.ok(ApiResponse.success("Success", 
                 workoutPlanService.patchWorkoutPlanForMember(
                         memberId,
                         id,
                         request,
                         getPrincipal(authentication)
                 )
-        );
+        ));
     }
 
     @GetMapping("/admin/workout-plans")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<WorkoutPlanResponse>> getAllWorkoutPlansForAdmin() {
-        return ResponseEntity.ok(
+    public ResponseEntity<ApiResponse<List<WorkoutPlanResponse>>> getAllWorkoutPlansForAdmin() {
+        return ResponseEntity.ok(ApiResponse.success("Success", 
                 workoutPlanService.getAllWorkoutPlansForAdmin()
-        );
+        ));
     }
 
     @PutMapping("/admin/workout-plans/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<WorkoutPlanResponse> updateWorkoutPlanForAdmin(
+    public ResponseEntity<ApiResponse<WorkoutPlanResponse>> updateWorkoutPlanForAdmin(
             @PathVariable Long id,
             @Valid @RequestBody WorkoutPlanUpdateRequest request
     ) {
-        return ResponseEntity.ok(
+        return ResponseEntity.ok(ApiResponse.success("Success", 
                 workoutPlanService.updateWorkoutPlan(id, request)
-        );
+        ));
     }
 
     @DeleteMapping("/admin/workout-plans/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteWorkoutPlanForAdmin(
+    public ResponseEntity<ApiResponse<Void>> deleteWorkoutPlanForAdmin(
             @PathVariable Long id
     ) {
         workoutPlanService.deleteWorkoutPlan(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiResponse.success("Success", null));
     }
 
     private String getPrincipal(Authentication authentication) {
