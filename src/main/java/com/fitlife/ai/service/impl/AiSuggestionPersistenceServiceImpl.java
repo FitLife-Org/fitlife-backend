@@ -30,12 +30,8 @@ public class AiSuggestionPersistenceServiceImpl
     private static final String DEFAULT_FAILURE_MESSAGE =
             "Không thể xử lý yêu cầu AI vào lúc này.";
 
-    private final AiSuggestionRepository
-            aiSuggestionRepository;
-
-    private final AiPlanParserService
-            aiPlanParserService;
-
+    private final AiSuggestionRepository aiSuggestionRepository;
+    private final AiPlanParserService aiPlanParserService;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -45,29 +41,14 @@ public class AiSuggestionPersistenceServiceImpl
     public AiSuggestion createPending(
             AiSuggestion suggestion
     ) {
-        if (suggestion == null) {
-            throw new AppException(
-                    ErrorCode.INVALID_REQUEST
-            );
-        }
-
-        if (suggestion.getStatus()
-                != AiSuggestionStatus.PENDING) {
-            throw new AppException(
-                    ErrorCode.INVALID_REQUEST
-            );
-        }
-
-        if (suggestion.getMember() == null
-                || suggestion.getSuggestionType() == null) {
-            throw new AppException(
-                    ErrorCode.INVALID_REQUEST
-            );
-        }
-
-        return aiSuggestionRepository.saveAndFlush(
+        validatePendingSuggestion(
                 suggestion
         );
+
+        return aiSuggestionRepository
+                .saveAndFlush(
+                        suggestion
+                );
     }
 
     @Override
@@ -86,8 +67,13 @@ public class AiSuggestionPersistenceServiceImpl
                         AiSuggestionType.FULL_PLAN
                 );
 
-        validateProviderResult(providerResult);
-        validateGeneratedResponse(generatedPlan);
+        validateProviderResult(
+                providerResult
+        );
+
+        validateGeneratedResponse(
+                generatedPlan
+        );
 
         applySuccessData(
                 suggestion,
@@ -97,21 +83,22 @@ public class AiSuggestionPersistenceServiceImpl
                 warningMessage
         );
 
-        /*
-         * saveAndFlush vẫn nằm trong cùng REQUIRES_NEW transaction.
-         * Nếu lưu plan items lỗi, toàn bộ transaction sẽ rollback.
-         */
-        AiSuggestion savedSuggestion =
-                aiSuggestionRepository.saveAndFlush(
-                        suggestion
-                );
+        AiSuggestion saved =
+                aiSuggestionRepository
+                        .saveAndFlush(
+                                suggestion
+                        );
 
+        /*
+         * Cùng transaction REQUIRES_NEW.
+         * Nếu savePlanItems lỗi thì SUCCESS cũng rollback.
+         */
         aiPlanParserService.savePlanItems(
-                savedSuggestion,
+                saved,
                 generatedPlan
         );
 
-        return savedSuggestion;
+        return saved;
     }
 
     @Override
@@ -130,8 +117,13 @@ public class AiSuggestionPersistenceServiceImpl
                         AiSuggestionType.WORKOUT_PLAN
                 );
 
-        validateProviderResult(providerResult);
-        validateGeneratedResponse(generated);
+        validateProviderResult(
+                providerResult
+        );
+
+        validateGeneratedResponse(
+                generated
+        );
 
         applySuccessData(
                 suggestion,
@@ -141,17 +133,19 @@ public class AiSuggestionPersistenceServiceImpl
                 warningMessage
         );
 
-        AiSuggestion savedSuggestion =
-                aiSuggestionRepository.saveAndFlush(
-                        suggestion
+        AiSuggestion saved =
+                aiSuggestionRepository
+                        .saveAndFlush(
+                                suggestion
+                        );
+
+        aiPlanParserService
+                .saveWorkoutPlanItems(
+                        saved,
+                        generated
                 );
 
-        aiPlanParserService.saveWorkoutPlanItems(
-                savedSuggestion,
-                generated
-        );
-
-        return savedSuggestion;
+        return saved;
     }
 
     @Override
@@ -170,8 +164,13 @@ public class AiSuggestionPersistenceServiceImpl
                         AiSuggestionType.NUTRITION_PLAN
                 );
 
-        validateProviderResult(providerResult);
-        validateGeneratedResponse(generated);
+        validateProviderResult(
+                providerResult
+        );
+
+        validateGeneratedResponse(
+                generated
+        );
 
         applySuccessData(
                 suggestion,
@@ -181,17 +180,19 @@ public class AiSuggestionPersistenceServiceImpl
                 warningMessage
         );
 
-        AiSuggestion savedSuggestion =
-                aiSuggestionRepository.saveAndFlush(
-                        suggestion
+        AiSuggestion saved =
+                aiSuggestionRepository
+                        .saveAndFlush(
+                                suggestion
+                        );
+
+        aiPlanParserService
+                .saveNutritionPlanItems(
+                        saved,
+                        generated
                 );
 
-        aiPlanParserService.saveNutritionPlanItems(
-                savedSuggestion,
-                generated
-        );
-
-        return savedSuggestion;
+        return saved;
     }
 
     @Override
@@ -210,8 +211,13 @@ public class AiSuggestionPersistenceServiceImpl
                         AiSuggestionType.BODY_ANALYSIS
                 );
 
-        validateProviderResult(providerResult);
-        validateGeneratedResponse(analysis);
+        validateProviderResult(
+                providerResult
+        );
+
+        validateGeneratedResponse(
+                analysis
+        );
 
         applySuccessData(
                 suggestion,
@@ -221,17 +227,19 @@ public class AiSuggestionPersistenceServiceImpl
                 warningMessage
         );
 
-        AiSuggestion savedSuggestion =
-                aiSuggestionRepository.saveAndFlush(
-                        suggestion
+        AiSuggestion saved =
+                aiSuggestionRepository
+                        .saveAndFlush(
+                                suggestion
+                        );
+
+        aiPlanParserService
+                .saveBodyAnalysisItems(
+                        saved,
+                        analysis
                 );
 
-        aiPlanParserService.saveBodyAnalysisItems(
-                savedSuggestion,
-                analysis
-        );
-
-        return savedSuggestion;
+        return saved;
     }
 
     @Override
@@ -249,26 +257,32 @@ public class AiSuggestionPersistenceServiceImpl
                 );
 
         /*
-         * Không cho lỗi muộn ghi đè kết quả đã thành công.
+         * Không cho lỗi đến muộn ghi đè
+         * suggestion đã thành công hoặc đã apply.
          */
-        if (suggestion.getStatus()
-                == AiSuggestionStatus.SUCCESS
-                || suggestion.getStatus()
-                == AiSuggestionStatus.APPLIED) {
+        if (
+                suggestion.getStatus()
+                        == AiSuggestionStatus.SUCCESS ||
+                        suggestion.getStatus()
+                                == AiSuggestionStatus.APPLIED
+        ) {
             return suggestion;
         }
 
         /*
-         * FAILED gọi lặp lại vẫn giữ nguyên bản ghi,
-         * tránh cập nhật completedAt/error nhiều lần.
+         * FAILED gọi lặp lại là idempotent.
          */
-        if (suggestion.getStatus()
-                == AiSuggestionStatus.FAILED) {
+        if (
+                suggestion.getStatus()
+                        == AiSuggestionStatus.FAILED
+        ) {
             return suggestion;
         }
 
-        if (suggestion.getStatus()
-                != AiSuggestionStatus.PENDING) {
+        if (
+                suggestion.getStatus()
+                        != AiSuggestionStatus.PENDING
+        ) {
             throw new AppException(
                     ErrorCode.INVALID_REQUEST
             );
@@ -285,10 +299,15 @@ public class AiSuggestionPersistenceServiceImpl
                 )
         );
 
-        return aiSuggestionRepository.saveAndFlush(
-                suggestion
-        );
+        return aiSuggestionRepository
+                .saveAndFlush(
+                        suggestion
+                );
     }
+
+    // =====================================================
+    // LOAD
+    // =====================================================
 
     private AiSuggestion getPendingSuggestion(
             Long suggestionId,
@@ -299,15 +318,19 @@ public class AiSuggestionPersistenceServiceImpl
                         suggestionId
                 );
 
-        if (suggestion.getStatus()
-                != AiSuggestionStatus.PENDING) {
+        if (
+                suggestion.getStatus()
+                        != AiSuggestionStatus.PENDING
+        ) {
             throw new AppException(
                     ErrorCode.INVALID_REQUEST
             );
         }
 
-        if (suggestion.getSuggestionType()
-                != expectedType) {
+        if (
+                suggestion.getSuggestionType()
+                        != expectedType
+        ) {
             throw new AppException(
                     ErrorCode.INVALID_REQUEST
             );
@@ -319,21 +342,52 @@ public class AiSuggestionPersistenceServiceImpl
     private AiSuggestion getSuggestionForUpdate(
             Long suggestionId
     ) {
-        if (suggestionId == null
-                || suggestionId <= 0) {
+        if (
+                suggestionId == null ||
+                        suggestionId <= 0
+        ) {
             throw new AppException(
                     ErrorCode.AI_SUGGESTION_NOT_FOUND
             );
         }
 
-        return aiSuggestionRepository
-                .findById(suggestionId)
-                .orElseThrow(() ->
-                        new AppException(
-                                ErrorCode.AI_SUGGESTION_NOT_FOUND
+        /*
+         * Nếu repository hiện có:
+         *
+         * findByIdAndDeletedFalse(...)
+         *
+         * thì nên dùng method đó.
+         *
+         * Nếu chưa có thì tạm thời giữ findById().
+         */
+        AiSuggestion suggestion =
+                aiSuggestionRepository
+                        .findById(
+                                suggestionId
                         )
-                );
+                        .orElseThrow(() ->
+                                new AppException(
+                                        ErrorCode
+                                                .AI_SUGGESTION_NOT_FOUND
+                                )
+                        );
+
+        if (
+                Boolean.TRUE.equals(
+                        suggestion.getDeleted()
+                )
+        ) {
+            throw new AppException(
+                    ErrorCode.AI_SUGGESTION_NOT_FOUND
+            );
+        }
+
+        return suggestion;
     }
+
+    // =====================================================
+    // SUCCESS
+    // =====================================================
 
     private void applySuccessData(
             AiSuggestion suggestion,
@@ -347,16 +401,26 @@ public class AiSuggestionPersistenceServiceImpl
                 providerResult
         );
 
+        /*
+         * Lưu normalized/generated JSON,
+         * không lưu raw Gemini response vào field này.
+         */
         suggestion.setAiResponse(
-                toJson(generatedResponse)
+                toJson(
+                        generatedResponse
+                )
         );
 
         suggestion.setSummary(
-                normalizeText(summary)
+                normalizeText(
+                        summary
+                )
         );
 
         suggestion.setWarningMessage(
-                normalizeText(warningMessage)
+                normalizeText(
+                        warningMessage
+                )
         );
 
         suggestion.markSuccess();
@@ -384,15 +448,61 @@ public class AiSuggestionPersistenceServiceImpl
         );
     }
 
+    // =====================================================
+    // VALIDATION
+    // =====================================================
+
+    private void validatePendingSuggestion(
+            AiSuggestion suggestion
+    ) {
+        if (suggestion == null) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        if (
+                suggestion.getStatus()
+                        != AiSuggestionStatus.PENDING
+        ) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        if (
+                suggestion.getMember() == null ||
+                        suggestion.getMember()
+                                .getId() == null ||
+                        suggestion.getSuggestionType() == null
+        ) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        if (
+                Boolean.TRUE.equals(
+                        suggestion.getDeleted()
+                )
+        ) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+    }
+
     private void validateProviderResult(
             AiProviderResult providerResult
     ) {
-        if (providerResult == null
-                || providerResult.getProvider() == null
-                || providerResult.getRawResponse() == null
-                || providerResult
-                .getRawResponse()
-                .isBlank()) {
+        if (
+                providerResult == null ||
+                        providerResult.getProvider() == null ||
+                        providerResult.getRawResponse() == null ||
+                        providerResult
+                                .getRawResponse()
+                                .isBlank()
+        ) {
             throw new AppException(
                     ErrorCode.AI_RESPONSE_INVALID
             );
@@ -409,13 +519,25 @@ public class AiSuggestionPersistenceServiceImpl
         }
     }
 
+    // =====================================================
+    // JSON / TEXT
+    // =====================================================
+
     private String toJson(
             Object value
     ) {
-        try {
-            return objectMapper.writeValueAsString(
-                    value
+        if (value == null) {
+            throw new AppException(
+                    ErrorCode.AI_RESPONSE_INVALID
             );
+        }
+
+        try {
+            return objectMapper
+                    .writeValueAsString(
+                            value
+                    );
+
         } catch (Exception exception) {
             throw new AppException(
                     ErrorCode.AI_RESPONSE_INVALID
@@ -443,7 +565,9 @@ public class AiSuggestionPersistenceServiceImpl
             String defaultValue
     ) {
         String normalized =
-                normalizeText(value);
+                normalizeText(
+                        value
+                );
 
         return normalized == null
                 ? defaultValue

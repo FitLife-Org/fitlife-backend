@@ -49,16 +49,24 @@ public class AiSuggestionDetailResponse {
     private String preferredLanguage;
 
     /**
-     * Snapshot đầu vào tại thời điểm request.
-     *
-     * Không chứa email, phone hoặc dữ liệu xác thực.
+     * Snapshot đầu vào tại thời điểm tạo suggestion.
      */
     private Map<String, Object> inputSnapshot;
 
     /**
-     * Response JSON đã normalize.
+     * Snapshot knowledge retrieval / RAG.
      *
-     * Chỉ trả trong detail, không trả ở history.
+     * Dùng để audit:
+     * - collection
+     * - topK
+     * - fallback
+     * - fallbackReason
+     * - chunks
+     */
+    private Map<String, Object> contextSnapshot;
+
+    /**
+     * AI response đã parse và normalize.
      */
     private Map<String, Object> aiResponse;
 
@@ -74,14 +82,8 @@ public class AiSuggestionDetailResponse {
 
     private AiSuggestionStatus status;
 
-    /**
-     * Mã lỗi nội bộ an toàn.
-     */
     private String errorCode;
 
-    /**
-     * Message đã sanitize.
-     */
     private String errorMessage;
 
     private Long appliedWorkoutPlanId;

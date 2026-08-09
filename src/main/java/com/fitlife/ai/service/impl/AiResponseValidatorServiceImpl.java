@@ -27,7 +27,7 @@ public class AiResponseValidatorServiceImpl
 
     private static final int DEFAULT_MEALS_PER_DAY = 3;
     private static final int REQUIRED_EXERCISES_PER_DAY = 3;
-    private static final int MAX_WARNINGS = 2;
+    private static final int MAX_WARNINGS = 5;
 
     @Override
     public void validateFullPlan(

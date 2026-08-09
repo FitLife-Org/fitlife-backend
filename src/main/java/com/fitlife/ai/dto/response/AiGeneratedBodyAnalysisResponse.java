@@ -31,5 +31,6 @@ public class AiGeneratedBodyAnalysisResponse {
     private String recommendation;
 
     @Builder.Default
-    private List<String> warnings = new ArrayList<>();
+    private List<String> warnings =
+            new ArrayList<>();
 }

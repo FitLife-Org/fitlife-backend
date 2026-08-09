@@ -29,14 +29,30 @@ import java.util.Locale;
 public class AiSnapshotServiceImpl
         implements AiSnapshotService {
 
-    private static final ZoneId FITLIFE_ZONE_ID =
-            ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final ZoneId
+            FITLIFE_ZONE_ID =
+            ZoneId.of(
+                    "Asia/Ho_Chi_Minh"
+            );
 
-    private static final String DEFAULT_LANGUAGE =
+    private static final String
+            DEFAULT_LANGUAGE =
             "vi";
 
-    private static final String ENGLISH_LANGUAGE =
+    private static final String
+            ENGLISH_LANGUAGE =
             "en";
+
+    /**
+     * Body Analysis không bắt buộc Member
+     * phải khai báo fitness goal.
+     *
+     * Nếu chưa có goal thì sử dụng mục tiêu
+     * trung tính là cải thiện sức khỏe.
+     */
+    private static final FitnessGoal
+            DEFAULT_BODY_ANALYSIS_GOAL =
+            FitnessGoal.IMPROVE_HEALTH;
 
     // =====================================================
     // FULL PLAN
@@ -48,8 +64,14 @@ public class AiSnapshotServiceImpl
             BodyMetric latestBodyMetric,
             AiFullPlanRequest request
     ) {
-        validateMember(member);
-        validateRequest(request);
+        validateMember(
+                member
+        );
+
+        validateRequest(
+                request
+        );
+
         validateLatestBodyMetric(
                 latestBodyMetric
         );
@@ -69,28 +91,35 @@ public class AiSnapshotServiceImpl
                                 resolvedGoal
                         )
                         .experienceLevel(
-                                request.getExperienceLevel()
+                                request
+                                        .getExperienceLevel()
                         )
                         .activityLevel(
-                                request.getActivityLevel()
+                                request
+                                        .getActivityLevel()
                         )
                         .workoutDaysPerWeek(
-                                request.getWorkoutDaysPerWeek()
+                                request
+                                        .getWorkoutDaysPerWeek()
                         )
                         .workoutDurationMinutes(
-                                request.getWorkoutDurationMinutes()
+                                request
+                                        .getWorkoutDurationMinutes()
                         )
                         .mealsPerDay(
-                                request.getMealsPerDay()
+                                request
+                                        .getMealsPerDay()
                         )
                         .userNote(
                                 normalizeText(
-                                        request.getUserNote()
+                                        request
+                                                .getUserNote()
                                 )
                         )
                         .preferredLanguage(
                                 resolveLanguage(
-                                        request.getPreferredLanguage()
+                                        request
+                                                .getPreferredLanguage()
                                 )
                         )
                         .build()
@@ -107,34 +136,63 @@ public class AiSnapshotServiceImpl
             BodyMetric latestBodyMetric,
             AiBodyAnalysisRequest request
     ) {
-        validateMember(member);
-        validateRequest(request);
-        validateLatestBodyMetric(latestBodyMetric);
+        validateMember(
+                member
+        );
 
+        validateRequest(
+                request
+        );
+
+        validateLatestBodyMetric(
+                latestBodyMetric
+        );
+
+        /*
+         * FIX:
+         *
+         * Body Analysis không được fail chỉ vì
+         * member.fitnessGoal == null.
+         */
         FitnessGoal resolvedGoal =
-                requireMemberGoal(
-                        member.getFitnessGoal()
-                );
+                member.getFitnessGoal()
+                        != null
+                        ? member.getFitnessGoal()
+                        : DEFAULT_BODY_ANALYSIS_GOAL;
 
         return buildSnapshot(
                 member,
                 latestBodyMetric,
                 AiInputRequestSnapshot
                         .builder()
-                        .goal(resolvedGoal)
-                        .experienceLevel(null)
-                        .activityLevel(null)
-                        .workoutDaysPerWeek(null)
-                        .workoutDurationMinutes(null)
-                        .mealsPerDay(null)
+                        .goal(
+                                resolvedGoal
+                        )
+                        .experienceLevel(
+                                null
+                        )
+                        .activityLevel(
+                                null
+                        )
+                        .workoutDaysPerWeek(
+                                null
+                        )
+                        .workoutDurationMinutes(
+                                null
+                        )
+                        .mealsPerDay(
+                                null
+                        )
                         .userNote(
                                 normalizeText(
-                                        request.getUserNote()
+                                        request
+                                                .getUserNote()
                                 )
                         )
                         .preferredLanguage(
                                 resolveLanguage(
-                                        request.getPreferredLanguage()
+                                        request
+                                                .getPreferredLanguage()
                                 )
                         )
                         .build()
@@ -151,9 +209,17 @@ public class AiSnapshotServiceImpl
             BodyMetric latestBodyMetric,
             AiWorkoutPlanRequest request
     ) {
-        validateMember(member);
-        validateRequest(request);
-        validateLatestBodyMetric(latestBodyMetric);
+        validateMember(
+                member
+        );
+
+        validateRequest(
+                request
+        );
+
+        validateLatestBodyMetric(
+                latestBodyMetric
+        );
 
         FitnessGoal resolvedGoal =
                 resolveGoal(
@@ -166,28 +232,38 @@ public class AiSnapshotServiceImpl
                 latestBodyMetric,
                 AiInputRequestSnapshot
                         .builder()
-                        .goal(resolvedGoal)
+                        .goal(
+                                resolvedGoal
+                        )
                         .experienceLevel(
-                                request.getExperienceLevel()
+                                request
+                                        .getExperienceLevel()
                         )
                         .activityLevel(
-                                request.getActivityLevel()
+                                request
+                                        .getActivityLevel()
                         )
                         .workoutDaysPerWeek(
-                                request.getWorkoutDaysPerWeek()
+                                request
+                                        .getWorkoutDaysPerWeek()
                         )
                         .workoutDurationMinutes(
-                                request.getWorkoutDurationMinutes()
+                                request
+                                        .getWorkoutDurationMinutes()
                         )
-                        .mealsPerDay(null)
+                        .mealsPerDay(
+                                null
+                        )
                         .userNote(
                                 normalizeText(
-                                        request.getUserNote()
+                                        request
+                                                .getUserNote()
                                 )
                         )
                         .preferredLanguage(
                                 resolveLanguage(
-                                        request.getPreferredLanguage()
+                                        request
+                                                .getPreferredLanguage()
                                 )
                         )
                         .build()
@@ -204,9 +280,17 @@ public class AiSnapshotServiceImpl
             BodyMetric latestBodyMetric,
             AiNutritionPlanRequest request
     ) {
-        validateMember(member);
-        validateRequest(request);
-        validateLatestBodyMetric(latestBodyMetric);
+        validateMember(
+                member
+        );
+
+        validateRequest(
+                request
+        );
+
+        validateLatestBodyMetric(
+                latestBodyMetric
+        );
 
         FitnessGoal resolvedGoal =
                 resolveGoal(
@@ -219,24 +303,36 @@ public class AiSnapshotServiceImpl
                 latestBodyMetric,
                 AiInputRequestSnapshot
                         .builder()
-                        .goal(resolvedGoal)
-                        .experienceLevel(null)
-                        .activityLevel(
-                                request.getActivityLevel()
+                        .goal(
+                                resolvedGoal
                         )
-                        .workoutDaysPerWeek(null)
-                        .workoutDurationMinutes(null)
+                        .experienceLevel(
+                                null
+                        )
+                        .activityLevel(
+                                request
+                                        .getActivityLevel()
+                        )
+                        .workoutDaysPerWeek(
+                                null
+                        )
+                        .workoutDurationMinutes(
+                                null
+                        )
                         .mealsPerDay(
-                                request.getMealsPerDay()
+                                request
+                                        .getMealsPerDay()
                         )
                         .userNote(
                                 normalizeText(
-                                        request.getUserNote()
+                                        request
+                                                .getUserNote()
                                 )
                         )
                         .preferredLanguage(
                                 resolveLanguage(
-                                        request.getPreferredLanguage()
+                                        request
+                                                .getPreferredLanguage()
                                 )
                         )
                         .build()
@@ -244,7 +340,7 @@ public class AiSnapshotServiceImpl
     }
 
     // =====================================================
-    // SNAPSHOT BUILDING
+    // SNAPSHOT
     // =====================================================
 
     private AiInputSnapshot buildSnapshot(
@@ -286,6 +382,10 @@ public class AiSnapshotServiceImpl
                 .build();
     }
 
+    // =====================================================
+    // USER
+    // =====================================================
+
     private AiInputUserSnapshot buildUserSnapshot(
             User user
     ) {
@@ -308,7 +408,8 @@ public class AiSnapshotServiceImpl
         }
 
         if (fullName == null) {
-            fullName = "FitLife Member";
+            fullName =
+                    "FitLife Member";
         }
 
         return AiInputUserSnapshot
@@ -319,16 +420,15 @@ public class AiSnapshotServiceImpl
                 .build();
     }
 
+    // =====================================================
+    // MEMBER
+    // =====================================================
+
     private AiInputMemberSnapshot buildMemberSnapshot(
             Member member
     ) {
         LocalDate dateOfBirth =
                 member.getDateOfBirth();
-
-        Integer age =
-                calculateAge(
-                        dateOfBirth
-                );
 
         return AiInputMemberSnapshot
                 .builder()
@@ -343,20 +443,24 @@ public class AiSnapshotServiceImpl
                 .gender(
                         member.getGender() == null
                                 ? null
-                                : member.getGender()
+                                : member
+                                .getGender()
                                 .name()
                 )
                 .dateOfBirth(
                         dateOfBirth
                 )
                 .age(
-                        age
+                        calculateAge(
+                                dateOfBirth
+                        )
                 )
                 .joinDate(
                         member.getJoinDate()
                 )
                 .fitnessGoal(
-                        member.getFitnessGoal() == null
+                        member.getFitnessGoal()
+                                == null
                                 ? null
                                 : member
                                 .getFitnessGoal()
@@ -364,13 +468,19 @@ public class AiSnapshotServiceImpl
                 )
                 .healthNote(
                         normalizeText(
-                                member.getHealthNote()
+                                member
+                                        .getHealthNote()
                         )
                 )
                 .build();
     }
 
-    private AiInputBodyMetricSnapshot buildBodyMetricSnapshot(
+    // =====================================================
+    // BODY METRIC
+    // =====================================================
+
+    private AiInputBodyMetricSnapshot
+    buildBodyMetricSnapshot(
             BodyMetric bodyMetric
     ) {
         validateLatestBodyMetric(
@@ -383,45 +493,49 @@ public class AiSnapshotServiceImpl
                         bodyMetric.getId()
                 )
                 .heightCm(
-                        bodyMetric.getHeightCm()
+                        bodyMetric
+                                .getHeightCm()
                 )
                 .weightKg(
-                        bodyMetric.getWeightKg()
+                        bodyMetric
+                                .getWeightKg()
                 )
                 .bmi(
-                        bodyMetric.getBmi()
+                        bodyMetric
+                                .getBmi()
                 )
                 .bodyFatPercent(
-                        bodyMetric.getBodyFatPercent()
+                        bodyMetric
+                                .getBodyFatPercent()
                 )
                 .muscleMassKg(
-                        bodyMetric.getMuscleMassKg()
+                        bodyMetric
+                                .getMuscleMassKg()
                 )
                 .note(
                         normalizeText(
-                                bodyMetric.getNote()
+                                bodyMetric
+                                        .getNote()
                         )
                 )
                 .recordedAt(
-                        bodyMetric.getRecordedAt()
+                        bodyMetric
+                                .getRecordedAt()
                 )
                 .build();
     }
 
     // =====================================================
-    // MEMBER VALIDATION
+    // VALIDATION MEMBER
     // =====================================================
 
     private void validateMember(
             Member member
     ) {
-        if (member == null) {
-            throw new AppException(
-                    ErrorCode.MEMBER_NOT_FOUND
-            );
-        }
-
-        if (member.getId() == null) {
+        if (
+                member == null ||
+                        member.getId() == null
+        ) {
             throw new AppException(
                     ErrorCode.MEMBER_NOT_FOUND
             );
@@ -437,7 +551,10 @@ public class AiSnapshotServiceImpl
             );
         }
 
-        if (member.getUser() == null) {
+        User user =
+                member.getUser();
+
+        if (user == null) {
             throw new AppException(
                     ErrorCode.USER_NOT_FOUND
             );
@@ -445,8 +562,7 @@ public class AiSnapshotServiceImpl
 
         if (
                 Boolean.TRUE.equals(
-                        member.getUser()
-                                .getIsDeleted()
+                        user.getIsDeleted()
                 )
         ) {
             throw new AppException(
@@ -471,7 +587,11 @@ public class AiSnapshotServiceImpl
                         FITLIFE_ZONE_ID
                 );
 
-        if (dateOfBirth.isAfter(today)) {
+        if (
+                dateOfBirth.isAfter(
+                        today
+                )
+        ) {
             throw new AppException(
                     ErrorCode.INVALID_REQUEST
             );
@@ -503,22 +623,21 @@ public class AiSnapshotServiceImpl
                 bodyMetric.getBmi()
         );
 
-        if (
-                bodyMetric.getRecordedAt() ==
-                        null
-        ) {
+        LocalDateTime recordedAt =
+                bodyMetric.getRecordedAt();
+
+        if (recordedAt == null) {
             throw new AppException(
                     ErrorCode.INVALID_REQUEST
             );
         }
 
         if (
-                bodyMetric.getRecordedAt()
-                        .isAfter(
-                                LocalDateTime.now(
-                                        FITLIFE_ZONE_ID
-                                )
+                recordedAt.isAfter(
+                        LocalDateTime.now(
+                                FITLIFE_ZONE_ID
                         )
+                )
         ) {
             throw new AppException(
                     ErrorCode.INVALID_REQUEST
@@ -526,8 +645,10 @@ public class AiSnapshotServiceImpl
         }
 
         if (
-                bodyMetric.getBodyFatPercent() != null &&
-                        bodyMetric.getBodyFatPercent()
+                bodyMetric.getBodyFatPercent()
+                        != null &&
+                        bodyMetric
+                                .getBodyFatPercent()
                                 .compareTo(
                                         BigDecimal.ZERO
                                 ) < 0
@@ -538,8 +659,10 @@ public class AiSnapshotServiceImpl
         }
 
         if (
-                bodyMetric.getMuscleMassKg() != null &&
-                        bodyMetric.getMuscleMassKg()
+                bodyMetric.getMuscleMassKg()
+                        != null &&
+                        bodyMetric
+                                .getMuscleMassKg()
                                 .compareTo(
                                         BigDecimal.ZERO
                                 ) < 0
@@ -566,7 +689,7 @@ public class AiSnapshotServiceImpl
     }
 
     // =====================================================
-    // REQUEST / GOAL VALIDATION
+    // REQUEST / GOAL
     // =====================================================
 
     private void validateRequest(
@@ -587,21 +710,19 @@ public class AiSnapshotServiceImpl
             return requestGoal;
         }
 
-        return requireMemberGoal(
-                memberGoal
-        );
-    }
-
-    private FitnessGoal requireMemberGoal(
-            FitnessGoal memberGoal
-    ) {
-        if (memberGoal == null) {
-            throw new AppException(
-                    ErrorCode.INVALID_REQUEST
-            );
+        if (memberGoal != null) {
+            return memberGoal;
         }
 
-        return memberGoal;
+        /*
+         * Request Workout/Nutrition/Full Plan thông
+         * thường có @NotNull goal.
+         *
+         * Nhưng fallback này giúp service an toàn hơn
+         * nếu được gọi từ internal code.
+         */
+        return FitnessGoal
+                .IMPROVE_HEALTH;
     }
 
     // =====================================================
@@ -620,7 +741,11 @@ public class AiSnapshotServiceImpl
                         FITLIFE_ZONE_ID
                 );
 
-        if (dateOfBirth.isAfter(today)) {
+        if (
+                dateOfBirth.isAfter(
+                        today
+                )
+        ) {
             throw new AppException(
                     ErrorCode.INVALID_REQUEST
             );

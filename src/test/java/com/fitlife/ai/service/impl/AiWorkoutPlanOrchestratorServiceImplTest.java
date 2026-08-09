@@ -2,18 +2,18 @@ package com.fitlife.ai.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fitlife.ai.dto.internal.AiContextSnapshot;
-import com.fitlife.ai.dto.internal.AiInputMemberSnapshot;
 import com.fitlife.ai.dto.internal.AiInputRequestSnapshot;
 import com.fitlife.ai.dto.internal.AiInputSnapshot;
 import com.fitlife.ai.dto.internal.AiPromptResult;
 import com.fitlife.ai.dto.internal.AiProviderResult;
-import com.fitlife.ai.dto.request.AiNutritionPlanRequest;
-import com.fitlife.ai.dto.response.AiGeneratedNutritionPlanResponse;
+import com.fitlife.ai.dto.request.AiWorkoutPlanRequest;
+import com.fitlife.ai.dto.response.AiGeneratedWorkoutPlanResponse;
 import com.fitlife.ai.dto.response.AiSuggestionResponse;
 import com.fitlife.ai.entity.AiSuggestion;
 import com.fitlife.ai.enums.ActivityLevel;
 import com.fitlife.ai.enums.AiPromptVersion;
 import com.fitlife.ai.enums.AiProvider;
+import com.fitlife.ai.enums.ExperienceLevel;
 import com.fitlife.ai.retrieval.dto.AiKnowledgeRetrievalRequest;
 import com.fitlife.ai.retrieval.service.AiKnowledgeRetrievalService;
 import com.fitlife.ai.service.AiPlanParserService;
@@ -51,7 +51,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class AiNutritionPlanOrchestratorServiceImplTest {
+class AiWorkoutPlanOrchestratorServiceImplTest {
 
     @Mock
     private CurrentMemberService
@@ -96,14 +96,15 @@ class AiNutritionPlanOrchestratorServiceImplTest {
     /*
      * Kiến trúc mới:
      *
-     * Orchestrator không map entity detached
-     * trực tiếp nữa.
+     * Orchestrator không mapper entity detached trực tiếp.
+     * ResponseService reload suggestion trong transaction
+     * rồi trả AiSuggestionResponse.
      */
     @Mock
     private AiSuggestionResponseService
             aiSuggestionResponseService;
 
-    private AiNutritionPlanOrchestratorServiceImpl
+    private AiWorkoutPlanOrchestratorServiceImpl
             orchestrator;
 
     @BeforeEach
@@ -114,7 +115,7 @@ class AiNutritionPlanOrchestratorServiceImplTest {
                         .findAndRegisterModules();
 
         orchestrator =
-                new AiNutritionPlanOrchestratorServiceImpl(
+                new AiWorkoutPlanOrchestratorServiceImpl(
                         currentMemberService,
                         aiUsageService,
                         bodyMetricRepository,
@@ -135,7 +136,7 @@ class AiNutritionPlanOrchestratorServiceImplTest {
     // =====================================================
 
     @Test
-    void createNutritionPlan_shouldReturnSuccess() {
+    void createWorkoutPlan_shouldReturnSuccess() {
 
         Member member =
                 createMember();
@@ -145,9 +146,13 @@ class AiNutritionPlanOrchestratorServiceImplTest {
                         member
                 );
 
-        AiNutritionPlanRequest request =
+        AiWorkoutPlanRequest request =
                 createValidRequest();
 
+        /*
+         * Orchestrator mới đọc snapshot.request
+         * để build retrieval/pending.
+         */
         AiInputSnapshot snapshot =
                 createSnapshot();
 
@@ -161,10 +166,10 @@ class AiNutritionPlanOrchestratorServiceImplTest {
                 AiPromptResult.builder()
                         .version(
                                 AiPromptVersion
-                                        .NUTRITION_PLAN_V2_RAG
+                                        .WORKOUT_PLAN_V2_RAG
                         )
                         .prompt(
-                                "nutrition-prompt"
+                                "workout-prompt"
                         )
                         .contextSnapshot(
                                 context
@@ -173,12 +178,8 @@ class AiNutritionPlanOrchestratorServiceImplTest {
 
         AiSuggestion pending =
                 AiSuggestion.builder()
-                        .id(
-                                10L
-                        )
-                        .warningMessage(
-                                null
-                        )
+                        .id(10L)
+                        .warningMessage(null)
                         .build();
 
         AiProviderResult providerResult =
@@ -194,20 +195,22 @@ class AiNutritionPlanOrchestratorServiceImplTest {
                         )
                         .build();
 
-        AiGeneratedNutritionPlanResponse generated =
-                new AiGeneratedNutritionPlanResponse();
+        AiGeneratedWorkoutPlanResponse generated =
+                new AiGeneratedWorkoutPlanResponse();
+
+        generated.setSummary(
+                "Kế hoạch tập luyện phù hợp"
+        );
 
         generated.setWarnings(
                 List.of(
-                        "Chỉ mang tính tham khảo"
+                        "Tăng cường độ từ từ"
                 )
         );
 
         AiSuggestion success =
                 AiSuggestion.builder()
-                        .id(
-                                10L
-                        )
+                        .id(10L)
                         .build();
 
         AiSuggestionResponse expected =
@@ -237,7 +240,7 @@ class AiNutritionPlanOrchestratorServiceImplTest {
 
         when(
                 aiSnapshotService
-                        .buildNutritionPlanSnapshot(
+                        .buildWorkoutPlanSnapshot(
                                 member,
                                 metric,
                                 request
@@ -259,7 +262,7 @@ class AiNutritionPlanOrchestratorServiceImplTest {
 
         when(
                 aiPromptBuilderService
-                        .buildNutritionPlanPrompt(
+                        .buildWorkoutPlanPrompt(
                                 snapshot,
                                 context
                         )
@@ -281,7 +284,7 @@ class AiNutritionPlanOrchestratorServiceImplTest {
         when(
                 aiProviderService
                         .generate(
-                                "nutrition-prompt"
+                                "workout-prompt"
                         )
         ).thenReturn(
                 providerResult
@@ -289,7 +292,7 @@ class AiNutritionPlanOrchestratorServiceImplTest {
 
         when(
                 aiPlanParserService
-                        .parseNutritionPlan(
+                        .parseWorkoutPlan(
                                 "{}"
                         )
         ).thenReturn(
@@ -298,21 +301,19 @@ class AiNutritionPlanOrchestratorServiceImplTest {
 
         when(
                 aiSuggestionPersistenceService
-                        .markNutritionPlanSuccess(
+                        .markWorkoutPlanSuccess(
                                 10L,
                                 providerResult,
                                 generated,
-                                "Chỉ mang tính tham khảo"
+                                "Tăng cường độ từ từ"
                         )
         ).thenReturn(
                 success
         );
 
         /*
-         * Orchestrator không dùng success entity
-         * để map nữa.
-         *
-         * Nó reload qua ResponseService.
+         * Orchestrator mới chỉ dùng suggestionId
+         * để ResponseService reload entity.
          */
         when(
                 aiSuggestionResponseService
@@ -329,7 +330,7 @@ class AiNutritionPlanOrchestratorServiceImplTest {
 
         AiSuggestionResponse actual =
                 orchestrator
-                        .createNutritionPlan(
+                        .createWorkoutPlan(
                                 request
                         );
 
@@ -358,18 +359,18 @@ class AiNutritionPlanOrchestratorServiceImplTest {
 
         verify(
                 aiResponseValidatorService
-        ).validateNutritionPlan(
+        ).validateWorkoutPlan(
                 generated,
                 snapshot
         );
 
         verify(
                 aiSuggestionPersistenceService
-        ).markNutritionPlanSuccess(
+        ).markWorkoutPlanSuccess(
                 10L,
                 providerResult,
                 generated,
-                "Chỉ mang tính tham khảo"
+                "Tăng cường độ từ từ"
         );
 
         verify(
@@ -380,11 +381,11 @@ class AiNutritionPlanOrchestratorServiceImplTest {
     }
 
     // =====================================================
-    // TEST 2 - PROVIDER ERROR
+    // TEST 2 - PROVIDER FAIL
     // =====================================================
 
     @Test
-    void createNutritionPlan_shouldMarkFailedWhenProviderFails() {
+    void createWorkoutPlan_shouldMarkFailedWhenProviderFails() {
 
         Member member =
                 createMember();
@@ -394,7 +395,7 @@ class AiNutritionPlanOrchestratorServiceImplTest {
                         member
                 );
 
-        AiNutritionPlanRequest request =
+        AiWorkoutPlanRequest request =
                 createValidRequest();
 
         AiInputSnapshot snapshot =
@@ -410,10 +411,10 @@ class AiNutritionPlanOrchestratorServiceImplTest {
                 AiPromptResult.builder()
                         .version(
                                 AiPromptVersion
-                                        .NUTRITION_PLAN_V2_RAG
+                                        .WORKOUT_PLAN_V2_RAG
                         )
                         .prompt(
-                                "nutrition-prompt"
+                                "workout-prompt"
                         )
                         .contextSnapshot(
                                 context
@@ -422,9 +423,7 @@ class AiNutritionPlanOrchestratorServiceImplTest {
 
         AiSuggestion pending =
                 AiSuggestion.builder()
-                        .id(
-                                20L
-                        )
+                        .id(20L)
                         .build();
 
         when(
@@ -447,7 +446,7 @@ class AiNutritionPlanOrchestratorServiceImplTest {
 
         when(
                 aiSnapshotService
-                        .buildNutritionPlanSnapshot(
+                        .buildWorkoutPlanSnapshot(
                                 member,
                                 metric,
                                 request
@@ -469,7 +468,7 @@ class AiNutritionPlanOrchestratorServiceImplTest {
 
         when(
                 aiPromptBuilderService
-                        .buildNutritionPlanPrompt(
+                        .buildWorkoutPlanPrompt(
                                 snapshot,
                                 context
                         )
@@ -491,12 +490,11 @@ class AiNutritionPlanOrchestratorServiceImplTest {
         when(
                 aiProviderService
                         .generate(
-                                "nutrition-prompt"
+                                "workout-prompt"
                         )
         ).thenThrow(
                 new AppException(
-                        ErrorCode
-                                .AI_RESPONSE_INVALID
+                        ErrorCode.AI_RESPONSE_INVALID
                 )
         );
 
@@ -508,7 +506,7 @@ class AiNutritionPlanOrchestratorServiceImplTest {
                 AppException.class,
                 () ->
                         orchestrator
-                                .createNutritionPlan(
+                                .createWorkoutPlan(
                                         request
                                 )
         );
@@ -524,14 +522,14 @@ class AiNutritionPlanOrchestratorServiceImplTest {
         verify(
                 aiPlanParserService,
                 never()
-        ).parseNutritionPlan(
+        ).parseWorkoutPlan(
                 any()
         );
 
         verify(
                 aiSuggestionPersistenceService,
                 never()
-        ).markNutritionPlanSuccess(
+        ).markWorkoutPlanSuccess(
                 any(),
                 any(),
                 any(),
@@ -560,7 +558,7 @@ class AiNutritionPlanOrchestratorServiceImplTest {
         );
 
         user.setFullName(
-                "Member Test"
+                "Workout Member"
         );
 
         Member member =
@@ -584,6 +582,7 @@ class AiNutritionPlanOrchestratorServiceImplTest {
     private BodyMetric createBodyMetric(
             Member member
     ) {
+
         BodyMetric metric =
                 new BodyMetric();
 
@@ -615,32 +614,36 @@ class AiNutritionPlanOrchestratorServiceImplTest {
 
         metric.setRecordedAt(
                 LocalDateTime.now()
-                        .minusMinutes(
-                                5
-                        )
+                        .minusMinutes(5)
         );
 
         return metric;
     }
 
-    private AiNutritionPlanRequest
+    private AiWorkoutPlanRequest
     createValidRequest() {
 
-        AiNutritionPlanRequest request =
-                new AiNutritionPlanRequest();
+        AiWorkoutPlanRequest request =
+                new AiWorkoutPlanRequest();
 
         request.setGoal(
-                FitnessGoal
-                        .GAIN_MUSCLE
+                FitnessGoal.GAIN_MUSCLE
+        );
+
+        request.setExperienceLevel(
+                ExperienceLevel.BEGINNER
         );
 
         request.setActivityLevel(
-                ActivityLevel
-                        .MODERATE
+                ActivityLevel.MODERATE
         );
 
-        request.setMealsPerDay(
-                3
+        request.setWorkoutDaysPerWeek(
+                4
+        );
+
+        request.setWorkoutDurationMinutes(
+                60
         );
 
         request.setPreferredLanguage(
@@ -648,7 +651,7 @@ class AiNutritionPlanOrchestratorServiceImplTest {
         );
 
         request.setUserNote(
-                "Ưu tiên món ăn Việt Nam dễ chuẩn bị"
+                "Ưu tiên tăng cơ an toàn"
         );
 
         return request;
@@ -656,49 +659,34 @@ class AiNutritionPlanOrchestratorServiceImplTest {
 
     private AiInputSnapshot createSnapshot() {
 
-        AiInputMemberSnapshot memberSnapshot =
-                AiInputMemberSnapshot
-                        .builder()
-                        .memberId(
-                                1L
-                        )
-                        .memberCode(
-                                "MB001"
-                        )
-                        .fitnessGoal(
-                                FitnessGoal
-                                        .GAIN_MUSCLE
-                                        .name()
-                        )
-                        .build();
-
         AiInputRequestSnapshot requestSnapshot =
                 AiInputRequestSnapshot
                         .builder()
                         .goal(
-                                FitnessGoal
-                                        .GAIN_MUSCLE
+                                FitnessGoal.GAIN_MUSCLE
+                        )
+                        .experienceLevel(
+                                ExperienceLevel.BEGINNER
                         )
                         .activityLevel(
-                                ActivityLevel
-                                        .MODERATE
+                                ActivityLevel.MODERATE
                         )
-                        .mealsPerDay(
-                                3
+                        .workoutDaysPerWeek(
+                                4
+                        )
+                        .workoutDurationMinutes(
+                                60
                         )
                         .preferredLanguage(
                                 "vi"
                         )
                         .userNote(
-                                "Ưu tiên món ăn Việt Nam dễ chuẩn bị"
+                                "Ưu tiên tăng cơ an toàn"
                         )
                         .build();
 
         return AiInputSnapshot
                 .builder()
-                .member(
-                        memberSnapshot
-                )
                 .request(
                         requestSnapshot
                 )
