@@ -27,6 +27,11 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
             SubscriptionStatus status
     );
 
+    Optional<Subscription> findFirstByMemberIdAndStatusOrderByEndDateDesc(
+            Long memberId,
+            SubscriptionStatus status
+    );
+
     boolean existsByGymPackageIdAndStatus(Long gymPackageId, SubscriptionStatus status);
 
     boolean existsByPackageDurationIdAndStatus(Long packageDurationId, SubscriptionStatus status);

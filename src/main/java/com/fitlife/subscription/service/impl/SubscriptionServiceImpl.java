@@ -120,13 +120,23 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             throw new AppException(ErrorCode.INVALID_REQUEST, "Package is inactive");
         }
 
-        boolean hasActiveSubscription = subscriptionRepository.existsByMemberIdAndStatus(
-                member.getId(),
-                SubscriptionStatus.ACTIVE
-        );
+        boolean hasPending = subscriptionRepository.existsByMemberIdAndStatus(member.getId(), SubscriptionStatus.PENDING_PAYMENT);
+        if (hasPending) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Bạn đang có một gói tập chờ thanh toán. Vui lòng thanh toán hoặc hủy gói tập đó trước khi mua thêm.");
+        }
 
-        if (hasActiveSubscription) {
-            throw new AppException(ErrorCode.ACTIVE_SUBSCRIPTION_EXISTS);
+        LocalDate startDate = request.getStartDate();
+        java.util.Optional<Subscription> latestActiveSub = subscriptionRepository
+                .findFirstByMemberIdAndStatusOrderByEndDateDesc(member.getId(), SubscriptionStatus.ACTIVE);
+
+        if (latestActiveSub.isPresent()) {
+            startDate = latestActiveSub.get().getEndDate();
+        } else {
+            if (startDate == null) {
+                startDate = LocalDate.now();
+            } else if (startDate.isBefore(LocalDate.now())) {
+                throw new AppException(ErrorCode.INVALID_REQUEST, "Start date cannot be in the past");
+            }
         }
 
         BigDecimal basePrice = packageDuration.getPrice();
@@ -151,10 +161,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             }
         }
 
-        LocalDate startDate = request.getStartDate();
-        if (startDate != null && startDate.isBefore(LocalDate.now())) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Start date cannot be in the past");
-        }
+        // startDate has been pre-calculated above for compounding logic
 
         Integer ptSessionsPerMonth = gymPackage.getPtSessionsPerMonth() != null ? gymPackage.getPtSessionsPerMonth() : 0;
         Integer ptSessionsTotal = ptSessionsPerMonth * months;
