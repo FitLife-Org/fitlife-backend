@@ -595,34 +595,31 @@ public class CheckInServiceImpl implements CheckInService {
             throw new AppException(ErrorCode.INVALID_REQUEST, "No active subscription found for check-in");
         }
 
-        Subscription latest = memberSubs.get(0);
+        Subscription activeSub = null;
+        for (Subscription sub : memberSubs) {
+            if (sub.getStatus() == SubscriptionStatus.ACTIVE && sub.getEndDate().isBefore(today)) {
+                sub.setStatus(SubscriptionStatus.EXPIRED);
+                subscriptionRepository.save(sub);
+            }
 
-        if (latest.getStatus() == SubscriptionStatus.ACTIVE && latest.getEndDate().isBefore(today)) {
-            latest.setStatus(SubscriptionStatus.EXPIRED);
-            subscriptionRepository.save(latest);
+            if (sub.getStatus() == SubscriptionStatus.ACTIVE
+                    && !sub.getStartDate().isAfter(today)
+                    && !sub.getEndDate().isBefore(today)) {
+                activeSub = sub;
+                break;
+            }
         }
 
-        if (latest.getStatus() == SubscriptionStatus.EXPIRED) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Your subscription has expired. Please renew to check in.");
-        }
-
-        if (latest.getStatus() == SubscriptionStatus.SUSPENDED || latest.getStatus() == SubscriptionStatus.PAUSED) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Your subscription is currently suspended");
-        }
-
-        if (latest.getStatus() == SubscriptionStatus.CANCELLED) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Your subscription is currently suspended");
-        }
-
-        if (latest.getStatus() != SubscriptionStatus.ACTIVE) {
+        if (activeSub == null) {
+            boolean hasFutureActive = memberSubs.stream()
+                    .anyMatch(sub -> sub.getStatus() == SubscriptionStatus.ACTIVE && sub.getStartDate().isAfter(today));
+            if (hasFutureActive) {
+                throw new AppException(ErrorCode.INVALID_REQUEST, "Gói tập của bạn đã được gia hạn và sẽ có hiệu lực trong tương lai. Hiện tại bạn chưa thể check-in.");
+            }
             throw new AppException(ErrorCode.INVALID_REQUEST, "No active subscription found for check-in");
         }
 
-        if (latest.getStartDate().isAfter(today)) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "No active subscription found for check-in");
-        }
-
-        return latest;
+        return activeSub;
     }
 
     private void validateDailyCheckInUniqueness(Long memberId) {

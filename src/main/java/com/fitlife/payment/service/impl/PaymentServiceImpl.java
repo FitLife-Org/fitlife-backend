@@ -295,15 +295,21 @@ public class PaymentServiceImpl implements PaymentService {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
+        subscription.setStatus(SubscriptionStatus.ACTIVE);
+        
         LocalDate startDate = subscription.getStartDate();
-        if (startDate == null || startDate.isBefore(LocalDate.now())) {
-            startDate = LocalDate.now();
-        }
         Integer months = subscription.getPackageDuration().getMonths();
 
-        subscription.setStatus(SubscriptionStatus.ACTIVE);
-        subscription.setStartDate(startDate);
-        subscription.setEndDate(startDate.plusMonths(months));
+        if (startDate == null) {
+            startDate = LocalDate.now();
+            subscription.setStartDate(startDate);
+            subscription.setEndDate(startDate.plusMonths(months));
+        } else if (startDate.isBefore(LocalDate.now())) {
+            startDate = LocalDate.now();
+            subscription.setStartDate(startDate);
+            subscription.setEndDate(startDate.plusMonths(months));
+        }
+        // Nếu startDate ở tương lai (cộng dồn), giữ nguyên startDate và endDate đã được tính toán từ trước.
 
         if (subscription.getNote() != null && subscription.getNote().startsWith("UPGRADE_FROM_")) {
             try {
@@ -319,30 +325,39 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public PaymentDetailResponse offlinePayment(com.fitlife.payment.dto.request.OfflinePaymentRequest request) {
-        Subscription subscription = subscriptionRepository.findById(request.getSubscriptionId())
-                .orElseThrow(() -> new AppException(ErrorCode.SUBSCRIPTION_NOT_FOUND, "Subscription not found"));
-
-        if (request.getAmount().compareTo(subscription.getFinalPrice()) < 0) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Paid amount is less than subscription total price");
-        }
-
-        Invoice invoice = invoiceRepository.findBySubscriptionId(subscription.getId())
+        Invoice invoice = invoiceRepository.findById(request.getInvoiceId())
                 .orElseThrow(() -> new AppException(ErrorCode.INVOICE_NOT_FOUND, "Invoice not found"));
 
         if (invoice.getStatus() == InvoiceStatus.PAID) {
             throw new AppException(ErrorCode.INVALID_REQUEST, "Invoice is already paid");
         }
 
+        Subscription subscription = invoice.getSubscription();
+
+        java.math.BigDecimal paidAmount = request.getAmount();
+        if (paidAmount == null) {
+            paidAmount = invoice.getFinalAmount();
+        } else if (paidAmount.compareTo(invoice.getFinalAmount()) < 0) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Paid amount is less than invoice final amount");
+        }
+
+        PaymentMethod method = request.getPaymentMethod();
+        if (method == null) {
+            method = PaymentMethod.CASH;
+        }
+
         Payment payment = Payment.builder()
                 .paymentCode(generatePaymentCode())
                 .invoice(invoice)
                 .subscription(subscription)
-                .member(subscription.getMember())
-                .amount(request.getAmount())
-                .paymentMethod(PaymentMethod.CASH)
+                .member(invoice.getMember())
+                .amount(paidAmount)
+                .paymentMethod(method)
                 .paymentStatus(PaymentStatus.SUCCESS)
                 .paidAt(LocalDateTime.now())
-                .note(request.getNote() != null ? request.getNote() : "Thu tiền mặt tại quầy lễ tân")
+                .note(request.getNote() != null && !request.getNote().isBlank()
+                        ? request.getNote()
+                        : (method == PaymentMethod.CASH ? "Thu tiền mặt tại quầy lễ tân" : "Chuyển khoản qua ngân hàng"))
                 .confirmedBy(getCurrentUser())
                 .build();
 
@@ -352,8 +367,10 @@ public class PaymentServiceImpl implements PaymentService {
         invoice.setPaidAt(LocalDateTime.now());
         invoiceRepository.save(invoice);
 
-        activateSubscription(subscription);
-        subscriptionRepository.save(subscription);
+        if (subscription != null) {
+            activateSubscription(subscription);
+            subscriptionRepository.save(subscription);
+        }
 
         return paymentMapper.toDetailResponse(payment);
     }

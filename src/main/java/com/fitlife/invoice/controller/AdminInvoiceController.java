@@ -32,7 +32,7 @@ import java.util.List;
         description = "Admin APIs for invoice management"
 )
 @SecurityRequirement(name = "bearerAuth")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
 public class AdminInvoiceController {
 
     private final InvoiceService invoiceService;

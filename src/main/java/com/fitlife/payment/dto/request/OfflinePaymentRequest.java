@@ -1,9 +1,9 @@
 package com.fitlife.payment.dto.request;
 
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
+import com.fitlife.payment.enums.PaymentMethod;
 
 import java.math.BigDecimal;
 
@@ -11,11 +11,11 @@ import java.math.BigDecimal;
 @Setter
 public class OfflinePaymentRequest {
 
-    @NotNull(message = "Subscription ID is required")
-    private Long subscriptionId;
+    @NotNull(message = "Invoice ID is required")
+    private Long invoiceId;
 
-    @NotNull(message = "Amount is required")
-    @Min(value = 0, message = "Amount must be greater than or equal to 0")
+    private PaymentMethod paymentMethod;
+
     private BigDecimal amount;
 
     private String note;
