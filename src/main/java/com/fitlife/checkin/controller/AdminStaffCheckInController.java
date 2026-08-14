@@ -76,7 +76,7 @@ public class AdminStaffCheckInController {
     }
 
     @GetMapping("/admin/check-ins")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ApiResponse<PageResponse<CheckInResponse>> getAllCheckInHistory(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long memberId,
