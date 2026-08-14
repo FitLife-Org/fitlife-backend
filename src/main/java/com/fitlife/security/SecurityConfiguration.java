@@ -193,7 +193,9 @@ public class SecurityConfiguration {
                         .requestMatchers(
                                 "/admin/payments/**",
                                 "/admin/invoices/**",
-                                "/admin/reports/**"
+                                "/admin/reports/**",
+                                "/admin/check-ins/**",
+                                "/admin/check-ins"
                         ).hasAnyRole("ADMIN", "STAFF")
 
                         .requestMatchers(
