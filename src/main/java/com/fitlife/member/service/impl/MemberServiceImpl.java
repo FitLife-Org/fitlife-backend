@@ -607,27 +607,49 @@ public class MemberServiceImpl
             User user,
             MemberUpdateRequest request
     ) {
-        if (
-                request.getEmail() != null
-        ) {
-            String email =
+        if (request.getEmail() != null) {
+            String newEmail =
                     normalizeEmail(
                             request.getEmail()
                     );
 
-            validateUniqueEmail(
-                    email,
-                    user.getId()
-            );
+            String currentEmail =
+                    user.getEmail() == null
+                            ? null
+                            : user.getEmail()
+                            .trim()
+                            .toLowerCase(
+                                    Locale.ROOT
+                            );
 
-            user.setEmail(
-                    email
-            );
+            /*
+             * Chỉ xử lý khi email thực sự thay đổi.
+             */
+            if (!Objects.equals(
+                    currentEmail,
+                    newEmail
+            )) {
+                validateUniqueEmail(
+                        newEmail,
+                        user.getId()
+                );
+
+                user.setEmail(
+                        newEmail
+                );
+
+                /*
+                 * QUAN TRỌNG:
+                 *
+                 * Email mới chưa được xác thực.
+                 */
+                user.setEmailVerified(
+                        false
+                );
+            }
         }
 
-        if (
-                request.getFullName() != null
-        ) {
+        if (request.getFullName() != null) {
             user.setFullName(
                     normalizeRequired(
                             request.getFullName()
@@ -635,9 +657,7 @@ public class MemberServiceImpl
             );
         }
 
-        if (
-                request.getPhone() != null
-        ) {
+        if (request.getPhone() != null) {
             String phone =
                     normalizeNullable(
                             request.getPhone()
@@ -658,25 +678,19 @@ public class MemberServiceImpl
             Member member,
             MemberUpdateRequest request
     ) {
-        if (
-                request.getGender() != null
-        ) {
+        if (request.getGender() != null) {
             member.setGender(
                     request.getGender()
             );
         }
 
-        if (
-                request.getDateOfBirth() != null
-        ) {
+        if (request.getDateOfBirth() != null) {
             member.setDateOfBirth(
                     request.getDateOfBirth()
             );
         }
 
-        if (
-                request.getAddress() != null
-        ) {
+        if (request.getAddress() != null) {
             member.setAddress(
                     normalizeNullable(
                             request.getAddress()
@@ -685,61 +699,38 @@ public class MemberServiceImpl
         }
 
         if (
-                request
-                        .getEmergencyContactName()
+                request.getEmergencyContactName()
                         != null
         ) {
             member.setEmergencyContactName(
                     normalizeNullable(
-                            request
-                                    .getEmergencyContactName()
+                            request.getEmergencyContactName()
                     )
             );
         }
 
         if (
-                request
-                        .getEmergencyContactPhone()
+                request.getEmergencyContactPhone()
                         != null
         ) {
             member.setEmergencyContactPhone(
                     normalizeNullable(
-                            request
-                                    .getEmergencyContactPhone()
+                            request.getEmergencyContactPhone()
                     )
             );
         }
 
-        if (
-                request.getFitnessGoal() != null
-        ) {
+        if (request.getFitnessGoal() != null) {
             member.setFitnessGoal(
                     request.getFitnessGoal()
             );
         }
 
-        if (
-                request.getHealthNote() != null
-        ) {
+        if (request.getHealthNote() != null) {
             member.setHealthNote(
                     normalizeNullable(
                             request.getHealthNote()
                     )
-            );
-        }
-
-        if (
-                request.getStatus() != null
-        ) {
-            member.setStatus(
-                    request.getStatus()
-            );
-
-            syncUserStatusByMemberStatus(
-                    requireLinkedUser(
-                            member
-                    ),
-                    request.getStatus()
             );
         }
     }
@@ -981,6 +972,7 @@ public class MemberServiceImpl
             MemberStatus memberStatus
     ) {
         switch (memberStatus) {
+
             case ACTIVE -> {
                 user.setStatus(
                         UserStatus.ACTIVE
@@ -992,23 +984,42 @@ public class MemberServiceImpl
             }
 
             case INACTIVE,
-                 SUSPENDED ->
-                    user.setStatus(
-                            UserStatus.INACTIVE
-                    );
+                 SUSPENDED -> {
+                user.setStatus(
+                        UserStatus.INACTIVE
+                );
+            }
         }
     }
 
     private void validateDateOfBirth(
             LocalDate dateOfBirth
     ) {
-        if (
-                dateOfBirth != null
-                        && dateOfBirth
-                        .isAfter(
-                                LocalDate.now()
-                        )
-        ) {
+        if (dateOfBirth == null) {
+            return;
+        }
+
+        LocalDate today =
+                LocalDate.now();
+
+        /*
+         * Ngày sinh bắt buộc phải trước hôm nay.
+         */
+        if (!dateOfBirth.isBefore(today)) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST
+            );
+        }
+
+        /*
+         * FitLife yêu cầu hội viên >= 10 tuổi.
+         */
+        LocalDate maximumDateOfBirth =
+                today.minusYears(10);
+
+        if (dateOfBirth.isAfter(
+                maximumDateOfBirth
+        )) {
             throw new AppException(
                     ErrorCode.INVALID_REQUEST
             );

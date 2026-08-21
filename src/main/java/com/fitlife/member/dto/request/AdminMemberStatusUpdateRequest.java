@@ -9,6 +9,8 @@ import lombok.Setter;
 @Setter
 public class AdminMemberStatusUpdateRequest {
 
-    @NotNull(message = "MEMBER_STATUS_REQUIRED")
+    @NotNull(
+            message = "MEMBER_STATUS_REQUIRED"
+    )
     private MemberStatus status;
 }
