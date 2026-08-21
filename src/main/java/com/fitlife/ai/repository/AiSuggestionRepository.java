@@ -3,13 +3,17 @@ package com.fitlife.ai.repository;
 import com.fitlife.ai.entity.AiSuggestion;
 import com.fitlife.ai.enums.AiSuggestionStatus;
 import com.fitlife.ai.enums.AiSuggestionType;
+
 import jakarta.persistence.LockModeType;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
@@ -19,22 +23,55 @@ import java.util.Optional;
 public interface AiSuggestionRepository
         extends JpaRepository<AiSuggestion, Long> {
 
+    // =====================================================
+    // RESPONSE / INTERNAL
+    // =====================================================
+
     @EntityGraph(
             attributePaths = {
                     "member",
                     "member.user"
             }
     )
-    Optional<AiSuggestion>
-    findResponseById(
+    Optional<AiSuggestion> findResponseById(
             Long id
     );
+
+    // =====================================================
+    // MEMBER - LIST
+    // =====================================================
 
     Page<AiSuggestion>
     findByMemberIdAndDeletedFalseOrderByCreatedAtDesc(
             Long memberId,
             Pageable pageable
     );
+
+    Page<AiSuggestion>
+    findByMemberIdAndSuggestionTypeAndDeletedFalseOrderByCreatedAtDesc(
+            Long memberId,
+            AiSuggestionType suggestionType,
+            Pageable pageable
+    );
+
+    Page<AiSuggestion>
+    findByMemberIdAndStatusAndDeletedFalseOrderByCreatedAtDesc(
+            Long memberId,
+            AiSuggestionStatus status,
+            Pageable pageable
+    );
+
+    Page<AiSuggestion>
+    findByMemberIdAndSuggestionTypeAndStatusAndDeletedFalseOrderByCreatedAtDesc(
+            Long memberId,
+            AiSuggestionType suggestionType,
+            AiSuggestionStatus status,
+            Pageable pageable
+    );
+
+    // =====================================================
+    // MEMBER - DETAIL
+    // =====================================================
 
     @EntityGraph(
             attributePaths = {
@@ -71,27 +108,66 @@ public interface AiSuggestionRepository
             Long memberId
     );
 
+    // =====================================================
+    // ADMIN - LIST
+    // =====================================================
+
     Page<AiSuggestion>
-    findByMemberIdAndSuggestionTypeAndDeletedFalseOrderByCreatedAtDesc(
-            Long memberId,
+    findByDeletedFalseOrderByCreatedAtDesc(
+            Pageable pageable
+    );
+
+    Page<AiSuggestion>
+    findBySuggestionTypeAndStatusAndDeletedFalseOrderByCreatedAtDesc(
+            AiSuggestionType suggestionType,
+            AiSuggestionStatus status,
+            Pageable pageable
+    );
+
+    Page<AiSuggestion>
+    findBySuggestionTypeAndDeletedFalseOrderByCreatedAtDesc(
             AiSuggestionType suggestionType,
             Pageable pageable
     );
 
     Page<AiSuggestion>
-    findByMemberIdAndStatusAndDeletedFalseOrderByCreatedAtDesc(
-            Long memberId,
+    findByStatusAndDeletedFalseOrderByCreatedAtDesc(
             AiSuggestionStatus status,
             Pageable pageable
     );
 
-    Page<AiSuggestion>
-    findByMemberIdAndSuggestionTypeAndStatusAndDeletedFalseOrderByCreatedAtDesc(
-            Long memberId,
-            AiSuggestionType suggestionType,
-            AiSuggestionStatus status,
-            Pageable pageable
+    // =====================================================
+    // ADMIN - DETAIL
+    // =====================================================
+
+    /**
+     * Admin không bị giới hạn bởi member ownership.
+     *
+     * Fetch member + user + latestBodyMetric ngay
+     * trong transaction để mapper không gặp
+     * LazyInitializationException.
+     */
+    @EntityGraph(
+            attributePaths = {
+                    "member",
+                    "member.user",
+                    "latestBodyMetric"
+            }
+    )
+    @Query("""
+            SELECT suggestion
+            FROM AiSuggestion suggestion
+            WHERE suggestion.id = :id
+              AND suggestion.deleted = false
+            """)
+    Optional<AiSuggestion> findAdminDetailById(
+            @Param("id")
+            Long id
     );
+
+    // =====================================================
+    // USAGE
+    // =====================================================
 
     @Query("""
             SELECT COUNT(s)
@@ -118,29 +194,9 @@ public interface AiSuggestionRepository
             LocalDateTime to
     );
 
-    Page<AiSuggestion>
-    findByDeletedFalseOrderByCreatedAtDesc(
-            Pageable pageable
-    );
-
-    Page<AiSuggestion>
-    findBySuggestionTypeAndStatusAndDeletedFalseOrderByCreatedAtDesc(
-            AiSuggestionType suggestionType,
-            AiSuggestionStatus status,
-            Pageable pageable
-    );
-
-    Page<AiSuggestion>
-    findBySuggestionTypeAndDeletedFalseOrderByCreatedAtDesc(
-            AiSuggestionType suggestionType,
-            Pageable pageable
-    );
-
-    Page<AiSuggestion>
-    findByStatusAndDeletedFalseOrderByCreatedAtDesc(
-            AiSuggestionStatus status,
-            Pageable pageable
-    );
+    // =====================================================
+    // LOCKING
+    // =====================================================
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
