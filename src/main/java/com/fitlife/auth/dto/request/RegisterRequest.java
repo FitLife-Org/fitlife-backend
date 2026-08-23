@@ -62,8 +62,19 @@ public class RegisterRequest {
     )
     private String fullName;
 
+    /**
+     * Số điện thoại Việt Nam.
+     *
+     * Cho phép:
+     * - rỗng
+     * - 0912345678
+     * - +84912345678
+     *
+     * Chỉ chấp nhận các đầu số di động phổ biến:
+     * 03, 05, 07, 08, 09.
+     */
     @Pattern(
-            regexp = "^$|^(0|\\+84)[0-9]{9}$",
+            regexp = "^$|^(?:0(?:3|5|7|8|9)[0-9]{8}|\\+84(?:3|5|7|8|9)[0-9]{8})$",
             message = "Phone number is invalid"
     )
     private String phone;

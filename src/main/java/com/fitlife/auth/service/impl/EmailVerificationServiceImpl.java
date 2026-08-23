@@ -47,12 +47,15 @@ public class EmailVerificationServiceImpl
     ) {
         validateUserForVerification(user);
 
+        if (Boolean.TRUE.equals(
+                user.getEmailVerified()
+        )) {
+            return;
+        }
+
         LocalDateTime now =
                 LocalDateTime.now();
 
-        /*
-         * Mỗi user chỉ nên có một token chưa sử dụng.
-         */
         tokenRepository
                 .deleteAllByUserIdAndUsedFalse(
                         user.getId()
@@ -89,12 +92,9 @@ public class EmailVerificationServiceImpl
                         rawToken
                 );
 
-        String displayName =
-                resolveDisplayName(user);
-
         String htmlContent =
                 buildVerificationEmail(
-                        displayName,
+                        resolveDisplayName(user),
                         verificationLink,
                         getExpirationHours()
                 );
@@ -254,15 +254,6 @@ public class EmailVerificationServiceImpl
             throw new AppException(
                     ErrorCode.ACCOUNT_DELETED
             );
-        }
-
-        /*
-         * User đã xác minh không cần tạo thêm token.
-         */
-        if (Boolean.TRUE.equals(
-                user.getEmailVerified()
-        )) {
-            return;
         }
     }
 
