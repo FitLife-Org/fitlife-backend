@@ -78,6 +78,7 @@ public class TrainerServiceImpl
                         ? request.getStatus()
                         : TrainerStatus.ACTIVE
         );
+        trainer.setDeleted(false);
 
         Trainer savedTrainer =
                 trainerRepository.save(trainer);
