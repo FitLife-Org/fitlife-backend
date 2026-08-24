@@ -8,8 +8,14 @@ import org.mapstruct.Mapping;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring")
+@Mapper(
+        componentModel = "spring"
+)
 public interface MemberMapper {
+
+    // =====================================================
+    // DETAIL
+    // =====================================================
 
     @Mapping(
             target = "userId",
@@ -43,6 +49,10 @@ public interface MemberMapper {
             Member member
     );
 
+    // =====================================================
+    // SUMMARY / ADMIN LIST
+    // =====================================================
+
     @Mapping(
             target = "userId",
             source = "user.id"
@@ -63,11 +73,20 @@ public interface MemberMapper {
             target = "phone",
             source = "user.phone"
     )
+    @Mapping(
+            target = "avatarUrl",
+            source = "user.avatarUrl"
+    )
+    @Mapping(
+            target = "emailVerified",
+            source = "user.emailVerified"
+    )
     MemberSummaryResponse toSummaryResponse(
             Member member
     );
 
-    List<MemberSummaryResponse> toSummaryResponseList(
+    List<MemberSummaryResponse>
+    toSummaryResponseList(
             List<Member> members
     );
 }

@@ -1,6 +1,7 @@
 package com.fitlife.member.dto.response;
 
 import com.fitlife.member.enums.FitnessGoal;
+import com.fitlife.member.enums.Gender;
 import com.fitlife.member.enums.MemberStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,19 +18,36 @@ import java.time.LocalDateTime;
 public class MemberSummaryResponse {
 
     private Long id;
+
     private Long userId;
 
     private String username;
+
     private String memberCode;
 
     private String fullName;
-    private String phone;
+
     private String email;
 
-    private FitnessGoal fitnessGoal;
-    private MemberStatus status;
+    private String phone;
+
+    private String avatarUrl;
+
+    private Boolean emailVerified;
+
+    private Gender gender;
+
+    private LocalDate dateOfBirth;
+
     private LocalDate joinDate;
 
+    private FitnessGoal fitnessGoal;
+
+    private MemberStatus status;
+
+    private Boolean isDeleted;
+
     private LocalDateTime createdAt;
+
     private LocalDateTime updatedAt;
 }

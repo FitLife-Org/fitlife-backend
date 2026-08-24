@@ -129,7 +129,7 @@ public class AuthController {
         );
     }
 
-    @PostMapping("/resend-verification-email")
+    @PostMapping("/resend-verification")
     @Operation(
             summary = "Resend email verification link"
     )
@@ -138,13 +138,12 @@ public class AuthController {
             @RequestBody
             ResendVerificationEmailRequest request
     ) {
-        authService.resendVerificationEmail(request);
+        authService.resendVerificationEmail(
+                request
+        );
 
         return ApiResponse.success(
-                """
-                If the email exists and has not been verified, \
-                a verification email has been sent
-                """,
+                "If the email exists and has not been verified, a verification email has been sent.",
                 null
         );
     }

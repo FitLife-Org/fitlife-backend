@@ -101,25 +101,25 @@ public class SecurityConfiguration {
                                 "/webjars/**"
                         ).permitAll()
 
-                        // =====================================================
-                        // AUTH PUBLIC
-                        // =====================================================
+                                // =====================================================
+                                // AUTH PUBLIC
+                                // =====================================================
 
-                        .requestMatchers(
-                                HttpMethod.POST,
-                                "/auth/register",
-                                "/auth/login",
-                                "/auth/google-login",
-                                "/auth/refresh-token",
-                                "/auth/resend-verification-email",
-                                "/auth/forgot-password",
-                                "/auth/reset-password"
-                        ).permitAll()
+                                .requestMatchers(
+                                        HttpMethod.POST,
+                                        "/auth/register",
+                                        "/auth/login",
+                                        "/auth/google-login",
+                                        "/auth/refresh-token",
+                                        "/auth/resend-verification",
+                                        "/auth/forgot-password",
+                                        "/auth/reset-password"
+                                ).permitAll()
 
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/auth/verify-email"
-                        ).permitAll()
+                                .requestMatchers(
+                                        HttpMethod.GET,
+                                        "/auth/verify-email"
+                                ).permitAll()
 
                         /*
                          * Logout cần người dùng đã đăng nhập.
