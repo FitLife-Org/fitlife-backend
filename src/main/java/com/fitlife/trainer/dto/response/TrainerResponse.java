@@ -21,6 +21,7 @@ public class TrainerResponse {
     private Integer experienceYears;
     private String certifications;
     private String bio;
+    private String avatarUrl;
     private TrainerStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

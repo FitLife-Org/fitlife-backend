@@ -11,6 +11,9 @@ server:
     include-exception: false
 
 spring:
+  config:
+    import: optional:file:.env[.properties]
+
   application:
     name: fitlife-api
 
@@ -20,8 +23,8 @@ spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    username: root
+    password: 012140268Pp
 
     hikari:
       pool-name: FitLifeHikariPool

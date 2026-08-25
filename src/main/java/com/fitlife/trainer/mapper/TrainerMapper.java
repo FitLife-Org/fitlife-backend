@@ -27,6 +27,7 @@ public interface TrainerMapper {
     @Mapping(target = "fullName", source = "user.fullName")
     @Mapping(target = "email", source = "user.email")
     @Mapping(target = "phone", source = "user.phone")
+    @Mapping(target = "avatarUrl", source = "user.avatarUrl")
     TrainerResponse toResponse(
             Trainer trainer
     );

@@ -26,6 +26,8 @@ public interface TrainerService {
 
     TrainerResponse getMyProfile();
 
+    TrainerResponse updateMyAvatar(org.springframework.web.multipart.MultipartFile file);
+
     TrainerResponse updateTrainer(Long id, TrainerUpdateRequest request);
 
     TrainerResponse updateTrainerStatus(Long id, com.fitlife.trainer.enums.TrainerStatus status);

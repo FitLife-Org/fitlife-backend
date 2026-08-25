@@ -23,7 +23,7 @@ public class EquipmentManagmentController {
 
     private final EquipmentManagmentService equipmentService;
 
-    @GetMapping("/equipment")
+    @GetMapping({"/staff/equipment", "/admin/equipment"})
     @Operation(summary = "Get list of equipment with filtering and pagination")
     public ApiResponse<PageResponse<EquipmentManagmentResponse>> getEquipmentList(
             @RequestParam(value = "page", defaultValue = "0") int page,
@@ -45,7 +45,7 @@ public class EquipmentManagmentController {
         return ApiResponse.success("Lấy thông tin tổng quan thiết bị thành công", response);
     }
 
-    @GetMapping("/admin/equipment/{id}")
+    @GetMapping({"/admin/equipment/{id}", "/staff/equipment/{id}"})
     @Operation(summary = "Get details of a specific equipment by code")
     public ApiResponse<EquipmentManagmentResponse> getEquipmentByCode(
             @PathVariable("id") String code
@@ -54,7 +54,7 @@ public class EquipmentManagmentController {
         return ApiResponse.success("Lấy chi tiết thiết bị thành công", response);
     }
 
-    @PostMapping("/admin/equipment")
+    @PostMapping({"/admin/equipment", "/staff/equipment"})
     @Operation(summary = "Add a new equipment")
     public ApiResponse<EquipmentManagmentResponse> createEquipment(
             @Valid @RequestBody EquipmentManagmentCreateRequest request
@@ -63,7 +63,7 @@ public class EquipmentManagmentController {
         return ApiResponse.success("Thêm thiết bị thành công", response);
     }
 
-    @PutMapping("/admin/equipment/{id}")
+    @PutMapping({"/admin/equipment/{id}", "/staff/equipment/{id}"})
     @Operation(summary = "Update equipment details")
     public ApiResponse<EquipmentManagmentResponse> updateEquipment(
             @PathVariable("id") String code,

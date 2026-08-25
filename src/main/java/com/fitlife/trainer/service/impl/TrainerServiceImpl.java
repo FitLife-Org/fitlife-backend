@@ -7,6 +7,7 @@ import com.fitlife.trainer.dto.request.TrainerUpdateRequest;
 import com.fitlife.trainer.dto.response.TrainerResponse;
 import com.fitlife.trainer.entity.Trainer;
 import com.fitlife.trainer.enums.TrainerStatus;
+import com.fitlife.trainer.avatar.service.TrainerAvatarStorageService;
 import com.fitlife.trainer.mapper.TrainerMapper;
 import com.fitlife.trainer.repository.TrainerRepository;
 import com.fitlife.trainer.service.TrainerService;
@@ -46,6 +47,7 @@ public class TrainerServiceImpl
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final TrainerMapper trainerMapper;
+    private final TrainerAvatarStorageService trainerAvatarStorageService;
 
     @Override
     public TrainerResponse createTrainer(
@@ -290,6 +292,19 @@ public class TrainerServiceImpl
     public TrainerResponse getMyProfile() {
         Trainer trainer = trainerRepository.findByUserIdAndDeletedFalse(getCurrentUser().getId())
                 .orElseThrow(() -> new AppException(ErrorCode.TRAINER_PROFILE_NOT_FOUND));
+        return trainerMapper.toResponse(trainer);
+    }
+
+    @Override
+    public TrainerResponse updateMyAvatar(org.springframework.web.multipart.MultipartFile file) {
+        User user = getCurrentUser();
+        Trainer trainer = trainerRepository.findByUserIdAndDeletedFalse(user.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.TRAINER_PROFILE_NOT_FOUND));
+
+        String avatarUrl = trainerAvatarStorageService.uploadTrainerAvatar(user.getId(), file);
+        user.setAvatarUrl(avatarUrl);
+        userRepository.save(user);
+
         return trainerMapper.toResponse(trainer);
     }
 

@@ -404,7 +404,9 @@ public class WorkoutPlanServiceImpl implements WorkoutPlanService {
             Long memberId,
             String trainerUsername
     ) {
-        validateMemberExists(memberId);
+        if (!memberRepository.existsById(memberId)) {
+            return java.util.Collections.emptyList();
+        }
 
         return workoutPlanRepository
                 .findByMemberIdAndIsDeletedFalseOrderByCreatedAtDesc(memberId)

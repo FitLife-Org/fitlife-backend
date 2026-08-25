@@ -214,17 +214,22 @@ public class GlobalExceptionHandler {
         );
     }
 
-    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-    public ResponseEntity<ApiResponse<Void>> handleMethodNotSupported(
-            HttpRequestMethodNotSupportedException exception
+    @ExceptionHandler({
+            HttpRequestMethodNotSupportedException.class,
+            org.springframework.web.servlet.resource.NoResourceFoundException.class
+    })
+    public ResponseEntity<ApiResponse<Void>> handleMethodOrResourceNotSupported(
+            Exception exception
     ) {
         ErrorCode errorCode = ErrorCode.METHOD_NOT_SUPPORTED;
 
+        String detail = exception instanceof HttpRequestMethodNotSupportedException
+                ? ((HttpRequestMethodNotSupportedException) exception).getMethod()
+                : exception.getMessage();
+
         return buildErrorResponse(
                 errorCode,
-                errorCode.getMessage()
-                        + ": "
-                        + exception.getMethod()
+                errorCode.getMessage() + ": " + detail
         );
     }
 

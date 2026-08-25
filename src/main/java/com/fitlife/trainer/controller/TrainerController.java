@@ -35,6 +35,16 @@ public class TrainerController {
                 .build();
     }
 
+    @PatchMapping(value = "/me/avatar", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('TRAINER')")
+    public ApiResponse<TrainerResponse> updateMyAvatar(
+            @RequestPart("file") org.springframework.web.multipart.MultipartFile file) {
+        return ApiResponse.<TrainerResponse>builder()
+                .message("Your trainer avatar updated successfully")
+                .data(trainerService.updateMyAvatar(file))
+                .build();
+    }
+
 
     @GetMapping
     public ApiResponse<List<TrainerResponse>> getActiveTrainers() {

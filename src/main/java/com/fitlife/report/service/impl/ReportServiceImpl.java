@@ -631,11 +631,31 @@ public class ReportServiceImpl implements ReportService {
     public TrainerMembersReportResponse getTrainerMembersReport(String username) {
         User trainerUser = entityManager.createQuery("SELECT u FROM User u WHERE u.username = :username", User.class)
                 .setParameter("username", username)
-                .getSingleResult();
+                .getResultStream().findFirst().orElse(null);
+
+        if (trainerUser == null) {
+            return TrainerMembersReportResponse.builder()
+                    .totalAssignedMembers(0)
+                    .activeMembersCount(0)
+                    .workoutPlansCreatedCount(0)
+                    .nutritionPlansCreatedCount(0)
+                    .membersList(Collections.emptyList())
+                    .build();
+        }
 
         Trainer trainer = entityManager.createQuery("SELECT t FROM Trainer t WHERE t.user.id = :userId AND t.deleted = false", Trainer.class)
                 .setParameter("userId", trainerUser.getId())
-                .getSingleResult();
+                .getResultStream().findFirst().orElse(null);
+
+        if (trainer == null) {
+            return TrainerMembersReportResponse.builder()
+                    .totalAssignedMembers(0)
+                    .activeMembersCount(0)
+                    .workoutPlansCreatedCount(0)
+                    .nutritionPlansCreatedCount(0)
+                    .membersList(Collections.emptyList())
+                    .build();
+        }
 
         // 1. Danh sách memberIds từ các WorkoutPlan do Trainer phụ trách
         List<Long> memberIds = entityManager.createQuery(
