@@ -24,6 +24,8 @@ import com.fitlife.subscription.service.SubscriptionService;
 import com.fitlife.payment.repository.PaymentRepository;
 import com.fitlife.user.entity.User;
 import com.fitlife.user.repository.UserRepository;
+import com.fitlife.member.timeline.enums.MemberTimelineType;
+import com.fitlife.member.timeline.service.MemberTimelineRecorder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -50,6 +52,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     private final UserRepository userRepository;
     private final InvoiceService invoiceService;
     private final SubscriptionMapper subscriptionMapper;
+    private final MemberTimelineRecorder memberTimelineRecorder;
 
     private void logHistory(Subscription sub, SubscriptionStatus oldStatus, SubscriptionStatus newStatus, String action, String notes) {
         com.fitlife.subscription.entity.SubscriptionHistory history = com.fitlife.subscription.entity.SubscriptionHistory.builder()
@@ -441,8 +444,8 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             throw new AppException(ErrorCode.INVALID_REQUEST, "New duration is inactive");
         }
 
-        if (getTierLevel(newDuration.getGymPackage().getPackageType()) < getTierLevel(activeSub.getGymPackage().getPackageType())) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Cannot upgrade to a lower tier package");
+        if (getTierLevel(newDuration.getGymPackage().getPackageType()) <= getTierLevel(activeSub.getGymPackage().getPackageType())) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Cannot upgrade to a lower or same tier package");
         }
 
         long totalDays = java.time.temporal.ChronoUnit.DAYS.between(activeSub.getStartDate(), activeSub.getEndDate());
@@ -705,5 +708,82 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 // Ignore parsing errors
             }
         }
+    }
+
+    @Override
+    @Transactional
+    public SubscriptionResponse transferSubscription(Long subscriptionId, Long recipientMemberId, String note) {
+        checkAndExpireSubscriptions();
+        
+        Subscription activeSub = subscriptionRepository.findById(subscriptionId)
+                .orElseThrow(() -> new AppException(ErrorCode.SUBSCRIPTION_NOT_FOUND, "Không tìm thấy gói tập"));
+
+        if (activeSub.getStatus() != SubscriptionStatus.ACTIVE) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Chỉ có thể chuyển nhượng gói tập đang hoạt động");
+        }
+
+        Member recipientMember = memberRepository.findById(recipientMemberId)
+                .orElseThrow(() -> new AppException(ErrorCode.MEMBER_NOT_FOUND, "Không tìm thấy hội viên nhận chuyển nhượng"));
+
+        Member senderMember = activeSub.getMember();
+        if (senderMember.getId().equals(recipientMember.getId())) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Không thể chuyển nhượng gói tập cho chính mình");
+        }
+
+        boolean hasActive = subscriptionRepository.existsByMemberIdAndStatus(recipientMember.getId(), SubscriptionStatus.ACTIVE);
+        if (hasActive) {
+            throw new AppException(ErrorCode.ACTIVE_SUBSCRIPTION_EXISTS, "Hội viên nhận chuyển nhượng đã có gói tập đang hoạt động");
+        }
+
+        String senderName = senderMember.getUser() != null ? senderMember.getUser().getFullName() : "Hội viên cũ";
+        String recipientName = recipientMember.getUser() != null ? recipientMember.getUser().getFullName() : "Hội viên mới";
+        
+        String transferNoteText = "Chuyển gói tập từ hội viên " + senderName + " (Mã: " + senderMember.getMemberCode() 
+                + ") sang hội viên " + recipientName + " (Mã: " + recipientMember.getMemberCode() + ")";
+        if (note != null && !note.trim().isEmpty()) {
+            transferNoteText += ". Ghi chú: " + note.trim();
+        }
+
+        // 1. Change membership owner
+        activeSub.setMember(recipientMember);
+        activeSub.setNote(transferNoteText);
+        Subscription saved = subscriptionRepository.save(activeSub);
+
+        // 2. Log History
+        logHistory(saved, SubscriptionStatus.ACTIVE, SubscriptionStatus.ACTIVE, "TRANSFER", transferNoteText);
+
+        // 3. Record timeline for Sender
+        try {
+            memberTimelineRecorder.record(
+                    senderMember.getId(),
+                    MemberTimelineType.SUBSCRIPTION,
+                    "Chuyển nhượng gói tập",
+                    "Đã chuyển nhượng gói tập \"" + activeSub.getGymPackage().getName() + "\" cho hội viên " + recipientName,
+                    saved.getId(),
+                    "Subscription",
+                    "SUCCESS",
+                    LocalDateTime.now()
+            );
+        } catch (Exception e) {
+            // Avoid failing the transaction if timeline recording fails
+        }
+
+        // 4. Record timeline for Recipient
+        try {
+            memberTimelineRecorder.record(
+                    recipientMember.getId(),
+                    MemberTimelineType.SUBSCRIPTION,
+                    "Nhận chuyển nhượng gói tập",
+                    "Nhận chuyển nhượng gói tập \"" + activeSub.getGymPackage().getName() + "\" từ hội viên " + senderName,
+                    saved.getId(),
+                    "Subscription",
+                    "SUCCESS",
+                    LocalDateTime.now()
+            );
+        } catch (Exception e) {
+            // Avoid failing the transaction if timeline recording fails
+        }
+
+        return subscriptionMapper.toResponse(saved);
     }
 }
