@@ -55,4 +55,14 @@ public class AdminSubscriptionController {
                 .data(subscriptionService.updateSubscriptionStatusByAdmin(id, request))
                 .build();
     }
+
+    @PostMapping("/{id}/transfer")
+    public ApiResponse<SubscriptionResponse> transferSubscription(
+            @PathVariable Long id,
+            @jakarta.validation.Valid @RequestBody com.fitlife.subscription.dto.request.TransferSubscriptionRequest request
+    ) {
+        return ApiResponse.<SubscriptionResponse>builder()
+                .data(subscriptionService.transferSubscription(id, request.getRecipientMemberId(), request.getNote()))
+                .build();
+    }
 }
