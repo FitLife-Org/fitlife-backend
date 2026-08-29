@@ -9,6 +9,7 @@ import com.fitlife.member.entity.Member;
 import com.fitlife.workout.entity.WorkoutExercise;
 import com.fitlife.workout.entity.WorkoutPlan;
 import com.fitlife.workout.entity.WorkoutPlanDay;
+import com.fitlife.workout.enums.WorkoutPlanSourceType;
 import com.fitlife.workout.repository.WorkoutPlanRepository;
 import com.fitlife.workout.service.AiWorkoutPlanCreationService;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ public class AiWorkoutPlanCreationServiceImpl
         implements AiWorkoutPlanCreationService {
 
     private static final int DEFAULT_DURATION_WEEKS = 4;
+
     private static final int DEFAULT_WORKOUT_DAYS = 3;
 
     private final WorkoutPlanRepository
@@ -40,20 +42,29 @@ public class AiWorkoutPlanCreationServiceImpl
             Member member,
             List<AiPlanItem> items
     ) {
-        validateInput(suggestion, member, items);
+        validateInput(
+                suggestion,
+                member,
+                items
+        );
 
-        if (workoutPlanRepository
-                .existsBySourceAiSuggestionIdAndIsDeletedFalse(
-                        suggestion.getId()
-                )) {
+        if (
+                workoutPlanRepository
+                        .existsBySourceAiSuggestionIdAndIsDeletedFalse(
+                                suggestion.getId()
+                        )
+        ) {
             throw new AppException(
-                    ErrorCode.AI_SUGGESTION_ALREADY_APPLIED
+                    ErrorCode
+                            .AI_SUGGESTION_ALREADY_APPLIED
             );
         }
 
         List<AiPlanItem> workoutItems =
                 items.stream()
-                        .filter(this::isWorkoutItem)
+                        .filter(
+                                this::isWorkoutItem
+                        )
                         .sorted(
                                 Comparator
                                         .comparing(
@@ -61,7 +72,8 @@ public class AiWorkoutPlanCreationServiceImpl
                                         )
                                         .thenComparing(
                                                 item ->
-                                                        item.getId() == null
+                                                        item.getId()
+                                                                == null
                                                                 ? Long.MAX_VALUE
                                                                 : item.getId()
                                         )
@@ -72,12 +84,14 @@ public class AiWorkoutPlanCreationServiceImpl
                 workoutItems.stream()
                         .anyMatch(item ->
                                 item.getItemType()
-                                        == AiPlanItemType.EXERCISE
+                                        == AiPlanItemType
+                                        .EXERCISE
                         );
 
         if (!hasExercise) {
             throw new AppException(
-                    ErrorCode.AI_SUGGESTION_ITEMS_NOT_FOUND
+                    ErrorCode
+                            .AI_SUGGESTION_ITEMS_NOT_FOUND
             );
         }
 
@@ -88,9 +102,10 @@ public class AiWorkoutPlanCreationServiceImpl
                         workoutItems
                 );
 
-        return workoutPlanRepository.saveAndFlush(
-                plan
-        );
+        return workoutPlanRepository
+                .saveAndFlush(
+                        plan
+                );
     }
 
     private WorkoutPlan buildPlan(
@@ -101,10 +116,19 @@ public class AiWorkoutPlanCreationServiceImpl
         Map<Integer, WorkoutPlanDay> dayMap =
                 new LinkedHashMap<>();
 
-        for (AiPlanItem item : workoutItems) {
-            if (item.getItemType()
-                    == AiPlanItemType.WORKOUT_DAY) {
-                int dayNo = resolveDayNo(item);
+        for (
+                AiPlanItem item :
+                workoutItems
+        ) {
+            if (
+                    item.getItemType()
+                            == AiPlanItemType
+                            .WORKOUT_DAY
+            ) {
+                int dayNo =
+                        resolveDayNo(
+                                item
+                        );
 
                 dayMap.putIfAbsent(
                         dayNo,
@@ -116,13 +140,22 @@ public class AiWorkoutPlanCreationServiceImpl
             }
         }
 
-        for (AiPlanItem item : workoutItems) {
-            if (item.getItemType()
-                    != AiPlanItemType.EXERCISE) {
+        for (
+                AiPlanItem item :
+                workoutItems
+        ) {
+            if (
+                    item.getItemType()
+                            != AiPlanItemType
+                            .EXERCISE
+            ) {
                 continue;
             }
 
-            int dayNo = resolveDayNo(item);
+            int dayNo =
+                    resolveDayNo(
+                            item
+                    );
 
             WorkoutPlanDay day =
                     dayMap.computeIfAbsent(
@@ -135,7 +168,9 @@ public class AiWorkoutPlanCreationServiceImpl
                     );
 
             day.addExercise(
-                    buildExercise(item)
+                    buildExercise(
+                            item
+                    )
             );
         }
 
@@ -151,7 +186,8 @@ public class AiWorkoutPlanCreationServiceImpl
 
         if (days.isEmpty()) {
             throw new AppException(
-                    ErrorCode.AI_SUGGESTION_ITEMS_NOT_FOUND
+                    ErrorCode
+                            .AI_SUGGESTION_ITEMS_NOT_FOUND
             );
         }
 
@@ -163,49 +199,94 @@ public class AiWorkoutPlanCreationServiceImpl
 
         WorkoutPlan plan =
                 WorkoutPlan.builder()
-                        .memberId(member.getId())
+
+                        .memberId(
+                                member.getId()
+                        )
+
                         .sourceAiSuggestionId(
                                 suggestion.getId()
                         )
-                        .code(generateCode())
-                        .name(resolvePlanName(suggestion))
-                        .goal(suggestion.getGoal())
+
+                        .code(
+                                generateCode()
+                        )
+
+                        .name(
+                                resolvePlanName(
+                                        suggestion
+                                )
+                        )
+
+                        .goal(
+                                suggestion.getGoal()
+                        )
+
                         .experienceLevel(
-                                suggestion.getExperienceLevel()
+                                suggestion
+                                        .getExperienceLevel()
                                         == null
                                         ? null
                                         : suggestion
                                         .getExperienceLevel()
                                         .name()
                         )
+
                         .durationWeeks(
                                 DEFAULT_DURATION_WEEKS
                         )
+
                         .workoutDaysPerWeek(
                                 workoutDaysPerWeek
                         )
+
                         .workoutDurationMinutes(
                                 suggestion
                                         .getWorkoutDurationMinutes()
                         )
+
                         .description(
-                                suggestion.getSummary()
+                                suggestion
+                                        .getSummary()
                         )
+
                         .note(
                                 resolvePlanNote(
                                         suggestion,
                                         workoutItems
                                 )
                         )
-                        .sourceType("AI")
+
+                        .sourceType(
+                                WorkoutPlanSourceType
+                                        .AI_GENERATED
+                        )
+
                         .status("DRAFT")
-                        .createdBy(resolveUserId(member))
-                        .updatedBy(resolveUserId(member))
+
+                        .createdBy(
+                                resolveUserId(
+                                        member
+                                )
+                        )
+
+                        .updatedBy(
+                                resolveUserId(
+                                        member
+                                )
+                        )
+
                         .isDeleted(false)
-                        .days(new ArrayList<>())
+
+                        .days(
+                                new ArrayList<>()
+                        )
+
                         .build();
 
-        days.forEach(plan::addDay);
+        days.forEach(
+                plan::addDay
+        );
 
         return plan;
     }
