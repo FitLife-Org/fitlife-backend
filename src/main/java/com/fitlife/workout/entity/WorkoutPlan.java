@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import com.fitlife.workout.enums.WorkoutPlanSourceType;
 
 @Entity
 @Table(name = "workout_plans")
@@ -66,9 +67,15 @@ public class WorkoutPlan {
     @Column(columnDefinition = "TEXT")
     private String note;
 
-    @Column(name = "source_type", nullable = false, length = 30)
+    @Enumerated(EnumType.STRING)
+    @Column(
+            name = "source_type",
+            nullable = false,
+            length = 30
+    )
     @Builder.Default
-    private String sourceType = "MANUAL";
+    private WorkoutPlanSourceType sourceType =
+            WorkoutPlanSourceType.MANUAL;
 
     @Column(nullable = false, length = 30)
     @Builder.Default

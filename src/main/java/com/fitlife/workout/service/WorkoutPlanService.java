@@ -11,11 +11,7 @@ import java.util.List;
 
 public interface WorkoutPlanService {
 
-    /*
-     * =========================================================
-     * MEMBER SELF-SERVICE
-     * =========================================================
-     */
+    // MEMBER
 
     WorkoutPlanResponse createWorkoutPlan(
             WorkoutPlanCreateRequest request,
@@ -71,11 +67,7 @@ public interface WorkoutPlanService {
             String currentUsername
     );
 
-    /*
-     * =========================================================
-     * INTERNAL / LEGACY
-     * =========================================================
-     */
+    // INTERNAL
 
     List<WorkoutPlanResponse> getMyWorkoutPlans(
             Long memberId
@@ -85,11 +77,7 @@ public interface WorkoutPlanService {
             Long id
     );
 
-    /*
-     * =========================================================
-     * TRAINER
-     * =========================================================
-     */
+    // TRAINER
 
     WorkoutPlanResponse createWorkoutPlanForMember(
             Long memberId,
@@ -109,11 +97,7 @@ public interface WorkoutPlanService {
             String trainerUsername
     );
 
-    /*
-     * =========================================================
-     * ADMIN
-     * =========================================================
-     */
+    // ADMIN
 
     List<WorkoutPlanResponse> getAllWorkoutPlansForAdmin();
 

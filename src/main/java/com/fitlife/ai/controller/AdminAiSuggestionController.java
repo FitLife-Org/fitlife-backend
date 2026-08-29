@@ -2,55 +2,49 @@ package com.fitlife.ai.controller;
 
 import com.fitlife.ai.dto.response.AiSuggestionDetailResponse;
 import com.fitlife.ai.dto.response.AiSuggestionResponse;
-
 import com.fitlife.ai.enums.AiSuggestionStatus;
 import com.fitlife.ai.enums.AiSuggestionType;
-
 import com.fitlife.ai.service.AiSuggestionService;
-
 import com.fitlife.common.response.ApiResponse;
 import com.fitlife.common.response.PageResponse;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.data.domain.PageRequest;
-
 import org.springframework.security.access.prepost.PreAuthorize;
-
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/admin/ai/suggestions")
-@PreAuthorize(
-        "hasAnyRole('ADMIN', 'STAFF')"
+@PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+@Tag(
+        name = "Admin - AI Suggestion",
+        description = "APIs for Admin and Staff to monitor AI suggestions"
 )
+@SecurityRequirement(name = "bearerAuth")
 public class AdminAiSuggestionController {
 
-    private static final int DEFAULT_PAGE =
-            0;
+    private static final int DEFAULT_PAGE = 0;
+    private static final int DEFAULT_SIZE = 10;
+    private static final int MAX_SIZE = 100;
 
-    private static final int DEFAULT_SIZE =
-            10;
+    // =====================================================
+    // DEPENDENCY
+    // =====================================================
 
-    private static final int MAX_SIZE =
-            100;
-
-    private final AiSuggestionService
-            aiSuggestionService;
+    private final AiSuggestionService aiSuggestionService;
 
     // =====================================================
     // LIST
     // =====================================================
 
     /**
-     * GET
-     *
-     * /api/v1/admin/ai/suggestions
+     * GET /api/v1/admin/ai/suggestions
      *
      * Optional:
      *
@@ -60,9 +54,13 @@ public class AdminAiSuggestionController {
      * ?size=10
      */
     @GetMapping
-    public ApiResponse<
-            PageResponse<AiSuggestionResponse>
-            >
+    @Operation(
+            summary = "Get AI suggestion list",
+            description =
+                    "Admin/Staff xem toàn bộ lịch sử AI Suggestion, "
+                            + "hỗ trợ filter theo type và status."
+    )
+    public ApiResponse<PageResponse<AiSuggestionResponse>>
     getSuggestions(
             @RequestParam(
                     defaultValue = "0"
@@ -84,6 +82,7 @@ public class AdminAiSuggestionController {
             )
             AiSuggestionStatus status
     ) {
+
         int safePage =
                 Math.max(
                         page,
@@ -99,9 +98,7 @@ public class AdminAiSuggestionController {
                         MAX_SIZE
                 );
 
-        return ApiResponse.success(
-                "Get AI suggestions successfully",
-
+        PageResponse<AiSuggestionResponse> response =
                 aiSuggestionService
                         .getAdminSuggestions(
                                 suggestionType,
@@ -110,7 +107,11 @@ public class AdminAiSuggestionController {
                                         safePage,
                                         safeSize
                                 )
-                        )
+                        );
+
+        return ApiResponse.success(
+                "Get AI suggestions successfully",
+                response
         );
     }
 
@@ -119,23 +120,30 @@ public class AdminAiSuggestionController {
     // =====================================================
 
     /**
-     * GET
-     *
-     * /api/v1/admin/ai/suggestions/{id}
+     * GET /api/v1/admin/ai/suggestions/{id}
      */
     @GetMapping("/{id}")
+    @Operation(
+            summary = "Get AI suggestion detail",
+            description =
+                    "Admin/Staff xem chi tiết AI Suggestion "
+                            + "của bất kỳ Member nào."
+    )
     public ApiResponse<AiSuggestionDetailResponse>
     getSuggestionDetail(
             @PathVariable
             Long id
     ) {
-        return ApiResponse.success(
-                "Get AI suggestion detail successfully",
 
+        AiSuggestionDetailResponse response =
                 aiSuggestionService
                         .getAdminSuggestionDetail(
                                 id
-                        )
+                        );
+
+        return ApiResponse.success(
+                "Get AI suggestion detail successfully",
+                response
         );
     }
 }

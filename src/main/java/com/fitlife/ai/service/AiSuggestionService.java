@@ -66,22 +66,12 @@ public interface AiSuggestionService {
     // ADMIN
     // =====================================================
 
-    /**
-     * Admin xem toàn bộ AI Suggestion.
-     *
-     * suggestionType = null -> không filter type.
-     * status = null         -> không filter status.
-     */
     PageResponse<AiSuggestionResponse> getAdminSuggestions(
             AiSuggestionType suggestionType,
             AiSuggestionStatus status,
             Pageable pageable
     );
 
-    /**
-     * Admin xem chi tiết AI Suggestion
-     * mà không áp dụng ownership của Member.
-     */
     AiSuggestionDetailResponse getAdminSuggestionDetail(
             Long id
     );

@@ -2,6 +2,7 @@ package com.fitlife.workout.controller;
 
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
+import com.fitlife.common.response.ApiResponse;
 import com.fitlife.workout.dto.request.WorkoutPlanCreateRequest;
 import com.fitlife.workout.dto.request.WorkoutPlanDayRequest;
 import com.fitlife.workout.dto.request.WorkoutPlanUpdateRequest;
@@ -11,8 +12,6 @@ import com.fitlife.workout.dto.response.WorkoutPlanResponse;
 import com.fitlife.workout.service.WorkoutPlanService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -25,25 +24,35 @@ public class WorkoutPlanController {
 
     private final WorkoutPlanService workoutPlanService;
 
+    // =========================================================
+    // MEMBER
+    // =========================================================
+
     @PostMapping("/workout-plans")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<WorkoutPlanResponse> createWorkoutPlan(
+    public ApiResponse<WorkoutPlanResponse> createWorkoutPlan(
             @Valid @RequestBody WorkoutPlanCreateRequest request,
             Authentication authentication
     ) {
-        WorkoutPlanResponse response = workoutPlanService.createWorkoutPlan(
-                request,
-                getPrincipal(authentication)
+        WorkoutPlanResponse response =
+                workoutPlanService.createWorkoutPlan(
+                        request,
+                        getPrincipal(authentication)
+                );
+
+        return ApiResponse.created(
+                "Create workout plan successfully",
+                response
         );
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/workout-plans/me")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<List<WorkoutPlanResponse>> getMyWorkoutPlans(
+    public ApiResponse<List<WorkoutPlanResponse>> getMyWorkoutPlans(
             Authentication authentication
     ) {
-        return ResponseEntity.ok(
+        return ApiResponse.success(
+                "Get workout plans successfully",
                 workoutPlanService.getMyWorkoutPlans(
                         getPrincipal(authentication)
                 )
@@ -52,10 +61,11 @@ public class WorkoutPlanController {
 
     @GetMapping("/workout-plans/me/active")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<WorkoutPlanDetailResponse> getActiveWorkoutPlan(
+    public ApiResponse<WorkoutPlanDetailResponse> getActiveWorkoutPlan(
             Authentication authentication
     ) {
-        return ResponseEntity.ok(
+        return ApiResponse.success(
+                "Get active workout plan successfully",
                 workoutPlanService.getActiveWorkoutPlan(
                         getPrincipal(authentication)
                 )
@@ -64,10 +74,11 @@ public class WorkoutPlanController {
 
     @GetMapping("/workout-plans/me/today")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<WorkoutPlanDayResponse> getTodayWorkoutDay(
+    public ApiResponse<WorkoutPlanDayResponse> getTodayWorkoutDay(
             Authentication authentication
     ) {
-        return ResponseEntity.ok(
+        return ApiResponse.success(
+                "Get today's workout successfully",
                 workoutPlanService.getTodayWorkoutDay(
                         getPrincipal(authentication)
                 )
@@ -76,11 +87,12 @@ public class WorkoutPlanController {
 
     @GetMapping("/workout-plans/{id}")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<WorkoutPlanDetailResponse> getWorkoutPlanById(
+    public ApiResponse<WorkoutPlanDetailResponse> getWorkoutPlanById(
             @PathVariable Long id,
             Authentication authentication
     ) {
-        return ResponseEntity.ok(
+        return ApiResponse.success(
+                "Get workout plan detail successfully",
                 workoutPlanService.getWorkoutPlanById(
                         id,
                         getPrincipal(authentication)
@@ -90,12 +102,13 @@ public class WorkoutPlanController {
 
     @PatchMapping("/workout-plans/{id}")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<WorkoutPlanResponse> patchWorkoutPlan(
+    public ApiResponse<WorkoutPlanResponse> patchWorkoutPlan(
             @PathVariable Long id,
             @Valid @RequestBody WorkoutPlanUpdateRequest request,
             Authentication authentication
     ) {
-        return ResponseEntity.ok(
+        return ApiResponse.success(
+                "Update workout plan successfully",
                 workoutPlanService.patchWorkoutPlan(
                         id,
                         request,
@@ -106,12 +119,13 @@ public class WorkoutPlanController {
 
     @PutMapping("/workout-plans/{id}/structure")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<WorkoutPlanDetailResponse> updateWorkoutPlanStructure(
+    public ApiResponse<WorkoutPlanDetailResponse> updateWorkoutPlanStructure(
             @PathVariable Long id,
             @Valid @RequestBody List<WorkoutPlanDayRequest> daysRequest,
             Authentication authentication
     ) {
-        return ResponseEntity.ok(
+        return ApiResponse.success(
+                "Update workout plan structure successfully",
                 workoutPlanService.updateWorkoutPlanStructure(
                         id,
                         daysRequest,
@@ -122,11 +136,12 @@ public class WorkoutPlanController {
 
     @PostMapping("/workout-plans/{id}/activate")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<WorkoutPlanResponse> activateWorkoutPlan(
+    public ApiResponse<WorkoutPlanResponse> activateWorkoutPlan(
             @PathVariable Long id,
             Authentication authentication
     ) {
-        return ResponseEntity.ok(
+        return ApiResponse.success(
+                "Activate workout plan successfully",
                 workoutPlanService.activateWorkoutPlan(
                         id,
                         getPrincipal(authentication)
@@ -136,11 +151,12 @@ public class WorkoutPlanController {
 
     @PostMapping("/workout-plans/{id}/complete")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<WorkoutPlanResponse> completeWorkoutPlan(
+    public ApiResponse<WorkoutPlanResponse> completeWorkoutPlan(
             @PathVariable Long id,
             Authentication authentication
     ) {
-        return ResponseEntity.ok(
+        return ApiResponse.success(
+                "Complete workout plan successfully",
                 workoutPlanService.completeWorkoutPlan(
                         id,
                         getPrincipal(authentication)
@@ -150,11 +166,12 @@ public class WorkoutPlanController {
 
     @PostMapping("/workout-plans/{id}/archive")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<WorkoutPlanResponse> archiveWorkoutPlan(
+    public ApiResponse<WorkoutPlanResponse> archiveWorkoutPlan(
             @PathVariable Long id,
             Authentication authentication
     ) {
-        return ResponseEntity.ok(
+        return ApiResponse.success(
+                "Archive workout plan successfully",
                 workoutPlanService.archiveWorkoutPlan(
                         id,
                         getPrincipal(authentication)
@@ -164,39 +181,55 @@ public class WorkoutPlanController {
 
     @PostMapping("/workout-plans/{id}/clone")
     @PreAuthorize("hasRole('MEMBER')")
-    public ResponseEntity<WorkoutPlanResponse> cloneWorkoutPlan(
+    public ApiResponse<WorkoutPlanResponse> cloneWorkoutPlan(
             @PathVariable Long id,
             Authentication authentication
     ) {
-        WorkoutPlanResponse response = workoutPlanService.cloneWorkoutPlan(
-                id,
-                getPrincipal(authentication)
+        WorkoutPlanResponse response =
+                workoutPlanService.cloneWorkoutPlan(
+                        id,
+                        getPrincipal(authentication)
+                );
+
+        return ApiResponse.created(
+                "Clone workout plan successfully",
+                response
         );
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
+    // =========================================================
+    // TRAINER
+    // =========================================================
 
     @PostMapping("/trainer/members/{memberId}/workout-plans")
     @PreAuthorize("hasRole('TRAINER')")
-    public ResponseEntity<WorkoutPlanResponse> createWorkoutPlanForMember(
+    public ApiResponse<WorkoutPlanResponse> createWorkoutPlanForMember(
             @PathVariable Long memberId,
             @Valid @RequestBody WorkoutPlanCreateRequest request,
             Authentication authentication
     ) {
-        WorkoutPlanResponse response = workoutPlanService.createWorkoutPlanForMember(
-                memberId,
-                request,
-                getPrincipal(authentication)
+        WorkoutPlanResponse response =
+                workoutPlanService.createWorkoutPlanForMember(
+                        memberId,
+                        request,
+                        getPrincipal(authentication)
+                );
+
+        return ApiResponse.created(
+                "Create workout plan for member successfully",
+                response
         );
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/trainer/members/{memberId}/workout-plans")
     @PreAuthorize("hasRole('TRAINER')")
-    public ResponseEntity<List<WorkoutPlanResponse>> getMemberWorkoutPlansForTrainer(
+    public ApiResponse<List<WorkoutPlanResponse>>
+    getMemberWorkoutPlansForTrainer(
             @PathVariable Long memberId,
             Authentication authentication
     ) {
-        return ResponseEntity.ok(
+        return ApiResponse.success(
+                "Get member workout plans successfully",
                 workoutPlanService.getMemberWorkoutPlansForTrainer(
                         memberId,
                         getPrincipal(authentication)
@@ -206,13 +239,14 @@ public class WorkoutPlanController {
 
     @PatchMapping("/trainer/members/{memberId}/workout-plans/{id}")
     @PreAuthorize("hasRole('TRAINER')")
-    public ResponseEntity<WorkoutPlanResponse> patchWorkoutPlanForMember(
+    public ApiResponse<WorkoutPlanResponse> patchWorkoutPlanForMember(
             @PathVariable Long memberId,
             @PathVariable Long id,
             @Valid @RequestBody WorkoutPlanUpdateRequest request,
             Authentication authentication
     ) {
-        return ResponseEntity.ok(
+        return ApiResponse.success(
+                "Update member workout plan successfully",
                 workoutPlanService.patchWorkoutPlanForMember(
                         memberId,
                         id,
@@ -222,43 +256,72 @@ public class WorkoutPlanController {
         );
     }
 
+    // =========================================================
+    // ADMIN
+    // =========================================================
+
     @GetMapping("/admin/workout-plans")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<WorkoutPlanResponse>> getAllWorkoutPlansForAdmin() {
-        return ResponseEntity.ok(
+    public ApiResponse<List<WorkoutPlanResponse>>
+    getAllWorkoutPlansForAdmin() {
+        return ApiResponse.success(
+                "Get all workout plans successfully",
                 workoutPlanService.getAllWorkoutPlansForAdmin()
         );
     }
 
     @PutMapping("/admin/workout-plans/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<WorkoutPlanResponse> updateWorkoutPlanForAdmin(
+    public ApiResponse<WorkoutPlanResponse> updateWorkoutPlanForAdmin(
             @PathVariable Long id,
             @Valid @RequestBody WorkoutPlanUpdateRequest request
     ) {
-        return ResponseEntity.ok(
-                workoutPlanService.updateWorkoutPlan(id, request)
+        return ApiResponse.success(
+                "Update workout plan successfully",
+                workoutPlanService.updateWorkoutPlan(
+                        id,
+                        request
+                )
         );
     }
 
     @DeleteMapping("/admin/workout-plans/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteWorkoutPlanForAdmin(
+    public ApiResponse<Void> deleteWorkoutPlanForAdmin(
             @PathVariable Long id
     ) {
-        workoutPlanService.deleteWorkoutPlan(id);
-        return ResponseEntity.noContent().build();
+        workoutPlanService.deleteWorkoutPlan(
+                id
+        );
+
+        return ApiResponse.success(
+                "Delete workout plan successfully"
+        );
     }
 
-    private String getPrincipal(Authentication authentication) {
-        if (authentication == null
-                || authentication.getName() == null
-                || authentication.getName().isBlank()
-                || "anonymousUser".equals(authentication.getName())
-                || "anonymous".equals(authentication.getName())) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
+    // =========================================================
+    // AUTH
+    // =========================================================
+
+    private String getPrincipal(
+            Authentication authentication
+    ) {
+        if (
+                authentication == null
+                        || authentication.getName() == null
+                        || authentication.getName().isBlank()
+                        || "anonymousUser".equals(
+                        authentication.getName()
+                )
+                        || "anonymous".equals(
+                        authentication.getName()
+                )
+        ) {
+            throw new AppException(
+                    ErrorCode.UNAUTHENTICATED
+            );
         }
+
         return authentication.getName();
     }
 }
-
