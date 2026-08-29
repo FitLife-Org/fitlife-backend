@@ -3,10 +3,12 @@ package com.fitlife.payment.repository;
 import com.fitlife.payment.entity.Payment;
 import com.fitlife.payment.enums.PaymentMethod;
 import com.fitlife.payment.enums.PaymentStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -163,4 +165,41 @@ public interface PaymentRepository
     Optional<Payment> findByVnpTxnRef(
             String vnpTxnRef
     );
+    @EntityGraph(
+            attributePaths = {
+                    "invoice",
+                    "subscription",
+                    "member",
+                    "member.user"
+            }
+    )
+    java.util.List<Payment> findBySubscriptionIdAndPaymentStatus(
+            Long subscriptionId,
+            PaymentStatus paymentStatus
+    );
+
+    @EntityGraph(
+            attributePaths = {
+                    "invoice",
+                    "subscription",
+                    "member",
+                    "member.user"
+            }
+    )
+    Optional<Payment> findFirstByInvoiceIdAndPaymentStatusOrderByCreatedAtDesc(
+            Long invoiceId,
+            PaymentStatus paymentStatus
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT payment
+        FROM Payment payment
+        WHERE payment.vnpTxnRef = :txnRef
+        """)
+    Optional<Payment> findByVnpTxnRefForUpdate(
+            @Param("txnRef")
+            String txnRef
+    );
+
 }

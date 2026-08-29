@@ -107,25 +107,52 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         }
 
         GymPackage gymPackage = packageDuration.getGymPackage();
-        if (gymPackage == null) {
-            Long pkgId = request.getGymPackageId();
-            if (pkgId != null) {
-                gymPackage = gymPackageRepository.findById(pkgId)
-                        .orElseThrow(() -> new AppException(ErrorCode.PACKAGE_NOT_FOUND, "Package not found"));
-            }
-        }
 
         if (gymPackage == null || Boolean.TRUE.equals(gymPackage.getIsDeleted())) {
             throw new AppException(ErrorCode.PACKAGE_NOT_FOUND, "Package not found");
+        }
+
+        if (request.getGymPackageId() == null) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Gym package ID is required");
+        }
+
+        if (!gymPackage.getId().equals(request.getGymPackageId())) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST,
+                    "Selected duration does not belong to selected gym package"
+            );
         }
 
         if (!"ACTIVE".equalsIgnoreCase(gymPackage.getStatus())) {
             throw new AppException(ErrorCode.INVALID_REQUEST, "Package is inactive");
         }
 
-        boolean hasPending = subscriptionRepository.existsByMemberIdAndStatus(member.getId(), SubscriptionStatus.PENDING_PAYMENT);
-        if (hasPending) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Bạn đang có một gói tập chờ thanh toán. Vui lòng thanh toán hoặc hủy gói tập đó trước khi mua thêm.");
+        java.util.Optional<Subscription> pendingSubscription =
+                subscriptionRepository.findFirstByMemberIdAndStatusOrderByCreatedAtDesc(
+                        member.getId(),
+                        SubscriptionStatus.PENDING_PAYMENT
+                );
+
+        if (pendingSubscription.isPresent()) {
+            Subscription pending = pendingSubscription.get();
+
+            boolean sameSelection =
+                    pending.getGymPackage() != null
+                            && pending.getPackageDuration() != null
+                            && pending.getGymPackage().getId().equals(gymPackage.getId())
+                            && pending.getPackageDuration().getId().equals(packageDuration.getId());
+
+            if (sameSelection) {
+                Invoice existingInvoice = invoiceRepository.findBySubscriptionId(pending.getId())
+                        .orElseThrow(() -> new AppException(
+                                ErrorCode.INVOICE_NOT_FOUND,
+                                "Pending subscription invoice not found"
+                        ));
+
+                return subscriptionMapper.toResponse(pending, existingInvoice);
+            }
+
+            cancelPendingSubscriptionForReplacement(pending);
         }
 
         LocalDate startDate = request.getStartDate();
@@ -786,4 +813,43 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
         return subscriptionMapper.toResponse(saved);
     }
+    private void cancelPendingSubscriptionForReplacement(Subscription pending) {
+        if (pending == null || pending.getStatus() != SubscriptionStatus.PENDING_PAYMENT) {
+            return;
+        }
+
+        paymentRepository
+                .findBySubscriptionIdAndPaymentStatus(
+                        pending.getId(),
+                        com.fitlife.payment.enums.PaymentStatus.PENDING
+                )
+                .forEach(payment -> {
+                    payment.setPaymentStatus(com.fitlife.payment.enums.PaymentStatus.CANCELLED);
+                    payment.setCancelledAt(LocalDateTime.now());
+                    payment.setFailedReason("Replaced by a new package selection");
+                    paymentRepository.save(payment);
+                });
+
+        invoiceRepository.findBySubscriptionId(pending.getId())
+                .ifPresent(invoice -> {
+                    if (invoice.getStatus() == com.fitlife.invoice.enums.InvoiceStatus.UNPAID) {
+                        invoice.setStatus(com.fitlife.invoice.enums.InvoiceStatus.CANCELLED);
+                        invoice.setCancelledAt(LocalDateTime.now());
+                        invoiceRepository.save(invoice);
+                    }
+                });
+
+        SubscriptionStatus oldStatus = pending.getStatus();
+        pending.setStatus(SubscriptionStatus.CANCELLED);
+        subscriptionRepository.save(pending);
+
+        logHistory(
+                pending,
+                oldStatus,
+                SubscriptionStatus.CANCELLED,
+                "REPLACED",
+                "Pending subscription replaced by a new package selection"
+        );
+    }
+
 }

@@ -9,6 +9,8 @@ import com.fitlife.subscription.service.SubscriptionService;
 import com.fitlife.invoice.entity.Invoice;
 import com.fitlife.invoice.enums.InvoiceStatus;
 import com.fitlife.invoice.repository.InvoiceRepository;
+import com.fitlife.member.entity.Member;
+import com.fitlife.member.service.CurrentMemberService;
 import com.fitlife.payment.config.VnpayProperties;
 import com.fitlife.payment.dto.request.VnpayCreateUrlRequest;
 import com.fitlife.payment.dto.response.VnpayCreateUrlResponse;
@@ -41,6 +43,7 @@ public class VnpayServiceImpl implements VnpayService {
     private final PaymentRepository paymentRepository;
     private final SubscriptionRepository subscriptionRepository;
     private final SubscriptionService subscriptionService;
+    private final CurrentMemberService currentMemberService;
 
     private static final DateTimeFormatter VNP_DATE_FORMAT =
             DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
@@ -73,6 +76,34 @@ public class VnpayServiceImpl implements VnpayService {
         } else {
             throw new AppException(ErrorCode.INVALID_REQUEST, "Either subscriptionId or invoiceId must be provided");
         }
+
+        Member currentMember = currentMemberService.getCurrentMember();
+
+        if (invoice.getMember() == null
+                || !invoice.getMember().getId().equals(currentMember.getId())) {
+            throw new AppException(ErrorCode.INVOICE_NOT_OWNED_BY_MEMBER);
+        }
+
+        if (subscription != null
+                && (subscription.getMember() == null
+                || !subscription.getMember().getId().equals(currentMember.getId()))) {
+            throw new AppException(ErrorCode.PAYMENT_NOT_OWNED_BY_MEMBER);
+        }
+
+        // A payment URL is short-lived. When the member retries the same invoice,
+        // cancel older PENDING transactions and issue a fresh VNPay URL.
+        paymentRepository
+                .findFirstByInvoiceIdAndPaymentStatusOrderByCreatedAtDesc(
+                        invoice.getId(),
+                        PaymentStatus.PENDING
+                )
+                .filter(existing -> existing.getPaymentMethod() == PaymentMethod.VNPAY)
+                .ifPresent(existing -> {
+                    existing.setPaymentStatus(PaymentStatus.CANCELLED);
+                    existing.setCancelledAt(LocalDateTime.now());
+                    existing.setFailedReason("Replaced by a new VNPay payment URL");
+                    paymentRepository.save(existing);
+                });
 
         if (invoice.getStatus() == InvoiceStatus.PAID) {
             throw new AppException(ErrorCode.INVALID_REQUEST, "Invoice is already paid");
@@ -207,6 +238,11 @@ public class VnpayServiceImpl implements VnpayService {
             return buildFrontendRedirect("FAILED", "PAYMENT_NOT_FOUND", null);
         }
 
+        if (!isValidReturnedAmount(payment, params.get("vnp_Amount"))) {
+            markPaymentFailed(payment, params, "VNPay returned an invalid amount");
+            return buildFrontendRedirect("FAILED", "INVALID_AMOUNT", payment.getId());
+        }
+
         if ("00".equals(responseCode) && "00".equals(transactionStatus)) {
             markPaymentSuccess(payment, params);
             return buildFrontendRedirect("SUCCESS", "PAYMENT_SUCCESS", payment.getId());
@@ -268,17 +304,44 @@ public class VnpayServiceImpl implements VnpayService {
     }
 
     private void markPaymentFailed(Payment payment, Map<String, String> params) {
+        markPaymentFailed(
+                payment,
+                params,
+                "VNPay failed with code: " + params.get("vnp_ResponseCode")
+        );
+    }
+
+    private void markPaymentFailed(
+            Payment payment,
+            Map<String, String> params,
+            String reason
+    ) {
         if (payment.getPaymentStatus() == PaymentStatus.SUCCESS) {
             return;
         }
 
         payment.setPaymentStatus(PaymentStatus.FAILED);
-        payment.setFailedReason("VNPay failed with code: " + params.get("vnp_ResponseCode"));
+        payment.setFailedReason(reason);
         payment.setVnpResponseCode(params.get("vnp_ResponseCode"));
         payment.setVnpTransactionStatus(params.get("vnp_TransactionStatus"));
-        payment.setGatewayMessage("VNPay payment failed");
+        payment.setGatewayMessage(reason);
 
         paymentRepository.save(payment);
+    }
+
+    private boolean isValidReturnedAmount(Payment payment, String vnpAmountValue) {
+        if (payment == null || payment.getAmount() == null || isBlank(vnpAmountValue)) {
+            return false;
+        }
+
+        try {
+            BigDecimal returnedAmount = new BigDecimal(vnpAmountValue)
+                    .divide(BigDecimal.valueOf(100));
+
+            return payment.getAmount().compareTo(returnedAmount) == 0;
+        } catch (NumberFormatException exception) {
+            return false;
+        }
     }
 
     private String buildFrontendRedirect(String status, String code, Long paymentId) {
