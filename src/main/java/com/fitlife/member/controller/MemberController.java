@@ -143,4 +143,22 @@ public class MemberController {
                 )
         );
     }
+
+    @GetMapping("/trainer")
+    @PreAuthorize("hasRole('MEMBER')")
+    @Operation(summary = "Get current member's assigned trainer")
+    public ApiResponse<com.fitlife.trainer.dto.response.TrainerResponse> getMyAssignedTrainer() {
+        return ApiResponse.success(
+                "Get assigned trainer successfully",
+                memberService.getMyAssignedTrainer()
+        );
+    }
+
+    @PostMapping("/book-trainer/{trainerId}")
+    @PreAuthorize("hasRole('MEMBER')")
+    @Operation(summary = "Book/select a trainer for current member")
+    public ApiResponse<Void> bookTrainer(@PathVariable Long trainerId) {
+        memberService.bookTrainer(trainerId);
+        return ApiResponse.success("Trainer booked successfully", null);
+    }
 }
