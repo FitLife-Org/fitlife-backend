@@ -126,7 +126,7 @@ public class EquipmentManagmentController {
 
     @PatchMapping("/admin/equipment/{id}/area")
     @Operation(summary = "Update equipment area")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ApiResponse<EquipmentManagmentResponse> updateEquipmentArea(
             @PathVariable("id") String code,
             @Valid @RequestBody EquipmentAreaUpdateRequest request
@@ -137,7 +137,7 @@ public class EquipmentManagmentController {
 
     @PostMapping("/admin/equipment/{id}/retire")
     @Operation(summary = "Retire equipment")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ApiResponse<EquipmentManagmentResponse> retireEquipment(
             @PathVariable("id") String code
     ) {
@@ -147,7 +147,7 @@ public class EquipmentManagmentController {
 
     @GetMapping("/admin/equipment/{id}/history")
     @Operation(summary = "Get equipment maintenance history")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ApiResponse<java.util.List<MaintenanceScheduleResponse>> getEquipmentHistory(
             @PathVariable("id") String code
     ) {

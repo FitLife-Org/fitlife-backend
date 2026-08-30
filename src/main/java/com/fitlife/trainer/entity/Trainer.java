@@ -54,6 +54,7 @@ public class Trainer {
     @Column(nullable = false)
     private Boolean deleted = false;
 
+    @org.hibernate.annotations.CreationTimestamp
     @Column(
             name = "created_at",
             nullable = false,
@@ -61,6 +62,7 @@ public class Trainer {
     )
     private LocalDateTime createdAt;
 
+    @org.hibernate.annotations.UpdateTimestamp
     @Column(
             name = "updated_at",
             nullable = false

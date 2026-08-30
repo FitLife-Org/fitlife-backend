@@ -21,6 +21,8 @@ import com.fitlife.user.mapper.UserMapper;
 import com.fitlife.user.repository.RoleRepository;
 import com.fitlife.user.repository.UserRepository;
 import com.fitlife.user.service.UserService;
+import com.fitlife.user.dto.request.UpdateUserProfileRequest;
+import com.fitlife.member.avatar.service.MemberAvatarStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -65,6 +67,7 @@ public class UserServiceImpl
     private final UserMapper userMapper;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final MemberAvatarStorageService memberAvatarStorageService;
 
     @Override
     @Transactional(readOnly = true)
@@ -180,6 +183,11 @@ public class UserServiceImpl
                         request.getStatus()
                 );
 
+        String rawPassword = request.getPassword();
+        if (rawPassword == null || rawPassword.trim().isEmpty()) {
+            rawPassword = "123456";
+        }
+
         User user =
                 User.builder()
                         .username(
@@ -194,7 +202,7 @@ public class UserServiceImpl
                         )
                         .passwordHash(
                                 passwordEncoder.encode(
-                                        request.getPassword()
+                                        rawPassword
                                 )
                         )
                         .fullName(
@@ -879,5 +887,34 @@ public class UserServiceImpl
                 size,
                 MAX_SIZE
         );
+    }
+
+    @Override
+    @Transactional
+    public UserProfileResponse updateMyProfile(UpdateUserProfileRequest request) {
+        User currentUser = getCurrentAuthenticatedUser();
+        
+        String normalizedFullName = normalizeRequiredText(request.getFullName());
+        String normalizedPhone = normalizeRequiredText(request.getPhone());
+        
+        if (!normalizedPhone.equals(currentUser.getPhone())) {
+            if (userRepository.existsByPhone(normalizedPhone)) {
+                throw new AppException(ErrorCode.PHONE_ALREADY_EXISTS);
+            }
+        }
+        
+        currentUser.setFullName(normalizedFullName);
+        currentUser.setPhone(normalizedPhone);
+        
+        return userMapper.toUserProfileResponse(userRepository.save(currentUser));
+    }
+
+    @Override
+    @Transactional
+    public UserProfileResponse updateMyAvatar(org.springframework.web.multipart.MultipartFile file) {
+        User currentUser = getCurrentAuthenticatedUser();
+        String avatarUrl = memberAvatarStorageService.uploadMemberAvatar(currentUser.getId(), file);
+        currentUser.setAvatarUrl(avatarUrl);
+        return userMapper.toUserProfileResponse(userRepository.save(currentUser));
     }
 }

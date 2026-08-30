@@ -23,4 +23,8 @@ public interface UserService {
     AdminUserDetailResponse updateUserRoles(Long id, AdminUpdateUserRolesRequest request);
 
     void changePassword(ChangePasswordRequest request);
+
+    UserProfileResponse updateMyProfile(UpdateUserProfileRequest request);
+
+    UserProfileResponse updateMyAvatar(org.springframework.web.multipart.MultipartFile file);
 }

@@ -2,6 +2,8 @@ package com.fitlife.trainer.controller;
 
 import com.fitlife.common.response.ApiResponse;
 import com.fitlife.trainer.dto.response.TrainerResponse;
+import com.fitlife.trainer.dto.response.TrainerSessionResponse;
+import com.fitlife.trainer.dto.response.WorkoutProgressResponse;
 import com.fitlife.trainer.dto.request.TrainerUpdateRequest;
 import com.fitlife.trainer.service.TrainerService;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +37,21 @@ public class TrainerController {
                 .build();
     }
 
+    @GetMapping("/members/{memberId}/progress")
+    @PreAuthorize("hasRole('TRAINER')")
+    public ApiResponse<WorkoutProgressResponse> getMemberWorkoutProgress(@PathVariable Long memberId) {
+        return ApiResponse.<WorkoutProgressResponse>builder()
+                .data(trainerService.getMemberWorkoutProgress(memberId))
+                .build();
+    }
+
+    @GetMapping("/me/schedule")
+    @PreAuthorize("hasRole('TRAINER')")
+    public ApiResponse<List<TrainerSessionResponse>> getMySchedule() {
+        return ApiResponse.<List<TrainerSessionResponse>>builder()
+                .data(trainerService.getMySchedule())
+                .build();
+    }
 
     @GetMapping
     public ApiResponse<List<TrainerResponse>> getActiveTrainers() {

@@ -181,7 +181,9 @@ public class SecurityConfiguration {
                         // =====================================================
 
                         .requestMatchers(
-                                "/admin/equipment/**"
+                                "/admin/equipment/**",
+                                "/admin/equipment-areas/**",
+                                "/admin/equipment-areas"
                         ).hasAnyRole("ADMIN", "STAFF")
 
                         .requestMatchers(

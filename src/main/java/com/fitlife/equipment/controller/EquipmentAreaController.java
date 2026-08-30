@@ -19,7 +19,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Tag(name = "EquipmentArea", description = "APIs for managing gym equipment areas")
 @SecurityRequirement(name = "bearerAuth")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
 public class EquipmentAreaController {
 
     private final EquipmentAreaService equipmentAreaService;

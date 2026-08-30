@@ -31,4 +31,10 @@ public interface TrainerService {
     TrainerResponse updateTrainerStatus(Long id, com.fitlife.trainer.enums.TrainerStatus status);
 
     void deleteTrainer(Long id);
+
+    List<com.fitlife.trainer.dto.response.TrainerMemberResponse> getMyMembers();
+
+    com.fitlife.trainer.dto.response.WorkoutProgressResponse getMemberWorkoutProgress(Long memberId);
+
+    List<com.fitlife.trainer.dto.response.TrainerSessionResponse> getMySchedule();
 }
