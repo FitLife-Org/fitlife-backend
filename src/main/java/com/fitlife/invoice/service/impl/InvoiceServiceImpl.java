@@ -55,6 +55,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class InvoiceServiceImpl
@@ -653,6 +656,55 @@ public class InvoiceServiceImpl
     // =====================================================
     // PAYMENTS
     // =====================================================
+
+    @Override
+    @Transactional
+    public int cleanupOldInvoices() {
+        // Find UNPAID invoices older than 24 hours
+        java.time.LocalDateTime cutoffTime = java.time.LocalDateTime.now().minusHours(24);
+        List<Invoice> oldInvoices = invoiceRepository.findByStatusAndIssuedAtBefore(
+                InvoiceStatus.UNPAID, cutoffTime
+        );
+
+        if (oldInvoices.isEmpty()) {
+            return 0;
+        }
+
+        int count = 0;
+        for (Invoice invoice : oldInvoices) {
+            try {
+                // Cancel invoice
+                invoice.setStatus(InvoiceStatus.CANCELLED);
+                invoiceRepository.save(invoice);
+
+                // Cancel subscription if it exists
+                if (invoice.getSubscription() != null && invoice.getSubscription().getId() != null) {
+                    subscriptionRepository.findById(invoice.getSubscription().getId()).ifPresent(sub -> {
+                        if (sub.getStatus() == com.fitlife.subscription.enums.SubscriptionStatus.PENDING_PAYMENT) {
+                            sub.setStatus(com.fitlife.subscription.enums.SubscriptionStatus.CANCELLED);
+                            subscriptionRepository.save(sub);
+                        }
+                    });
+                }
+
+                // Add audit log
+                saveAuditLog(
+                        invoice,
+                        InvoiceActionType.CANCELLED,
+                        InvoiceStatus.UNPAID,
+                        InvoiceStatus.CANCELLED,
+                        null,
+                        "Hóa đơn đã bị hủy tự động vì quá hạn 24 tiếng mà chưa được thanh toán."
+                );
+
+                count++;
+            } catch (Exception e) {
+                log.error("Failed to cancel invoice {} during cleanup", invoice.getId(), e);
+            }
+        }
+
+        return count;
+    }
 
     @Override
     @Transactional(readOnly = true)

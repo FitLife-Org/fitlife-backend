@@ -89,6 +89,8 @@ public interface InvoiceService {
             InvoiceGenerateRequest request
     );
 
+    int cleanupOldInvoices();
+
     PageResponse<PaymentResponse>
     getPaymentsByInvoiceId(
             Long invoiceId,

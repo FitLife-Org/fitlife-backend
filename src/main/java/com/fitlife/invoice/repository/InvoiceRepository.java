@@ -161,4 +161,6 @@ public interface InvoiceRepository
 
             Pageable pageable
     );
+
+    java.util.List<Invoice> findByStatusAndIssuedAtBefore(InvoiceStatus status, LocalDateTime cutoffTime);
 }

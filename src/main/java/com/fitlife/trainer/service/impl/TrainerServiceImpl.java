@@ -408,7 +408,9 @@ public class TrainerServiceImpl
         List<Number> memberIdsRaw = entityManager.createNativeQuery(
                 "SELECT DISTINCT member_id FROM trainer_assignments WHERE trainer_id = :trainerId AND status = 'ACTIVE' " +
                 "UNION " +
-                "SELECT DISTINCT member_id FROM workout_plans WHERE trainer_id = :trainerId AND is_deleted = false")
+                "SELECT DISTINCT member_id FROM workout_plans WHERE trainer_id = :trainerId AND is_deleted = false " +
+                "UNION " +
+                "SELECT DISTINCT member_id FROM bookings WHERE trainer_id = :trainerId")
                 .setParameter("trainerId", trainer.getId())
                 .getResultList();
 
