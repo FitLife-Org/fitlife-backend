@@ -12,5 +12,7 @@ public class AdminCheckInQrRequest {
 
     private String location;
 
+    private String token;
+
     private Boolean active;
 }

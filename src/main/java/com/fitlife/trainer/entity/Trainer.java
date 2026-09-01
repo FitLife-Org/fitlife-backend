@@ -51,7 +51,12 @@ public class Trainer {
     @Column(nullable = false, length = 30)
     private TrainerStatus status;
 
+    @Column(name = "is_accepting_members", nullable = false)
+    @Builder.Default
+    private Boolean isAcceptingMembers = true;
+
     @Column(nullable = false)
+    @Builder.Default
     private Boolean deleted = false;
 
     @org.hibernate.annotations.CreationTimestamp

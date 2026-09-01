@@ -22,6 +22,9 @@ public class TrainerResponse {
     private String certifications;
     private String bio;
     private TrainerStatus status;
+    private Boolean isAcceptingMembers;
+    private String assignmentStatus;
+    private Long assignmentId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

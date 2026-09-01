@@ -58,8 +58,10 @@ public class CheckInServiceImpl implements CheckInService {
     @Override
     @Transactional
     public CheckInResponse memberCheckIn(MemberCheckInRequest request, String memberUsername) {
-        CheckInQr qr = checkInQrRepository.findByTokenAndIsActiveTrue(request.getQrToken().trim())
-                .orElseThrow(() -> new AppException(ErrorCode.INVALID_REQUEST, "Invalid or expired gym QR code"));
+        String rawToken = request.getQrToken().trim();
+        CheckInQr qr = checkInQrRepository.findByTokenAndIsActiveTrue(rawToken)
+                .or(() -> checkInQrRepository.findByTokenAndIsActiveTrue(rawToken.toUpperCase()))
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_REQUEST, "Mã QR hoặc mã phòng tập không hợp lệ hoặc đã hết hạn"));
 
         User user = userRepository.findByUsernameOrEmail(memberUsername, memberUsername)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -96,7 +98,9 @@ public class CheckInServiceImpl implements CheckInService {
     @Override
     @Transactional
     public CheckInResponse memberCheckOut(MemberCheckOutRequest request, String memberUsername) {
-        checkInQrRepository.findByTokenAndIsActiveTrue(request.getQrToken().trim())
+        String rawToken = request.getQrToken().trim();
+        CheckInQr qr = checkInQrRepository.findByTokenAndIsActiveTrue(rawToken)
+                .or(() -> checkInQrRepository.findByTokenAndIsActiveTrue(rawToken.toUpperCase()))
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_QR_DATA, "Mã QR phòng tập không tồn tại hoặc đã bị khóa"));
 
         User user = userRepository.findByUsernameOrEmail(memberUsername, memberUsername)
@@ -498,7 +502,9 @@ public class CheckInServiceImpl implements CheckInService {
         User adminUser = userRepository.findByUsernameOrEmail(adminUsername, adminUsername)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        String token = UUID.randomUUID().toString();
+        String token = (request.getToken() != null && !request.getToken().trim().isEmpty())
+                ? request.getToken().trim().toUpperCase()
+                : "FL-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
         CheckInQr qr = CheckInQr.builder()
                 .name(request.getName().trim())
                 .location(request.getLocation() != null ? request.getLocation().trim() : null)
@@ -530,7 +536,8 @@ public class CheckInServiceImpl implements CheckInService {
         CheckInQr qr = checkInQrRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_QR_DATA, "Mã QR phòng tập không tồn tại"));
 
-        qr.setToken(UUID.randomUUID().toString());
+        String newCode = "FL-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+        qr.setToken(newCode);
         qr.setRegeneratedAt(LocalDateTime.now());
 
         CheckInQr saved = checkInQrRepository.save(qr);

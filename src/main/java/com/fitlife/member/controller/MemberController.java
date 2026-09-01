@@ -154,11 +154,37 @@ public class MemberController {
         );
     }
 
+    @GetMapping("/trainers")
+    @PreAuthorize("hasRole('MEMBER')")
+    @Operation(summary = "Get current member's assigned trainers")
+    public ApiResponse<java.util.List<com.fitlife.trainer.dto.response.TrainerResponse>> getMyAssignedTrainers() {
+        return ApiResponse.success(
+                "Get assigned trainers successfully",
+                memberService.getMyAssignedTrainers()
+        );
+    }
+
     @PostMapping("/book-trainer/{trainerId}")
     @PreAuthorize("hasRole('MEMBER')")
     @Operation(summary = "Book/select a trainer for current member")
     public ApiResponse<Void> bookTrainer(@PathVariable Long trainerId) {
         memberService.bookTrainer(trainerId);
-        return ApiResponse.success("Trainer booked successfully", null);
+        return ApiResponse.success("Gửi yêu cầu chọn Huấn luyện viên thành công", null);
+    }
+
+    @PostMapping("/cancel-trainer")
+    @PreAuthorize("hasRole('MEMBER')")
+    @Operation(summary = "Cancel trainer booking or request cancellation for current member")
+    public ApiResponse<Void> cancelTrainer() {
+        memberService.cancelTrainerBooking();
+        return ApiResponse.success("Gửi yêu cầu hủy Huấn luyện viên thành công", null);
+    }
+
+    @PostMapping("/cancel-trainer/{trainerId}")
+    @PreAuthorize("hasRole('MEMBER')")
+    @Operation(summary = "Cancel specific trainer booking or request cancellation")
+    public ApiResponse<Void> cancelTrainerSpecific(@PathVariable Long trainerId) {
+        memberService.cancelTrainerBooking(trainerId);
+        return ApiResponse.success("Gửi yêu cầu hủy Huấn luyện viên thành công", null);
     }
 }

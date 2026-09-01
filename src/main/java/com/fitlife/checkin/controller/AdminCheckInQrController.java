@@ -24,8 +24,8 @@ public class AdminCheckInQrController {
     private final CheckInService checkInService;
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ADMIN')")
-    @Operation(summary = "Create check-in QR point", description = "Admin only. Register a new QR point location for the gym.")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STAFF', 'ADMIN', 'STAFF')")
+    @Operation(summary = "Create check-in QR point", description = "Admin/Staff. Register a new QR point location for the gym.")
     public ResponseEntity<ApiResponse<AdminCheckInQrResponse>> createGymQr(
             @Valid @RequestBody AdminCheckInQrRequest request,
             Authentication authentication
@@ -63,8 +63,8 @@ public class AdminCheckInQrController {
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ADMIN')")
-    @Operation(summary = "Toggle QR status", description = "Admin only. Enable or disable a QR code point.")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STAFF', 'ADMIN', 'STAFF')")
+    @Operation(summary = "Toggle QR status", description = "Admin/Staff. Enable or disable a QR code point.")
     public ResponseEntity<ApiResponse<AdminCheckInQrResponse>> toggleGymQrStatus(
             @PathVariable Long id,
             @RequestParam Boolean active

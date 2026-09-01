@@ -44,5 +44,11 @@ public interface MemberService {
 
     com.fitlife.trainer.dto.response.TrainerResponse getMyAssignedTrainer();
 
+    java.util.List<com.fitlife.trainer.dto.response.TrainerResponse> getMyAssignedTrainers();
+
     void bookTrainer(Long trainerId);
+
+    void cancelTrainerBooking();
+
+    void cancelTrainerBooking(Long trainerId);
 }

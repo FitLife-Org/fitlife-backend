@@ -37,4 +37,14 @@ public interface TrainerService {
     com.fitlife.trainer.dto.response.WorkoutProgressResponse getMemberWorkoutProgress(Long memberId);
 
     List<com.fitlife.trainer.dto.response.TrainerSessionResponse> getMySchedule();
+
+    List<com.fitlife.trainer.dto.response.TrainerAssignmentRequestResponse> getTrainerRequests();
+
+    void approveTrainerRequest(Long assignmentId);
+
+    void rejectTrainerRequest(Long assignmentId);
+
+    Boolean getMyAcceptingStatus();
+
+    Boolean toggleMyAcceptingStatus();
 }
