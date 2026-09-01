@@ -1,10 +1,15 @@
 package com.fitlife.subscription.controller;
 
 import com.fitlife.common.response.ApiResponse;
+import com.fitlife.common.response.PageResponse;
+import com.fitlife.subscription.dto.request.SubscriptionStatusUpdateRequest;
+import com.fitlife.subscription.dto.request.TransferSubscriptionRequest;
 import com.fitlife.subscription.dto.response.SubscriptionResponse;
 import com.fitlife.subscription.enums.SubscriptionStatus;
 import com.fitlife.subscription.service.SubscriptionService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,31 +21,40 @@ public class AdminSubscriptionController {
     private final SubscriptionService subscriptionService;
 
     @GetMapping
-    public ApiResponse<?> getAllSubscriptions(
+    public ApiResponse<PageResponse<SubscriptionResponse>> getAllSubscriptions(
             @RequestParam(required = false) SubscriptionStatus status,
             Pageable pageable
     ) {
-        return ApiResponse.builder()
-                .data(subscriptionService.getAllSubscriptions(status, pageable))
+        Page<SubscriptionResponse> page =
+                subscriptionService.getAllSubscriptions(status, pageable);
+
+        return ApiResponse.<PageResponse<SubscriptionResponse>>builder()
+                .data(PageResponse.from(page))
                 .build();
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<SubscriptionResponse> getSubscriptionByIdForAdmin(@PathVariable Long id) {
+    public ApiResponse<SubscriptionResponse> getSubscriptionByIdForAdmin(
+            @PathVariable Long id
+    ) {
         return ApiResponse.<SubscriptionResponse>builder()
                 .data(subscriptionService.getSubscriptionByIdForAdmin(id))
                 .build();
     }
 
     @PatchMapping("/{id}/cancel")
-    public ApiResponse<SubscriptionResponse> cancelSubscription(@PathVariable Long id) {
+    public ApiResponse<SubscriptionResponse> cancelSubscription(
+            @PathVariable Long id
+    ) {
         return ApiResponse.<SubscriptionResponse>builder()
                 .data(subscriptionService.cancelSubscription(id))
                 .build();
     }
 
     @PatchMapping("/{id}/expire")
-    public ApiResponse<SubscriptionResponse> expireSubscription(@PathVariable Long id) {
+    public ApiResponse<SubscriptionResponse> expireSubscription(
+            @PathVariable Long id
+    ) {
         return ApiResponse.<SubscriptionResponse>builder()
                 .data(subscriptionService.expireSubscription(id))
                 .build();
@@ -49,20 +63,31 @@ public class AdminSubscriptionController {
     @PatchMapping("/{id}/status")
     public ApiResponse<SubscriptionResponse> updateSubscriptionStatus(
             @PathVariable Long id,
-            @jakarta.validation.Valid @RequestBody com.fitlife.subscription.dto.request.SubscriptionStatusUpdateRequest request
+            @Valid @RequestBody SubscriptionStatusUpdateRequest request
     ) {
         return ApiResponse.<SubscriptionResponse>builder()
-                .data(subscriptionService.updateSubscriptionStatusByAdmin(id, request))
+                .data(
+                        subscriptionService.updateSubscriptionStatusByAdmin(
+                                id,
+                                request
+                        )
+                )
                 .build();
     }
 
     @PostMapping("/{id}/transfer")
     public ApiResponse<SubscriptionResponse> transferSubscription(
             @PathVariable Long id,
-            @jakarta.validation.Valid @RequestBody com.fitlife.subscription.dto.request.TransferSubscriptionRequest request
+            @Valid @RequestBody TransferSubscriptionRequest request
     ) {
         return ApiResponse.<SubscriptionResponse>builder()
-                .data(subscriptionService.transferSubscription(id, request.getRecipientMemberId(), request.getNote()))
+                .data(
+                        subscriptionService.transferSubscription(
+                                id,
+                                request.getRecipientMemberId(),
+                                request.getNote()
+                        )
+                )
                 .build();
     }
 }

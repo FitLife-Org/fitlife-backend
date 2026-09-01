@@ -295,19 +295,22 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public Page<SubscriptionResponse> getMySubscriptions(Pageable pageable) {
         checkAndExpireSubscriptions();
+
         Member member = getCurrentMember();
 
-        return subscriptionRepository.findByMemberId(member.getId(), pageable)
+        return subscriptionRepository
+                .findByMemberId(member.getId(), pageable)
                 .map(subscriptionMapper::toResponse);
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public SubscriptionResponse getMyActiveSubscription() {
         checkAndExpireSubscriptions();
+
         Member member = getCurrentMember();
 
         Subscription subscription = subscriptionRepository
@@ -315,49 +318,69 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                         member.getId(),
                         SubscriptionStatus.ACTIVE
                 )
-                .orElseThrow(() -> new AppException(ErrorCode.SUBSCRIPTION_NOT_FOUND, "No active subscription found"));
+                .orElseThrow(() -> new AppException(
+                        ErrorCode.SUBSCRIPTION_NOT_FOUND,
+                        "No active subscription found"
+                ));
 
         return subscriptionMapper.toResponse(subscription);
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public SubscriptionResponse getMySubscriptionById(Long subscriptionId) {
         checkAndExpireSubscriptions();
+
         Member member = getCurrentMember();
 
-        Subscription subscription = subscriptionRepository.findById(subscriptionId)
-                .orElseThrow(() -> new AppException(ErrorCode.SUBSCRIPTION_NOT_FOUND, "Subscription not found"));
+        Subscription subscription = subscriptionRepository
+                .findById(subscriptionId)
+                .orElseThrow(() -> new AppException(
+                        ErrorCode.SUBSCRIPTION_NOT_FOUND,
+                        "Subscription not found"
+                ));
 
         if (!subscription.getMember().getId().equals(member.getId())) {
-            throw new AppException(ErrorCode.SUBSCRIPTION_NOT_OWNED_BY_MEMBER);
+            throw new AppException(
+                    ErrorCode.SUBSCRIPTION_NOT_OWNED_BY_MEMBER
+            );
         }
 
         return subscriptionMapper.toResponse(subscription);
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public Page<SubscriptionResponse> getAllSubscriptions(
             SubscriptionStatus status,
             Pageable pageable
     ) {
         checkAndExpireSubscriptions();
+
         if (status != null) {
-            return subscriptionRepository.findByStatus(status, pageable)
+            return subscriptionRepository
+                    .findByStatus(status, pageable)
                     .map(subscriptionMapper::toResponse);
         }
 
-        return subscriptionRepository.findAll(pageable)
+        return subscriptionRepository
+                .findAll(pageable)
                 .map(subscriptionMapper::toResponse);
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public SubscriptionResponse getSubscriptionByIdForAdmin(Long subscriptionId) {
+    @Transactional
+    public SubscriptionResponse getSubscriptionByIdForAdmin(
+            Long subscriptionId
+    ) {
         checkAndExpireSubscriptions();
-        Subscription subscription = subscriptionRepository.findById(subscriptionId)
-                .orElseThrow(() -> new AppException(ErrorCode.SUBSCRIPTION_NOT_FOUND, "Subscription not found"));
+
+        Subscription subscription = subscriptionRepository
+                .findById(subscriptionId)
+                .orElseThrow(() -> new AppException(
+                        ErrorCode.SUBSCRIPTION_NOT_FOUND,
+                        "Subscription not found"
+                ));
 
         return subscriptionMapper.toResponse(subscription);
     }
@@ -574,6 +597,26 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         }
 
         GymPackage gymPackage = packageDuration.getGymPackage();
+        if (gymPackage == null || Boolean.TRUE.equals(gymPackage.getIsDeleted())) {
+            throw new AppException(
+                    ErrorCode.PACKAGE_NOT_FOUND,
+                    "Package not found"
+            );
+        }
+
+        if (request.getGymPackageId() == null) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST,
+                    "Gym package ID is required"
+            );
+        }
+
+        if (!gymPackage.getId().equals(request.getGymPackageId())) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST,
+                    "Selected duration does not belong to selected gym package"
+            );
+        }
         if (gymPackage == null || Boolean.TRUE.equals(gymPackage.getIsDeleted())) {
             throw new AppException(ErrorCode.PACKAGE_NOT_FOUND, "Package not found");
         }
