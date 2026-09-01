@@ -41,4 +41,8 @@ public interface MemberService {
     void deleteMemberByAdmin(Long id);
 
     void restoreMemberByAdmin(Long id);
+
+    com.fitlife.trainer.dto.response.TrainerResponse getMyAssignedTrainer();
+
+    void bookTrainer(Long trainerId);
 }

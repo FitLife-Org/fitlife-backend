@@ -63,6 +63,10 @@ public class MemberServiceImpl
     private final MemberTimelineRecorder
             memberTimelineRecorder;
 
+    private final com.fitlife.trainer.repository.TrainerRepository trainerRepository;
+    private final com.fitlife.trainer.mapper.TrainerMapper trainerMapper;
+    private final jakarta.persistence.EntityManager entityManager;
+
     @Override
     @Transactional
     public MemberResponse createMemberByAdmin(
@@ -114,13 +118,18 @@ public class MemberServiceImpl
                                         )
                         );
 
+        String rawPassword = request.getPassword();
+        if (rawPassword == null || rawPassword.trim().isEmpty()) {
+            rawPassword = "123456";
+        }
+
         User user =
                 User.builder()
                         .username(username)
                         .email(email)
                         .passwordHash(
                                 passwordEncoder.encode(
-                                        request.getPassword()
+                                        rawPassword
                                 )
                         )
                         .fullName(
@@ -1084,5 +1093,61 @@ public class MemberServiceImpl
         );
 
         return code;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public com.fitlife.trainer.dto.response.TrainerResponse getMyAssignedTrainer() {
+        Member currentMember = currentMemberService.getCurrentMember();
+        
+        java.util.List<Number> trainerIdsRaw = entityManager.createNativeQuery(
+                "SELECT trainer_id FROM trainer_assignments WHERE member_id = :memberId AND status = 'ACTIVE'")
+                .setParameter("memberId", currentMember.getId())
+                .getResultList();
+                
+        if (trainerIdsRaw.isEmpty()) {
+            return null;
+        }
+        
+        Long trainerId = trainerIdsRaw.get(0).longValue();
+        com.fitlife.trainer.entity.Trainer trainer = trainerRepository.findById(trainerId)
+                .orElse(null);
+                
+        return trainer != null ? trainerMapper.toResponse(trainer) : null;
+    }
+
+    @Override
+    @Transactional
+    public void bookTrainer(Long trainerId) {
+        Member currentMember = currentMemberService.getCurrentMember();
+        
+        com.fitlife.trainer.entity.Trainer trainer = trainerRepository.findById(trainerId)
+                .orElseThrow(() -> new com.fitlife.common.exception.AppException(com.fitlife.common.exception.ErrorCode.TRAINER_PROFILE_NOT_FOUND));
+                
+        entityManager.createNativeQuery(
+                "UPDATE trainer_assignments SET status = 'INACTIVE', end_date = :today " +
+                "WHERE member_id = :memberId AND status = 'ACTIVE'")
+                .setParameter("today", java.time.LocalDate.now())
+                .setParameter("memberId", currentMember.getId())
+                .executeUpdate();
+                
+        entityManager.createNativeQuery(
+                "INSERT INTO trainer_assignments (trainer_id, member_id, start_date, status) " +
+                "VALUES (:trainerId, :memberId, :today, 'ACTIVE')")
+                .setParameter("trainerId", trainer.getId())
+                .setParameter("memberId", currentMember.getId())
+                .setParameter("today", java.time.LocalDate.now())
+                .executeUpdate();
+                
+        memberTimelineRecorder.record(
+                currentMember.getId(),
+                com.fitlife.member.timeline.enums.MemberTimelineType.MEMBER_PROFILE,
+                "Chọn Huấn luyện viên",
+                "Đã chọn Huấn luyện viên đồng hành: " + trainer.getUser().getFullName(),
+                trainer.getId(),
+                "TRAINER",
+                "COMPLETED",
+                java.time.LocalDateTime.now()
+        );
     }
 }

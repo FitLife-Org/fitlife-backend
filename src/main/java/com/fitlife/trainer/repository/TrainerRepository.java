@@ -37,4 +37,9 @@ public interface TrainerRepository
     );
 
     List<Trainer> findAllByDeletedFalseOrderByIdDesc();
+
+    @org.springframework.data.jpa.repository.Query("SELECT t FROM Trainer t WHERE t.user.id = :userId")
+    Optional<Trainer> findByUserId(@org.springframework.data.repository.query.Param("userId") Long userId);
+
+    Optional<Trainer> findByTrainerCode(String trainerCode);
 }
