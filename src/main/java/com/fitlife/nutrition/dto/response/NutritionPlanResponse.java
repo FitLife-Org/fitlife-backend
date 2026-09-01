@@ -19,6 +19,10 @@ import java.util.List;
 @AllArgsConstructor
 public class NutritionPlanResponse {
     private Long id;
+
+    private Long memberId;
+    private String memberName;
+
     private String name;
     private String description;
     private String goal;
@@ -46,7 +50,7 @@ public class NutritionPlanResponse {
     private Long replacementPlanId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
     @Builder.Default
-    private List<MealDto> meals =
-            new ArrayList<>();
+    private List<MealDto> meals = new ArrayList<>();
 }

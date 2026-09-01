@@ -1,24 +1,29 @@
 package com.fitlife.nutrition.mapper;
 
+import com.fitlife.nutrition.dto.request.NutritionPlanItemRequest;
+import com.fitlife.nutrition.dto.request.NutritionPlanRequest;
 import com.fitlife.nutrition.dto.response.MealDto;
 import com.fitlife.nutrition.dto.response.NutritionPlanItemDto;
 import com.fitlife.nutrition.dto.response.NutritionPlanResponse;
 import com.fitlife.nutrition.entity.NutritionPlan;
 import com.fitlife.nutrition.entity.NutritionPlanItem;
-import com.fitlife.nutrition.dto.request.NutritionPlanItemRequest;
-import com.fitlife.nutrition.dto.request.NutritionPlanRequest;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Mapper(componentModel = "spring")
 public interface NutritionPlanMapper {
 
+    @Mapping(target = "memberId", source = "member.id")
+    @Mapping(target = "memberName", source = "member.user.fullName")
+    @Mapping(target = "aiSuggestionId", source = "aiSuggestion.id")
+    @Mapping(target = "replacementPlanId", source = "replacementPlan.id")
     @Mapping(target = "meals", source = "items", qualifiedByName = "mapItemsToMeals")
     NutritionPlanResponse toResponse(NutritionPlan entity);
 
@@ -52,22 +57,35 @@ public interface NutritionPlanMapper {
             return new ArrayList<>();
         }
 
-        // Tận dụng Java Stream (Map) để gom nhóm (groupingBy) theo mealName
-        Map<String, List<NutritionPlanItem>> groupedByMeal = items.stream()
-                .collect(Collectors.groupingBy(NutritionPlanItem::getMealName));
+        List<NutritionPlanItem> orderedItems = items.stream()
+                .sorted(Comparator
+                        .comparing(
+                                NutritionPlanItem::getSortOrder,
+                                Comparator.nullsLast(Integer::compareTo)
+                        )
+                        .thenComparing(
+                                NutritionPlanItem::getId,
+                                Comparator.nullsLast(Long::compareTo)
+                        ))
+                .toList();
 
-        List<MealDto> mealDtos = new ArrayList<>();
-        for (Map.Entry<String, List<NutritionPlanItem>> entry : groupedByMeal.entrySet()) {
-            List<NutritionPlanItemDto> dtos = entry.getValue().stream()
-                    .map(this::toItemDto)
-                    .collect(Collectors.toList());
-            
-            mealDtos.add(MealDto.builder()
-                    .mealName(entry.getKey())
-                    .foods(dtos)
-                    .build());
+        Map<String, List<NutritionPlanItemDto>> grouped = new LinkedHashMap<>();
+
+        for (NutritionPlanItem item : orderedItems) {
+            String mealName = item.getMealName() == null || item.getMealName().isBlank()
+                    ? "Bữa ăn"
+                    : item.getMealName().trim();
+
+            grouped.computeIfAbsent(mealName, ignored -> new ArrayList<>())
+                    .add(toItemDto(item));
         }
 
-        return mealDtos;
+        return grouped.entrySet()
+                .stream()
+                .map(entry -> MealDto.builder()
+                        .mealName(entry.getKey())
+                        .foods(entry.getValue())
+                        .build())
+                .toList();
     }
 }
