@@ -193,6 +193,8 @@ public class SecurityConfiguration {
                         ).hasAnyRole("ADMIN", "STAFF")
 
                         .requestMatchers(
+                                "/admin/checkin-qr-codes/**",
+                                "/admin/checkin-qr-codes",
                                 "/admin/payments/**",
                                 "/admin/invoices/**",
                                 "/admin/reports/**",

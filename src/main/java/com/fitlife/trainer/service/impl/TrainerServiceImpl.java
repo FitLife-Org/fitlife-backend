@@ -541,4 +541,159 @@ public class TrainerServiceImpl
                         .build())
                 .toList();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<com.fitlife.trainer.dto.response.TrainerAssignmentRequestResponse> getTrainerRequests() {
+        User currentUser = getCurrentUser();
+        Trainer trainer = trainerRepository.findByUserIdAndDeletedFalse(currentUser.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.TRAINER_PROFILE_NOT_FOUND));
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows = entityManager.createNativeQuery(
+                "SELECT ta.id, ta.member_id, m.member_code, u.full_name, u.phone, u.avatar_url, ta.status, ta.created_at " +
+                "FROM trainer_assignments ta " +
+                "JOIN members m ON ta.member_id = m.id " +
+                "JOIN users u ON m.user_id = u.id " +
+                "WHERE ta.trainer_id = :trainerId AND ta.status IN ('PENDING', 'PENDING_CANCEL') " +
+                "ORDER BY ta.created_at DESC")
+                .setParameter("trainerId", trainer.getId())
+                .getResultList();
+
+        List<com.fitlife.trainer.dto.response.TrainerAssignmentRequestResponse> list = new ArrayList<>();
+        LocalDate today = LocalDate.now();
+
+        for (Object[] row : rows) {
+            Long assignmentId = ((Number) row[0]).longValue();
+            Long memberId = ((Number) row[1]).longValue();
+            String memberCode = (String) row[2];
+            String fullName = (String) row[3];
+            String phone = (String) row[4];
+            String avatarUrl = (String) row[5];
+            String status = (String) row[6];
+            java.time.LocalDateTime createdAt = null;
+            if (row[7] instanceof java.sql.Timestamp ts) {
+                createdAt = ts.toLocalDateTime();
+            } else if (row[7] instanceof java.time.LocalDateTime ldt) {
+                createdAt = ldt;
+            }
+
+            List<String> pkgNames = entityManager.createQuery(
+                    "SELECT s.gymPackage.name FROM Subscription s WHERE s.member.id = :memberId AND s.status = :status AND s.startDate <= :today AND s.endDate >= :today", String.class)
+                    .setParameter("memberId", memberId)
+                    .setParameter("status", com.fitlife.subscription.enums.SubscriptionStatus.ACTIVE)
+                    .setParameter("today", today)
+                    .getResultList();
+            String packageName = pkgNames.isEmpty() ? "Gói tập FitLife" : pkgNames.get(0);
+
+            String requestType = "PENDING".equals(status) ? "NEW_ASSIGNMENT" : "CANCEL_ASSIGNMENT";
+
+            list.add(com.fitlife.trainer.dto.response.TrainerAssignmentRequestResponse.builder()
+                    .assignmentId(assignmentId)
+                    .memberId(memberId)
+                    .memberCode(memberCode)
+                    .fullName(fullName)
+                    .phone(phone)
+                    .avatarUrl(avatarUrl)
+                    .packageName(packageName)
+                    .requestType(requestType)
+                    .status(status)
+                    .createdAt(createdAt)
+                    .build());
+        }
+
+        return list;
+    }
+
+    @Override
+    @Transactional
+    public void approveTrainerRequest(Long assignmentId) {
+        User currentUser = getCurrentUser();
+        Trainer trainer = trainerRepository.findByUserIdAndDeletedFalse(currentUser.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.TRAINER_PROFILE_NOT_FOUND));
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows = entityManager.createNativeQuery(
+                "SELECT id, status, member_id FROM trainer_assignments WHERE id = :id AND trainer_id = :trainerId")
+                .setParameter("id", assignmentId)
+                .setParameter("trainerId", trainer.getId())
+                .getResultList();
+
+        if (rows.isEmpty()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Yêu cầu không tồn tại hoặc không thuộc quyền quản lý của bạn.");
+        }
+
+        String currentStatus = (String) rows.get(0)[1];
+
+        if ("PENDING".equals(currentStatus)) {
+            entityManager.createNativeQuery(
+                    "UPDATE trainer_assignments SET status = 'ACTIVE', start_date = :today WHERE id = :id")
+                    .setParameter("today", LocalDate.now())
+                    .setParameter("id", assignmentId)
+                    .executeUpdate();
+        } else if ("PENDING_CANCEL".equals(currentStatus)) {
+            entityManager.createNativeQuery(
+                    "UPDATE trainer_assignments SET status = 'CANCELLED', end_date = :today WHERE id = :id")
+                    .setParameter("today", LocalDate.now())
+                    .setParameter("id", assignmentId)
+                    .executeUpdate();
+        }
+    }
+
+    @Override
+    @Transactional
+    public void rejectTrainerRequest(Long assignmentId) {
+        User currentUser = getCurrentUser();
+        Trainer trainer = trainerRepository.findByUserIdAndDeletedFalse(currentUser.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.TRAINER_PROFILE_NOT_FOUND));
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows = entityManager.createNativeQuery(
+                "SELECT id, status, member_id FROM trainer_assignments WHERE id = :id AND trainer_id = :trainerId")
+                .setParameter("id", assignmentId)
+                .setParameter("trainerId", trainer.getId())
+                .getResultList();
+
+        if (rows.isEmpty()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Yêu cầu không tồn tại hoặc không thuộc quyền quản lý của bạn.");
+        }
+
+        String currentStatus = (String) rows.get(0)[1];
+
+        if ("PENDING".equals(currentStatus)) {
+            entityManager.createNativeQuery(
+                    "UPDATE trainer_assignments SET status = 'REJECTED', end_date = :today WHERE id = :id")
+                    .setParameter("today", LocalDate.now())
+                    .setParameter("id", assignmentId)
+                    .executeUpdate();
+        } else if ("PENDING_CANCEL".equals(currentStatus)) {
+            entityManager.createNativeQuery(
+                    "UPDATE trainer_assignments SET status = 'ACTIVE' WHERE id = :id")
+                    .setParameter("id", assignmentId)
+                    .executeUpdate();
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Boolean getMyAcceptingStatus() {
+        User currentUser = getCurrentUser();
+        Trainer trainer = trainerRepository.findByUserIdAndDeletedFalse(currentUser.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.TRAINER_PROFILE_NOT_FOUND));
+        return !Boolean.FALSE.equals(trainer.getIsAcceptingMembers());
+    }
+
+    @Override
+    @Transactional
+    public Boolean toggleMyAcceptingStatus() {
+        User currentUser = getCurrentUser();
+        Trainer trainer = trainerRepository.findByUserIdAndDeletedFalse(currentUser.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.TRAINER_PROFILE_NOT_FOUND));
+
+        boolean current = !Boolean.FALSE.equals(trainer.getIsAcceptingMembers());
+        boolean newStatus = !current;
+        trainer.setIsAcceptingMembers(newStatus);
+        trainerRepository.save(trainer);
+        return newStatus;
+    }
 }

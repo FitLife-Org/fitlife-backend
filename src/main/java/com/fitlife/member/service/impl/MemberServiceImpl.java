@@ -1098,22 +1098,35 @@ public class MemberServiceImpl
     @Override
     @Transactional(readOnly = true)
     public com.fitlife.trainer.dto.response.TrainerResponse getMyAssignedTrainer() {
+        java.util.List<com.fitlife.trainer.dto.response.TrainerResponse> trainers = getMyAssignedTrainers();
+        return trainers.isEmpty() ? null : trainers.get(0);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<com.fitlife.trainer.dto.response.TrainerResponse> getMyAssignedTrainers() {
         Member currentMember = currentMemberService.getCurrentMember();
         
-        java.util.List<Number> trainerIdsRaw = entityManager.createNativeQuery(
-                "SELECT trainer_id FROM trainer_assignments WHERE member_id = :memberId AND status = 'ACTIVE'")
+        @SuppressWarnings("unchecked")
+        java.util.List<Object[]> assignmentsRaw = entityManager.createNativeQuery(
+                "SELECT id, trainer_id, status FROM trainer_assignments WHERE member_id = :memberId AND status IN ('PENDING', 'ACTIVE', 'PENDING_CANCEL') ORDER BY id DESC")
                 .setParameter("memberId", currentMember.getId())
                 .getResultList();
                 
-        if (trainerIdsRaw.isEmpty()) {
-            return null;
+        java.util.List<com.fitlife.trainer.dto.response.TrainerResponse> result = new java.util.ArrayList<>();
+        for (Object[] row : assignmentsRaw) {
+            Long assignmentId = ((Number) row[0]).longValue();
+            Long trainerId = ((Number) row[1]).longValue();
+            String status = (String) row[2];
+            
+            trainerRepository.findById(trainerId).ifPresent(t -> {
+                com.fitlife.trainer.dto.response.TrainerResponse res = trainerMapper.toResponse(t);
+                res.setAssignmentId(assignmentId);
+                res.setAssignmentStatus(status);
+                result.add(res);
+            });
         }
-        
-        Long trainerId = trainerIdsRaw.get(0).longValue();
-        com.fitlife.trainer.entity.Trainer trainer = trainerRepository.findById(trainerId)
-                .orElse(null);
-                
-        return trainer != null ? trainerMapper.toResponse(trainer) : null;
+        return result;
     }
 
     @Override
@@ -1123,17 +1136,32 @@ public class MemberServiceImpl
         
         com.fitlife.trainer.entity.Trainer trainer = trainerRepository.findById(trainerId)
                 .orElseThrow(() -> new com.fitlife.common.exception.AppException(com.fitlife.common.exception.ErrorCode.TRAINER_PROFILE_NOT_FOUND));
-                
-        entityManager.createNativeQuery(
-                "UPDATE trainer_assignments SET status = 'INACTIVE', end_date = :today " +
-                "WHERE member_id = :memberId AND status = 'ACTIVE'")
-                .setParameter("today", java.time.LocalDate.now())
+
+        if (Boolean.FALSE.equals(trainer.getIsAcceptingMembers())) {
+            throw new com.fitlife.common.exception.AppException(
+                    com.fitlife.common.exception.ErrorCode.INVALID_REQUEST,
+                    "Huấn luyện viên hiện đã kích hoạt ngưng nhận học viên mới."
+            );
+        }
+
+        // Kiểm tra xem hội viên đã có yêu cầu PENDING hoặc đang ACTIVE với chính HLV này chưa
+        @SuppressWarnings("unchecked")
+        java.util.List<Object[]> existingThisTrainer = entityManager.createNativeQuery(
+                "SELECT id, status FROM trainer_assignments WHERE member_id = :memberId AND trainer_id = :trainerId AND status IN ('PENDING', 'ACTIVE')")
                 .setParameter("memberId", currentMember.getId())
-                .executeUpdate();
+                .setParameter("trainerId", trainer.getId())
+                .getResultList();
                 
+        if (!existingThisTrainer.isEmpty()) {
+            throw new com.fitlife.common.exception.AppException(
+                    com.fitlife.common.exception.ErrorCode.INVALID_REQUEST,
+                    "Bạn đã gửi yêu cầu hoặc đang đồng hành cùng Huấn luyện viên này rồi."
+            );
+        }
+
         entityManager.createNativeQuery(
                 "INSERT INTO trainer_assignments (trainer_id, member_id, start_date, status) " +
-                "VALUES (:trainerId, :memberId, :today, 'ACTIVE')")
+                "VALUES (:trainerId, :memberId, :today, 'PENDING')")
                 .setParameter("trainerId", trainer.getId())
                 .setParameter("memberId", currentMember.getId())
                 .setParameter("today", java.time.LocalDate.now())
@@ -1142,12 +1170,92 @@ public class MemberServiceImpl
         memberTimelineRecorder.record(
                 currentMember.getId(),
                 com.fitlife.member.timeline.enums.MemberTimelineType.MEMBER_PROFILE,
-                "Chọn Huấn luyện viên",
-                "Đã chọn Huấn luyện viên đồng hành: " + trainer.getUser().getFullName(),
+                "Gửi yêu cầu chọn Huấn luyện viên",
+                "Đã gửi yêu cầu chọn Huấn luyện viên: " + trainer.getUser().getFullName() + " (Đang chờ HLV phê duyệt)",
                 trainer.getId(),
                 "TRAINER",
-                "COMPLETED",
+                "PENDING",
                 java.time.LocalDateTime.now()
         );
+    }
+
+    @Override
+    @Transactional
+    public void cancelTrainerBooking() {
+        cancelTrainerBooking(null);
+    }
+
+    @Override
+    @Transactional
+    public void cancelTrainerBooking(Long trainerId) {
+        Member currentMember = currentMemberService.getCurrentMember();
+        
+        String sql = "SELECT id, status, trainer_id FROM trainer_assignments WHERE member_id = :memberId AND status IN ('PENDING', 'ACTIVE', 'PENDING_CANCEL') ";
+        if (trainerId != null) {
+            sql += "AND trainer_id = :trainerId ";
+        }
+        sql += "ORDER BY id DESC";
+
+        var query = entityManager.createNativeQuery(sql)
+                .setParameter("memberId", currentMember.getId());
+        if (trainerId != null) {
+            query.setParameter("trainerId", trainerId);
+        }
+
+        @SuppressWarnings("unchecked")
+        java.util.List<Object[]> existing = query.getResultList();
+                
+        if (existing.isEmpty()) {
+            throw new com.fitlife.common.exception.AppException(
+                    com.fitlife.common.exception.ErrorCode.INVALID_REQUEST,
+                    "Bạn hiện không có Huấn luyện viên nào để hủy."
+            );
+        }
+        
+        Object[] row = existing.get(0);
+        Long assignmentId = ((Number) row[0]).longValue();
+        String currentStatus = (String) row[1];
+        
+        if ("PENDING".equals(currentStatus)) {
+            // Yêu cầu đang chờ duyệt: member tự hủy ngay được
+            entityManager.createNativeQuery(
+                    "UPDATE trainer_assignments SET status = 'CANCELLED', end_date = :today WHERE id = :id")
+                    .setParameter("today", java.time.LocalDate.now())
+                    .setParameter("id", assignmentId)
+                    .executeUpdate();
+                    
+            memberTimelineRecorder.record(
+                    currentMember.getId(),
+                    com.fitlife.member.timeline.enums.MemberTimelineType.MEMBER_PROFILE,
+                    "Hủy yêu cầu chọn Huấn luyện viên",
+                    "Hội viên đã hủy yêu cầu chọn Huấn luyện viên thành công.",
+                    currentMember.getId(),
+                    "TRAINER",
+                    "CANCELLED",
+                    java.time.LocalDateTime.now()
+            );
+        } else if ("ACTIVE".equals(currentStatus)) {
+            // Đã chọn thành công (ACTIVE): member gửi yêu cầu hủy và phải chờ Trainer xác nhận hủy
+            entityManager.createNativeQuery(
+                    "UPDATE trainer_assignments SET status = 'PENDING_CANCEL' WHERE id = :id")
+                    .setParameter("id", assignmentId)
+                    .executeUpdate();
+                    
+            memberTimelineRecorder.record(
+                    currentMember.getId(),
+                    com.fitlife.member.timeline.enums.MemberTimelineType.MEMBER_PROFILE,
+                    "Gửi yêu cầu hủy Huấn luyện viên",
+                    "Hội viên đã gửi yêu cầu dừng đồng hành (Đang chờ Huấn luyện viên xác nhận).",
+                    currentMember.getId(),
+                    "TRAINER",
+                    "PENDING_CANCEL",
+                    java.time.LocalDateTime.now()
+            );
+        } else if ("PENDING_CANCEL".equals(currentStatus)) {
+            throw new com.fitlife.common.exception.AppException(
+                    com.fitlife.common.exception.ErrorCode.INVALID_REQUEST,
+                    "Yêu cầu hủy của bạn đã được gửi và đang chờ Huấn luyện viên xác nhận."
+            );
+        }
     }
 }
