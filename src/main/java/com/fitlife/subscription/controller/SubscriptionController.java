@@ -1,12 +1,15 @@
 package com.fitlife.subscription.controller;
 
 import com.fitlife.common.response.ApiResponse;
+import com.fitlife.common.response.PageResponse;
 import com.fitlife.subscription.dto.request.SubscriptionCreateRequest;
+import com.fitlife.subscription.dto.request.UpgradeSubscriptionRequest;
 import com.fitlife.subscription.dto.response.SubscriptionPreviewResponse;
 import com.fitlife.subscription.dto.response.SubscriptionResponse;
 import com.fitlife.subscription.service.SubscriptionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
@@ -36,9 +39,14 @@ public class SubscriptionController {
     }
 
     @GetMapping({"/my", "/me"})
-    public ApiResponse<?> getMySubscriptions(Pageable pageable) {
-        return ApiResponse.builder()
-                .data(subscriptionService.getMySubscriptions(pageable))
+    public ApiResponse<PageResponse<SubscriptionResponse>> getMySubscriptions(
+            Pageable pageable
+    ) {
+        Page<SubscriptionResponse> page =
+                subscriptionService.getMySubscriptions(pageable);
+
+        return ApiResponse.<PageResponse<SubscriptionResponse>>builder()
+                .data(PageResponse.from(page))
                 .build();
     }
 
@@ -50,7 +58,9 @@ public class SubscriptionController {
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<SubscriptionResponse> getMySubscriptionById(@PathVariable Long id) {
+    public ApiResponse<SubscriptionResponse> getMySubscriptionById(
+            @PathVariable Long id
+    ) {
         return ApiResponse.<SubscriptionResponse>builder()
                 .data(subscriptionService.getMySubscriptionById(id))
                 .build();
@@ -58,8 +68,7 @@ public class SubscriptionController {
 
     @PostMapping("/{id}/renew")
     public ApiResponse<SubscriptionResponse> renewSubscription(
-            @PathVariable Long id,
-            @RequestBody(required = false) SubscriptionCreateRequest request
+            @PathVariable Long id
     ) {
         return ApiResponse.<SubscriptionResponse>builder()
                 .data(subscriptionService.renewSubscription(id))
@@ -69,7 +78,7 @@ public class SubscriptionController {
     @PostMapping("/{id}/upgrade")
     public ApiResponse<SubscriptionResponse> upgradeSubscription(
             @PathVariable Long id,
-            @Valid @RequestBody com.fitlife.subscription.dto.request.UpgradeSubscriptionRequest request
+            @Valid @RequestBody UpgradeSubscriptionRequest request
     ) {
         return ApiResponse.<SubscriptionResponse>builder()
                 .data(subscriptionService.upgradeSubscription(id, request))
@@ -79,7 +88,7 @@ public class SubscriptionController {
     @PostMapping("/{id}/change-package")
     public ApiResponse<SubscriptionResponse> changePackageSameTier(
             @PathVariable Long id,
-            @Valid @RequestBody com.fitlife.subscription.dto.request.UpgradeSubscriptionRequest request
+            @Valid @RequestBody UpgradeSubscriptionRequest request
     ) {
         return ApiResponse.<SubscriptionResponse>builder()
                 .data(subscriptionService.changePackageSameTier(id, request))
