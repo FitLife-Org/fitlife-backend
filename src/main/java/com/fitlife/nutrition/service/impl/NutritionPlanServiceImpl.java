@@ -92,6 +92,8 @@ public class NutritionPlanServiceImpl implements NutritionPlanService {
     ) {
         Member member = getCurrentMember(principal);
         NutritionPlan plan = buildPlan(member, request);
+        // Member self-service cannot spoof AI/TRAINER source.
+        plan.setSource(NutritionPlanSource.MEMBER_CREATED);
 
         return nutritionPlanMapper.toResponse(
                 nutritionPlanRepository.save(plan)
@@ -215,10 +217,7 @@ public class NutritionPlanServiceImpl implements NutritionPlanService {
             Long id
     ) {
         NutritionPlan plan = nutritionPlanRepository
-                .findById(id)
-                .filter(item ->
-                        !Boolean.TRUE.equals(item.getIsDeleted())
-                )
+                .findDetailById(id)
                 .orElseThrow(() ->
                         new AppException(
                                 ErrorCode.NUTRITION_PLAN_NOT_FOUND
@@ -286,11 +285,7 @@ public class NutritionPlanServiceImpl implements NutritionPlanService {
 
         plan.setMember(member);
 
-        plan.setSource(
-                request.getSource() != null
-                        ? request.getSource()
-                        : NutritionPlanSource.MEMBER_CREATED
-        );
+        plan.setSource(NutritionPlanSource.MEMBER_CREATED);
 
         plan.setStatus(
                 NutritionPlanStatus.DRAFT
@@ -300,12 +295,14 @@ public class NutritionPlanServiceImpl implements NutritionPlanService {
         plan.setIsDeleted(false);
 
         if (request.getItems() != null) {
-            request.getItems()
-                    .stream()
-                    .map(
-                            nutritionPlanMapper::toItemEntity
-                    )
-                    .forEach(plan::addItem);
+            for (int index = 0; index < request.getItems().size(); index++) {
+                var itemRequest = request.getItems().get(index);
+                NutritionPlanItem item = nutritionPlanMapper.toItemEntity(itemRequest);
+                if (item.getSortOrder() == null) {
+                    item.setSortOrder(index);
+                }
+                plan.addItem(item);
+            }
         }
 
         return plan;
@@ -355,10 +352,14 @@ public class NutritionPlanServiceImpl implements NutritionPlanService {
             return;
         }
 
-        request.getItems()
-                .stream()
-                .map(nutritionPlanMapper::toItemEntity)
-                .forEach(plan::addItem);
+        for (int index = 0; index < request.getItems().size(); index++) {
+            var itemRequest = request.getItems().get(index);
+            NutritionPlanItem item = nutritionPlanMapper.toItemEntity(itemRequest);
+            if (item.getSortOrder() == null) {
+                item.setSortOrder(index);
+            }
+            plan.addItem(item);
+        }
     }
 
     private void activateOwnedPlan(

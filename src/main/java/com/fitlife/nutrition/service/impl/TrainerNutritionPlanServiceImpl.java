@@ -8,6 +8,10 @@ import com.fitlife.nutrition.enums.NutritionPlanSource;
 import com.fitlife.nutrition.repository.NutritionPlanRepository;
 import com.fitlife.nutrition.service.NutritionPlanService;
 import com.fitlife.nutrition.service.TrainerNutritionPlanService;
+import com.fitlife.trainer.entity.Trainer;
+import com.fitlife.trainer.repository.TrainerRepository;
+import com.fitlife.user.entity.User;
+import com.fitlife.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,103 +21,95 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class TrainerNutritionPlanServiceImpl
-        implements TrainerNutritionPlanService {
+public class TrainerNutritionPlanServiceImpl implements TrainerNutritionPlanService {
 
     private final NutritionPlanService nutritionPlanService;
     private final NutritionPlanRepository nutritionPlanRepository;
+    private final UserRepository userRepository;
+    private final TrainerRepository trainerRepository;
 
     @Override
     @Transactional
     public NutritionPlanResponse createPlanForMember(
-            Long trainerId,
+            String trainerPrincipal,
             Long memberId,
             NutritionPlanRequest request
     ) {
-        validateTrainerAssignment(
-                trainerId,
-                memberId
-        );
+        Long trainerId = getCurrentTrainerId(trainerPrincipal);
+        validateTrainerAssignment(trainerId, memberId);
 
-        request.setSource(
-                NutritionPlanSource.TRAINER_CREATED
-        );
+        request.setSource(NutritionPlanSource.TRAINER_CREATED);
 
-        return nutritionPlanService
-                .createNutritionPlanForMember(
-                        memberId,
-                        request
-                );
+        return nutritionPlanService.createNutritionPlanForMember(
+                memberId,
+                request
+        );
     }
 
     @Override
     @Transactional
     public NutritionPlanResponse updatePlanForMember(
-            Long trainerId,
+            String trainerPrincipal,
             Long planId,
             Long memberId,
             NutritionPlanRequest request
     ) {
-        validateTrainerAssignment(
-                trainerId,
-                memberId
-        );
+        Long trainerId = getCurrentTrainerId(trainerPrincipal);
+        validateTrainerAssignment(trainerId, memberId);
 
-        NutritionPlanResponse existingPlan =
-                nutritionPlanService
-                        .getNutritionPlanForMemberById(
-                                planId,
-                                memberId
-                        );
+        NutritionPlanResponse existingPlan = nutritionPlanService
+                .getNutritionPlanForMemberById(planId, memberId);
 
-        if (existingPlan.getSource()
-                != NutritionPlanSource.TRAINER_CREATED) {
-            throw new AppException(
-                    ErrorCode.FORBIDDEN
-            );
+        if (existingPlan.getSource() != NutritionPlanSource.TRAINER_CREATED) {
+            throw new AppException(ErrorCode.FORBIDDEN);
         }
 
-        return nutritionPlanService
-                .updateNutritionPlanForMember(
-                        planId,
-                        memberId,
-                        request
-                );
+        request.setSource(NutritionPlanSource.TRAINER_CREATED);
+
+        return nutritionPlanService.updateNutritionPlanForMember(
+                planId,
+                memberId,
+                request
+        );
     }
 
     @Override
     public Page<NutritionPlanResponse> getPlansForMember(
-            Long trainerId,
+            String trainerPrincipal,
             Long memberId,
             Pageable pageable
     ) {
-        validateTrainerAssignment(
-                trainerId,
-                memberId
-        );
+        Long trainerId = getCurrentTrainerId(trainerPrincipal);
+        validateTrainerAssignment(trainerId, memberId);
 
-        return nutritionPlanService
-                .getNutritionPlansForMember(
-                        memberId,
-                        pageable
-                );
+        return nutritionPlanService.getNutritionPlansForMember(
+                memberId,
+                pageable
+        );
     }
 
-    private void validateTrainerAssignment(
-            Long trainerId,
-            Long memberId
-    ) {
-        long assignmentCount =
-                nutritionPlanRepository
-                        .countActiveTrainerAssignment(
-                                trainerId,
-                                memberId
-                        );
+    private Long getCurrentTrainerId(String principal) {
+        if (principal == null || principal.isBlank() || "anonymousUser".equals(principal)) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        User user = userRepository
+                .findByUsernameOrEmail(principal, principal)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        Trainer trainer = trainerRepository
+                .findByUserIdAndDeletedFalse(user.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.FORBIDDEN));
+
+        return trainer.getId();
+    }
+
+    private void validateTrainerAssignment(Long trainerId, Long memberId) {
+        long assignmentCount = nutritionPlanRepository
+                .countActiveTrainerAssignment(trainerId, memberId);
 
         if (assignmentCount <= 0) {
-            throw new AppException(
-                    ErrorCode.FORBIDDEN
-            );
+            throw new AppException(ErrorCode.FORBIDDEN);
         }
     }
 }
