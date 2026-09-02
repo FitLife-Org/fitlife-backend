@@ -2,11 +2,7 @@ package com.fitlife.checkin.dto;
 
 import com.fitlife.checkin.enums.CheckInMethod;
 import com.fitlife.checkin.enums.CheckInStatus;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
@@ -24,8 +20,11 @@ public class CheckInResponse {
     private String packageName;
     private LocalDateTime checkInTime;
     private CheckInMethod checkInMethod;
+    private LocalDateTime checkOutTime;
+    private CheckInMethod checkOutMethod;
     private CheckInStatus status;
     private Long checkedInBy;
     private String checkedInByName;
     private String note;
+    private Boolean isInside; // Derived field: true if checked in and not yet checked out
 }

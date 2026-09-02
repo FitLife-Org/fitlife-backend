@@ -21,4 +21,8 @@ public interface PackageDurationService {
     PackageDurationResponse updateStatus(Long id, String status);
 
     void deleteDuration(Long id);
+
+    List<PackageDurationResponse> getDurationsByPackageId(Long packageId);
+
+    PackageDurationResponse createDurationForPackage(Long packageId, PackageDurationCreateRequest request);
 }

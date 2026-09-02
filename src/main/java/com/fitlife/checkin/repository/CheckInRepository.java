@@ -57,6 +57,17 @@ public interface CheckInRepository extends JpaRepository<CheckIn, Long> {
             LocalDateTime endOfDay,
             CheckInMethod method,
             CheckInStatus status
+        );
+
+    // Queries to support check-out and active gym presence tracking
+    Optional<CheckIn> findFirstByMemberIdAndCheckOutTimeIsNullAndStatusAndDeletedFalseOrderByCheckInTimeDesc(
+            Long memberId,
+            CheckInStatus status
+    );
+
+    Page<CheckIn> findByCheckOutTimeIsNullAndStatusAndDeletedFalse(
+            CheckInStatus status,
+            Pageable pageable
     );
 
     // Independent query to fetch subscription details without modifying the subscription module
@@ -68,7 +79,7 @@ public interface CheckInRepository extends JpaRepository<CheckIn, Long> {
     """)
     List<Subscription> findActiveSubscriptionsByMemberId(@Param("memberId") Long memberId);
 
-    // Advanced search query for Admin/Staff check-in list
+    // Advanced search query for Admin/Staff check-in list with insideOnly option
     @Query("""
         SELECT c FROM CheckIn c
         JOIN c.member m
@@ -78,6 +89,7 @@ public interface CheckInRepository extends JpaRepository<CheckIn, Long> {
           AND (:status IS NULL OR c.status = :status)
           AND (:fromDate IS NULL OR c.checkInTime >= :fromDate)
           AND (:toDate IS NULL OR c.checkInTime <= :toDate)
+          AND (:insideOnly = false OR c.checkOutTime IS NULL)
           AND (
                 :keyword IS NULL OR :keyword = ''
                 OR LOWER(m.memberCode) LIKE LOWER(CONCAT('%', :keyword, '%'))
@@ -92,6 +104,7 @@ public interface CheckInRepository extends JpaRepository<CheckIn, Long> {
             @Param("fromDate") LocalDateTime fromDate,
             @Param("toDate") LocalDateTime toDate,
             @Param("status") CheckInStatus status,
+            @Param("insideOnly") boolean insideOnly,
             Pageable pageable
     );
 }

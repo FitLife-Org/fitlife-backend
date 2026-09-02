@@ -8,13 +8,17 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
+import java.util.Collections;
 
 @Getter
-public class CustomUserDetails implements UserDetails {
+public class CustomUserDetails
+        implements UserDetails {
 
     private final User user;
 
-    public CustomUserDetails(User user) {
+    public CustomUserDetails(
+            User user
+    ) {
         this.user = user;
     }
 
@@ -27,10 +31,20 @@ public class CustomUserDetails implements UserDetails {
     }
 
     @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
+    public Collection<? extends GrantedAuthority>
+    getAuthorities() {
+
+        if (user.getRoles() == null) {
+            return Collections.emptyList();
+        }
+
         return user.getRoles()
                 .stream()
-                .map(role -> new SimpleGrantedAuthority(role.getCode()))
+                .map(role ->
+                        new SimpleGrantedAuthority(
+                                role.getCode()
+                        )
+                )
                 .toList();
     }
 
@@ -51,7 +65,8 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return user.getStatus() != UserStatus.LOCKED;
+        return user.getStatus()
+                != UserStatus.LOCKED;
     }
 
     @Override
@@ -61,7 +76,13 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return user.getStatus() == UserStatus.ACTIVE
-                && Boolean.FALSE.equals(user.getIsDeleted());
+        return user.getStatus()
+                == UserStatus.ACTIVE
+                && Boolean.TRUE.equals(
+                user.getEmailVerified()
+        )
+                && Boolean.FALSE.equals(
+                user.getIsDeleted()
+        );
     }
 }

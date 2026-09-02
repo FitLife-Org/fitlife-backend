@@ -19,6 +19,8 @@ public interface GymPackageRepository extends JpaRepository<GymPackage, Long> {
 
     boolean existsByCodeAndIsDeletedFalse(String code);
 
+    boolean existsByNameAndIsDeletedFalse(String name);
+
     @Query("SELECT gp FROM GymPackage gp WHERE gp.isDeleted = false " +
            "AND (:keyword IS NULL OR LOWER(gp.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(gp.code) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
            "AND (:packageType IS NULL OR gp.packageType = :packageType) " +

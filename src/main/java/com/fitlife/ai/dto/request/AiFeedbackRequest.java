@@ -3,6 +3,7 @@ package com.fitlife.ai.dto.request;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -15,5 +16,8 @@ public class AiFeedbackRequest {
     @Max(value = 5, message = "AI_FEEDBACK_RATING_INVALID")
     private Integer rating;
 
+    private Boolean useful;
+
+    @Size(max = 2000, message = "AI_FEEDBACK_COMMENT_TOO_LONG")
     private String comment;
 }

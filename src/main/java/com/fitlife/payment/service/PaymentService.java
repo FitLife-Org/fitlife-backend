@@ -1,6 +1,6 @@
 package com.fitlife.payment.service;
 
-import com.fitlife.common.dto.PageResponse;
+import com.fitlife.common.response.PageResponse;
 import com.fitlife.payment.dto.request.PaymentCancelRequest;
 import com.fitlife.payment.dto.request.PaymentConfirmRequest;
 import com.fitlife.payment.dto.request.PaymentCreateRequest;
@@ -24,6 +24,8 @@ public interface PaymentService {
             PaymentMethod method,
             Long memberId,
             Long invoiceId,
+            java.time.LocalDate fromDate,
+            java.time.LocalDate toDate,
             Pageable pageable
     );
 
@@ -34,4 +36,6 @@ public interface PaymentService {
     PaymentDetailResponse failPayment(Long paymentId, PaymentFailRequest request);
 
     PaymentDetailResponse cancelPayment(Long paymentId, PaymentCancelRequest request);
+
+    PaymentDetailResponse offlinePayment(com.fitlife.payment.dto.request.OfflinePaymentRequest request);
 }

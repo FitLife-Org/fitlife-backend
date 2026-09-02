@@ -1,6 +1,6 @@
 package com.fitlife.user.service;
 
-import com.fitlife.common.dto.PageResponse;
+import com.fitlife.common.response.PageResponse;
 import com.fitlife.user.dto.request.*;
 import com.fitlife.user.dto.response.AdminUserDetailResponse;
 import com.fitlife.user.dto.response.AdminUserResponse;
@@ -23,4 +23,8 @@ public interface UserService {
     AdminUserDetailResponse updateUserRoles(Long id, AdminUpdateUserRolesRequest request);
 
     void changePassword(ChangePasswordRequest request);
+
+    UserProfileResponse updateMyProfile(UpdateUserProfileRequest request);
+
+    UserProfileResponse updateMyAvatar(org.springframework.web.multipart.MultipartFile file);
 }

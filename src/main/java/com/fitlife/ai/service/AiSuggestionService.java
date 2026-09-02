@@ -3,29 +3,76 @@ package com.fitlife.ai.service;
 import com.fitlife.ai.dto.request.AiBodyAnalysisRequest;
 import com.fitlife.ai.dto.request.AiFeedbackRequest;
 import com.fitlife.ai.dto.request.AiFullPlanRequest;
+import com.fitlife.ai.dto.request.AiNutritionPlanRequest;
+import com.fitlife.ai.dto.request.AiWorkoutPlanRequest;
+
 import com.fitlife.ai.dto.response.AiFeedbackResponse;
 import com.fitlife.ai.dto.response.AiSuggestionDetailResponse;
 import com.fitlife.ai.dto.response.AiSuggestionResponse;
+
 import com.fitlife.ai.enums.AiSuggestionStatus;
 import com.fitlife.ai.enums.AiSuggestionType;
-import com.fitlife.common.dto.PageResponse;
+
+import com.fitlife.common.response.PageResponse;
+
 import org.springframework.data.domain.Pageable;
 
 public interface AiSuggestionService {
 
-    AiSuggestionResponse createFullPlan(AiFullPlanRequest request);
+    // =====================================================
+    // GENERATE
+    // =====================================================
 
-    PageResponse<AiSuggestionResponse> getMySuggestions(Pageable pageable);
+    AiSuggestionResponse createFullPlan(
+            AiFullPlanRequest request
+    );
 
-    AiSuggestionDetailResponse getMySuggestionDetail(Long id);
+    AiSuggestionResponse createWorkoutPlan(
+            AiWorkoutPlanRequest request
+    );
 
-    AiFeedbackResponse submitFeedback(Long aiSuggestionId, AiFeedbackRequest request);
+    AiSuggestionResponse createNutritionPlan(
+            AiNutritionPlanRequest request
+    );
 
-    AiSuggestionDetailResponse analyzeBodyMetric(AiBodyAnalysisRequest request);
+    AiSuggestionDetailResponse analyzeBodyMetric(
+            AiBodyAnalysisRequest request
+    );
+
+    // =====================================================
+    // MEMBER
+    // =====================================================
+
+    PageResponse<AiSuggestionResponse> getMySuggestions(
+            Pageable pageable
+    );
 
     PageResponse<AiSuggestionResponse> getMySuggestionsByFilter(
             AiSuggestionType suggestionType,
             AiSuggestionStatus status,
             Pageable pageable
+    );
+
+    AiSuggestionDetailResponse getMySuggestionDetail(
+            Long id
+    );
+
+    AiFeedbackResponse submitFeedback(
+            Long aiSuggestionId,
+            AiFeedbackRequest request
+    );
+
+    // =====================================================
+    // ADMIN
+    // =====================================================
+
+    PageResponse<AiSuggestionResponse> getAdminSuggestions(
+            AiSuggestionType suggestionType,
+            AiSuggestionStatus status,
+            Pageable pageable
+    );
+
+    AiSuggestionDetailResponse getAdminSuggestionDetail(
+            Long id
     );
 }

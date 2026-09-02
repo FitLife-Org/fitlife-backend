@@ -1,19 +1,29 @@
 package com.fitlife.common.exception;
 
-import com.fitlife.common.dto.ApiResponse;
+import com.fitlife.common.response.ApiResponse;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.security.authentication.DisabledException;
-import org.springframework.security.authentication.LockedException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Slf4j
@@ -21,94 +31,273 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(AppException.class)
-    public ResponseEntity<ApiResponse<Void>> handleAppException(AppException exception) {
+    public ResponseEntity<ApiResponse<Void>> handleAppException(
+            AppException exception
+    ) {
         ErrorCode errorCode = exception.getErrorCode();
 
-        ApiResponse<Void> response = ApiResponse.error(
-                errorCode.getCode(),
-                exception.getMessage()
-        );
+        String message = exception.getMessage() == null
+                || exception.getMessage().isBlank()
+                ? errorCode.getMessage()
+                : exception.getMessage();
 
-        return ResponseEntity
-                .status(errorCode.getHttpStatus())
-                .body(response);
+        return buildErrorResponse(
+                errorCode,
+                message
+        );
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationException(
+    public ResponseEntity<ApiResponse<Map<String, String>>>
+    handleValidationException(
             MethodArgumentNotValidException exception
     ) {
-        Map<String, String> errors = new HashMap<>();
+        Map<String, String> errors = new LinkedHashMap<>();
 
-        exception.getBindingResult().getAllErrors().forEach(error -> {
-            String fieldName = error instanceof FieldError
-                    ? ((FieldError) error).getField()
-                    : error.getObjectName();
+        exception.getBindingResult()
+                .getAllErrors()
+                .forEach(error -> {
+                    String fieldName = error instanceof FieldError fieldError
+                            ? fieldError.getField()
+                            : error.getObjectName();
 
-            String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
-        });
+                    errors.putIfAbsent(
+                            fieldName,
+                            resolveMessage(
+                                    error.getDefaultMessage(),
+                                    ErrorCode.VALIDATION_FAILED.getMessage()
+                            )
+                    );
+                });
 
-        ApiResponse<Map<String, String>> response = ApiResponse.error(
-                ErrorCode.VALIDATION_FAILED.getCode(),
-                ErrorCode.VALIDATION_FAILED.getMessage(),
-                errors
-        );
+        ErrorCode errorCode = ErrorCode.VALIDATION_FAILED;
 
         return ResponseEntity
-                .status(ErrorCode.VALIDATION_FAILED.getHttpStatus())
-                .body(response);
+                .status(errorCode.getHttpStatus())
+                .body(
+                        ApiResponse.error(
+                                errorCode.getCode(),
+                                errorCode.getMessage(),
+                                errors
+                        )
+                );
     }
 
-    @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<ApiResponse<Void>> handleBadCredentialsException(
-            BadCredentialsException exception
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiResponse<Map<String, String>>>
+    handleConstraintViolation(
+            ConstraintViolationException exception
     ) {
-        ApiResponse<Void> response = ApiResponse.error(
-                ErrorCode.INVALID_CREDENTIALS.getCode(),
-                ErrorCode.INVALID_CREDENTIALS.getMessage()
-        );
+        Map<String, String> errors = new LinkedHashMap<>();
+
+        for (ConstraintViolation<?> violation
+                : exception.getConstraintViolations()) {
+            String fieldName = extractLastPathNode(
+                    violation.getPropertyPath().toString()
+            );
+
+            errors.putIfAbsent(
+                    fieldName,
+                    resolveMessage(
+                            violation.getMessage(),
+                            ErrorCode.VALIDATION_FAILED.getMessage()
+                    )
+            );
+        }
+
+        ErrorCode errorCode = ErrorCode.VALIDATION_FAILED;
 
         return ResponseEntity
-                .status(ErrorCode.INVALID_CREDENTIALS.getHttpStatus())
-                .body(response);
+                .status(errorCode.getHttpStatus())
+                .body(
+                        ApiResponse.error(
+                                errorCode.getCode(),
+                                errorCode.getMessage(),
+                                errors
+                        )
+                );
+    }
+
+    @ExceptionHandler({
+            MissingServletRequestParameterException.class,
+            MethodArgumentTypeMismatchException.class,
+            HttpMessageNotReadableException.class
+    })
+    public ResponseEntity<ApiResponse<Void>> handleMalformedRequest(
+            Exception exception
+    ) {
+        log.debug(
+                "Malformed API request: {}",
+                exception.getMessage()
+        );
+
+        return buildErrorResponse(
+                ErrorCode.INVALID_REQUEST
+        );
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>>
+    handleMediaTypeNotSupported(
+            HttpMediaTypeNotSupportedException exception
+    ) {
+        log.debug(
+                "Unsupported content type: {}",
+                exception.getContentType()
+        );
+
+        ErrorCode errorCode =
+                ErrorCode.INVALID_REQUEST;
+
+        return ResponseEntity
+                .status(
+                        HttpStatus.UNSUPPORTED_MEDIA_TYPE
+                )
+                .body(
+                        ApiResponse.error(
+                                errorCode.getCode(),
+                                "Content-Type is not supported. Expected multipart/form-data for file upload"
+                        )
+                );
+    }
+
+    @ExceptionHandler({
+            BadCredentialsException.class,
+            UsernameNotFoundException.class
+    })
+    public ResponseEntity<ApiResponse<Void>> handleInvalidCredentials(
+            RuntimeException exception
+    ) {
+        log.debug(
+                "Authentication failed: {}",
+                exception.getClass().getSimpleName()
+        );
+
+        return buildErrorResponse(
+                ErrorCode.INVALID_CREDENTIALS
+        );
     }
 
     @ExceptionHandler(LockedException.class)
     public ResponseEntity<ApiResponse<Void>> handleLockedException(
             LockedException exception
     ) {
-        ApiResponse<Void> response = ApiResponse.error(
-                ErrorCode.ACCOUNT_LOCKED.getCode(),
-                ErrorCode.ACCOUNT_LOCKED.getMessage()
+        return buildErrorResponse(
+                ErrorCode.ACCOUNT_LOCKED
         );
-
-        return ResponseEntity
-                .status(ErrorCode.ACCOUNT_LOCKED.getHttpStatus())
-                .body(response);
     }
 
     @ExceptionHandler(DisabledException.class)
     public ResponseEntity<ApiResponse<Void>> handleDisabledException(
             DisabledException exception
     ) {
-        ErrorCode errorCode = resolveDisabledErrorCode(exception);
-
-        ApiResponse<Void> response = ApiResponse.error(
-                errorCode.getCode(),
-                errorCode.getMessage()
+        return buildErrorResponse(
+                resolveDisabledErrorCode(exception)
         );
-
-        return ResponseEntity
-                .status(errorCode.getHttpStatus())
-                .body(response);
     }
 
-    private ErrorCode resolveDisabledErrorCode(DisabledException exception) {
+    @ExceptionHandler(AuthenticationCredentialsNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUnauthenticated(
+            AuthenticationCredentialsNotFoundException exception
+    ) {
+        return buildErrorResponse(
+                ErrorCode.UNAUTHENTICATED
+        );
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(
+            AccessDeniedException exception
+    ) {
+        return buildErrorResponse(
+                ErrorCode.FORBIDDEN
+        );
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMethodNotSupported(
+            HttpRequestMethodNotSupportedException exception
+    ) {
+        ErrorCode errorCode = ErrorCode.METHOD_NOT_SUPPORTED;
+
+        return buildErrorResponse(
+                errorCode,
+                errorCode.getMessage()
+                        + ": "
+                        + exception.getMethod()
+        );
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(
+            DataIntegrityViolationException exception
+    ) {
+        log.warn(
+                "Database constraint violation: {}",
+                exception.getMostSpecificCause().getMessage()
+        );
+
+        return buildErrorResponse(
+                ErrorCode.INVALID_REQUEST,
+                "Data conflicts with an existing record or database constraint"
+        );
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<Void>> handleGlobalException(
+            Exception exception
+    ) {
+        log.error(
+                "Unexpected system error",
+                exception
+        );
+
+        return buildErrorResponse(
+                ErrorCode.UNCATEGORIZED_EXCEPTION
+        );
+    }
+
+    private ResponseEntity<ApiResponse<Void>> buildErrorResponse(
+            ErrorCode errorCode
+    ) {
+        return buildErrorResponse(
+                errorCode,
+                errorCode.getMessage()
+        );
+    }
+
+    private ResponseEntity<ApiResponse<Void>> buildErrorResponse(
+            ErrorCode errorCode,
+            String message
+    ) {
+        return ResponseEntity
+                .status(errorCode.getHttpStatus())
+                .body(
+                        ApiResponse.error(
+                                errorCode.getCode(),
+                                resolveMessage(
+                                        message,
+                                        errorCode.getMessage()
+                                )
+                        )
+                );
+    }
+
+    private ErrorCode resolveDisabledErrorCode(
+            DisabledException exception
+    ) {
         String message = exception.getMessage();
 
         if (ErrorCode.ACCOUNT_DELETED.name().equals(message)) {
             return ErrorCode.ACCOUNT_DELETED;
+        }
+
+        if (ErrorCode.EMAIL_NOT_VERIFIED.name().equals(message)) {
+            return ErrorCode.EMAIL_NOT_VERIFIED;
+        }
+
+        if (ErrorCode.ACCOUNT_LOCKED.name().equals(message)) {
+            return ErrorCode.ACCOUNT_LOCKED;
         }
 
         if (ErrorCode.ACCOUNT_INACTIVE.name().equals(message)) {
@@ -118,31 +307,24 @@ public class GlobalExceptionHandler {
         return ErrorCode.ACCOUNT_INACTIVE;
     }
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Void>> handleGlobalException(Exception exception) {
-        log.error("Unexpected system error: ", exception);
+    private String extractLastPathNode(String propertyPath) {
+        if (propertyPath == null || propertyPath.isBlank()) {
+            return "request";
+        }
 
-        ApiResponse<Void> response = ApiResponse.error(
-                ErrorCode.UNCATEGORIZED_EXCEPTION.getCode(),
-                exception.getClass().getSimpleName() + ": " + exception.getMessage()
-        );
+        int lastDot = propertyPath.lastIndexOf('.');
 
-        return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(response);
+        return lastDot >= 0
+                ? propertyPath.substring(lastDot + 1)
+                : propertyPath;
     }
 
-    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-    public ResponseEntity<ApiResponse<Void>> handleMethodNotSupported(
-            HttpRequestMethodNotSupportedException exception
+    private String resolveMessage(
+            String message,
+            String defaultMessage
     ) {
-        ApiResponse<Void> response = ApiResponse.error(
-                ErrorCode.METHOD_NOT_SUPPORTED.getCode(),
-                ErrorCode.METHOD_NOT_SUPPORTED.getMessage() + ": " + exception.getMethod()
-        );
-
-        return ResponseEntity
-                .status(ErrorCode.METHOD_NOT_SUPPORTED.getHttpStatus())
-                .body(response);
+        return message == null || message.isBlank()
+                ? defaultMessage
+                : message;
     }
 }

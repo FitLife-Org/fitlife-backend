@@ -24,8 +24,6 @@ public class AdminCreateInternalUserRequest {
     private String email;
 
     @Schema(description = "Raw password", example = "123456")
-    @NotBlank(message = "Password is required")
-    @Size(min = 6, max = 100, message = "Password must be between 6 and 100 characters")
     private String password;
 
     @Schema(description = "Full name", example = "FitLife Staff 02")

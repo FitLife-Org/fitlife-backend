@@ -17,15 +17,14 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class GymPackageUpdateRequest {
 
-    @NotBlank(message = "Tên gói tập không được để trống")
     @Size(max = 150, message = "Tên gói tập không được vượt quá 150 ký tự")
     private String name;
 
-    @NotBlank(message = "Loại gói tập không được để trống")
+    private String packageName;
+
     @Size(max = 50, message = "Loại gói tập không được vượt quá 50 ký tự")
     private String packageType;
 
-    @NotNull(message = "Giá tiền cơ bản không được để trống")
     @Min(value = 0, message = "Giá tiền cơ bản phải lớn hơn hoặc bằng 0")
     private BigDecimal basePrice;
 

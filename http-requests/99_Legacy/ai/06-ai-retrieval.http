@@ -1,0 +1,44 @@
+
+
+### SEARCH AI KNOWLEDGE
+
+POST http://localhost:8080/api/v1/admin/ai/knowledge/search-test
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "query": "Lịch tập giảm cân an toàn cho người mới",
+  "category": "WORKOUT",
+  "goal": "LOSE_WEIGHT",
+  "experienceLevel": "BEGINNER",
+  "language": "vi",
+  "limit": 5,
+  "scoreThreshold": 0.2
+}
+
+> {%
+    client.test("HTTP 200", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+    });
+
+    client.test("Search returns results", function () {
+        client.assert(
+            response.body.data != null,
+            "Missing data"
+        );
+
+        client.assert(
+            Array.isArray(response.body.data),
+            "Data must be an array"
+        );
+
+        client.assert(
+            response.body.data.length > 0,
+            "Expected at least one hit"
+        );
+    });
+%}

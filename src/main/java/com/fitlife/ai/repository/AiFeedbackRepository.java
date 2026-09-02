@@ -7,7 +7,18 @@ import java.util.Optional;
 
 public interface AiFeedbackRepository extends JpaRepository<AiFeedback, Long> {
 
-    Optional<AiFeedback> findByAiSuggestionIdAndMemberId(Long aiSuggestionId, Long memberId);
+    Optional<AiFeedback> findByAiSuggestionIdAndMemberId(
+            Long aiSuggestionId,
+            Long memberId
+    );
 
-    boolean existsByAiSuggestionIdAndMemberId(Long aiSuggestionId, Long memberId);
+    boolean existsByAiSuggestionIdAndMemberId(
+            Long aiSuggestionId,
+            Long memberId
+    );
+
+    Optional<AiFeedback> findByIdAndMemberId(
+            Long id,
+            Long memberId
+    );
 }

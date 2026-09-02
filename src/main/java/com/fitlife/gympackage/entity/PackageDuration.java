@@ -27,8 +27,20 @@ public class PackageDuration {
     @Column(name = "name", nullable = false, length = 100)
     private String name;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "gym_package_id", nullable = false)
+    private GymPackage gymPackage;
+
     @Column(name = "months", nullable = false)
     private Integer months;
+
+    @Column(name = "price", nullable = false, precision = 12, scale = 2)
+    @Builder.Default
+    private BigDecimal price = BigDecimal.ZERO;
+
+    @Column(name = "discount_price", nullable = false, precision = 12, scale = 2)
+    @Builder.Default
+    private BigDecimal discountPrice = BigDecimal.ZERO;
 
     @Column(name = "discount_percent", nullable = false, precision = 5, scale = 2)
     @Builder.Default

@@ -1,0 +1,368 @@
+### ============================================================
+### ADMIN USER SMOKE TEST
+### Environment: local
+### Có thể Run All
+### ============================================================
+
+
+### 0. Login Admin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "identifier": "{{seedAdminUsername}}",
+  "password": "{{seedAdminPassword}}"
+}
+
+> {%
+    client.test("Admin login succeeds", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+
+        client.assert(
+            response.body.data.accessToken,
+            "Missing admin access token"
+        );
+    });
+
+    if (
+        response.status === 200 &&
+        response.body.data
+    ) {
+        client.global.set(
+            "adminToken",
+            response.body.data.accessToken
+        );
+    }
+%}
+
+
+### 1. Get Admin profile
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+> {%
+    client.test("Get Admin profile succeeds", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+
+        client.assert(
+            response.body.data.id,
+            "Missing Admin ID"
+        );
+    });
+
+    if (
+        response.status === 200 &&
+        response.body.data
+    ) {
+        client.global.set(
+            "currentAdminUserId",
+            response.body.data.id
+        );
+    }
+%}
+
+
+### 2. Get user list
+GET {{baseUrl}}/admin/users?page=0&size=10
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+> {%
+    client.test("Get user list succeeds", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+
+        client.assert(
+            Array.isArray(response.body.data.content),
+            "Page content must be an array"
+        );
+
+        client.assert(
+            response.body.data.page === 0,
+            "Expected page 0"
+        );
+    });
+%}
+
+
+### 3. Search users
+GET {{baseUrl}}/admin/users?page=0&size=10&keyword=member
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+> {%
+    client.test("Search users succeeds", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+    });
+%}
+
+
+### 4. Filter MEMBER role
+GET {{baseUrl}}/admin/users?page=0&size=10&roleCode=ROLE_MEMBER
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+> {%
+    client.test("Filter role succeeds", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+    });
+%}
+
+
+### 5. Filter ACTIVE status
+GET {{baseUrl}}/admin/users?page=0&size=10&status=ACTIVE
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+> {%
+    client.test("Filter status succeeds", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+    });
+%}
+
+
+### 6. Create Staff
+POST {{baseUrl}}/admin/users
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "username": "{{adminTestStaffUsername}}",
+  "email": "{{adminTestStaffEmail}}",
+  "password": "{{adminTestStaffPassword}}",
+  "fullName": "FitLife API Test Staff",
+  "phone": "{{adminTestStaffPhone}}",
+  "roleCode": "ROLE_STAFF",
+  "status": "ACTIVE"
+}
+
+> {%
+    client.test("Create Staff succeeds", function () {
+        client.assert(
+            response.status === 200 ||
+            response.status === 201,
+            "Expected HTTP 200 or 201"
+        );
+
+        client.assert(
+            response.body.data.id,
+            "Missing created Staff ID"
+        );
+
+        client.assert(
+            response.body.data.roles.includes(
+                "ROLE_STAFF"
+            ),
+            "Created user must have ROLE_STAFF"
+        );
+    });
+
+    if (
+        (response.status === 200 ||
+            response.status === 201) &&
+        response.body.data
+    ) {
+        client.global.set(
+            "createdStaffUserId",
+            response.body.data.id
+        );
+    }
+%}
+
+
+### 7. Get created Staff
+GET {{baseUrl}}/admin/users/{{createdStaffUserId}}
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+> {%
+    client.test("Get created Staff succeeds", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+
+        client.assert(
+            response.body.data.id ==
+            client.global.get("createdStaffUserId"),
+            "Returned Staff ID does not match"
+        );
+    });
+%}
+
+
+### 8. Update Staff basic information
+PUT {{baseUrl}}/admin/users/{{createdStaffUserId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "fullName": "FitLife API Test Staff Updated",
+  "phone": "{{adminTestStaffUpdatedPhone}}"
+}
+
+> {%
+    client.test("Update Staff succeeds", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+
+        client.assert(
+            response.body.data.fullName ===
+            "FitLife API Test Staff Updated",
+            "Full name was not updated"
+        );
+    });
+%}
+
+
+### 9. Lock Staff
+PATCH {{baseUrl}}/admin/users/{{createdStaffUserId}}/status
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "status": "LOCKED"
+}
+
+> {%
+    client.test("Lock Staff succeeds", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+
+        client.assert(
+            response.body.data.status === "LOCKED",
+            "Expected status LOCKED"
+        );
+    });
+%}
+
+
+### 10. Locked Staff cannot login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "identifier": "{{adminTestStaffUsername}}",
+  "password": "{{adminTestStaffPassword}}"
+}
+
+> {%
+    client.test("Locked Staff cannot login", function () {
+        client.assert(
+            response.status === 401 ||
+            response.status === 403,
+            "Expected HTTP 401 or 403"
+        );
+    });
+%}
+
+
+### 11. Activate Staff
+PATCH {{baseUrl}}/admin/users/{{createdStaffUserId}}/status
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "status": "ACTIVE"
+}
+
+> {%
+    client.test("Activate Staff succeeds", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+
+        client.assert(
+            response.body.data.status === "ACTIVE",
+            "Expected status ACTIVE"
+        );
+    });
+%}
+
+
+### 12. Update Staff roles
+PATCH {{baseUrl}}/admin/users/{{createdStaffUserId}}/roles
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "roleCodes": [
+    "ROLE_STAFF",
+    "ROLE_TRAINER"
+  ]
+}
+
+> {%
+    client.test("Update roles succeeds", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+
+        client.assert(
+            response.body.data.roles.includes(
+                "ROLE_STAFF"
+            ),
+            "ROLE_STAFF is missing"
+        );
+
+        client.assert(
+            response.body.data.roles.includes(
+                "ROLE_TRAINER"
+            ),
+            "ROLE_TRAINER is missing"
+        );
+    });
+%}
+
+
+### 13. Restore Staff-only role
+PATCH {{baseUrl}}/admin/users/{{createdStaffUserId}}/roles
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "roleCodes": [
+    "ROLE_STAFF"
+  ]
+}
+
+> {%
+    client.test("Restore Staff role succeeds", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+    });
+%}

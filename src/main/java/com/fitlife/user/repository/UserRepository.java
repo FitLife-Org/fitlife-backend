@@ -11,23 +11,46 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 
-public interface UserRepository extends JpaRepository<User, Long> {
+public interface UserRepository
+        extends JpaRepository<User, Long> {
 
-    Optional<User> findByEmail(String email);
+    Optional<User> findByEmail(
+            String email
+    );
 
-    Optional<User> findByUsername(String username);
+    Optional<User> findByUsername(
+            String username
+    );
 
-    Optional<User> findByUsernameOrEmail(String email, String username);
+    Optional<User> findByPhone(
+            String phone
+    );
 
-    Optional<User> findByResetToken(String resetToken);
+    Optional<User> findByUsernameOrEmail(
+            String username,
+            String email
+    );
 
-    Optional<User> findByAuthProviderAndProviderId(AuthProvider authProvider, String providerId);
+    Optional<User> findByResetToken(
+            String resetToken
+    );
 
-    boolean existsByEmail(String email);
+    Optional<User> findByAuthProviderAndProviderId(
+            AuthProvider authProvider,
+            String providerId
+    );
 
-    boolean existsByUsername(String username);
+    boolean existsByEmail(
+            String email
+    );
 
-    boolean existsByPhone(String phone);
+    boolean existsByUsername(
+            String username
+    );
+
+    boolean existsByPhone(
+            String phone
+    );
 
     @Query("""
             SELECT DISTINCT u

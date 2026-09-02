@@ -19,6 +19,8 @@ public interface EquipmentManagmentMaintenanceRepository extends JpaRepository<E
 
     List<EquipmentManagmentMaintenance> findByEquipmentIdAndStatusOrderByMaintenanceDateAsc(Long equipmentId, MaintenanceStatus status);
 
+    List<EquipmentManagmentMaintenance> findByEquipmentEquipmentCodeOrderByMaintenanceDateDesc(String equipmentCode);
+
     List<EquipmentManagmentMaintenance> findByStatusAndMaintenanceDateBetween(MaintenanceStatus status, LocalDate startDate, LocalDate endDate);
 
     Page<EquipmentManagmentMaintenance> findAllByOrderByMaintenanceDateDesc(Pageable pageable);

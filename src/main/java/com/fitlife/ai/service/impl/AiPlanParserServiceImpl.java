@@ -1,5 +1,6 @@
 package com.fitlife.ai.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fitlife.ai.dto.response.*;
 import com.fitlife.ai.entity.AiPlanItem;
@@ -10,99 +11,156 @@ import com.fitlife.ai.service.AiPlanParserService;
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import com.fitlife.ai.dto.response.AiGeneratedWorkoutPlanResponse;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AiPlanParserServiceImpl implements AiPlanParserService {
+
+    private static final String DEFAULT_PLAN_SUMMARY =
+            "AI đã tạo kế hoạch tập luyện cá nhân hóa.";
+    private static final String DEFAULT_PLAN_WARNING =
+            "Kế hoạch chỉ mang tính tham khảo.";
+    private static final String DEFAULT_BODY_ANALYSIS_SUMMARY =
+            "AI đã phân tích chỉ số cơ thể hiện tại.";
+    private static final String DEFAULT_BODY_ANALYSIS_WARNING =
+            "Kết quả chỉ mang tính tham khảo.";
+    private static final String DEFAULT_NUTRITION_PLAN_SUMMARY =
+            "AI đã tạo kế hoạch dinh dưỡng cá nhân hóa.";
+
+    private static final String DEFAULT_NUTRITION_PLAN_WARNING =
+            "Kế hoạch dinh dưỡng chỉ mang tính tham khảo.";
 
     private final ObjectMapper objectMapper;
     private final AiPlanItemRepository aiPlanItemRepository;
 
     @Override
     public AiGeneratedPlanResponse parseGeneratedPlan(String rawResponse) {
+        String cleanedJson = cleanJson(rawResponse);
+
         try {
-            System.out.println("===== RAW GEMINI TEXT START =====");
-            System.out.println(rawResponse);
-            System.out.println("===== RAW GEMINI TEXT END =====");
-
-            String cleanedJson = cleanJson(rawResponse);
-
-            System.out.println("===== CLEANED GEMINI JSON START =====");
-            System.out.println(cleanedJson);
-            System.out.println("===== CLEANED GEMINI JSON END =====");
-
-            AiGeneratedPlanResponse planResponse = objectMapper.readValue(
+            AiGeneratedPlanResponse response = objectMapper.readValue(
                     cleanedJson,
                     AiGeneratedPlanResponse.class
             );
-
-            if (planResponse.getSummary() == null || planResponse.getSummary().isBlank()) {
-                planResponse.setSummary("AI đã tạo kế hoạch tập luyện cá nhân hóa.");
-            }
-
-            if (planResponse.getWarnings() == null) {
-                planResponse.setWarnings(List.of("Kế hoạch chỉ mang tính tham khảo."));
-            }
-
-            return planResponse;
-        } catch (Exception exception) {
-            System.out.println("===== AI PARSE ERROR =====");
-            exception.printStackTrace();
+            normalizeGeneratedPlan(response);
+            return response;
+        } catch (JsonProcessingException exception) {
+            log.warn(
+                    "Không thể parse Gemini full-plan response: {}",
+                    exception.getOriginalMessage()
+            );
             throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
         }
     }
 
     @Override
-    public void savePlanItems(AiSuggestion aiSuggestion, AiGeneratedPlanResponse planResponse) {
+    public AiGeneratedNutritionPlanResponse parseNutritionPlan(
+            String rawResponse
+    ) {
+        String cleanedJson =
+                cleanJson(rawResponse);
+
+        try {
+            AiGeneratedNutritionPlanResponse response =
+                    objectMapper.readValue(
+                            cleanedJson,
+                            AiGeneratedNutritionPlanResponse.class
+                    );
+
+            normalizeNutritionPlan(response);
+
+            return response;
+        } catch (JsonProcessingException exception) {
+            log.warn(
+                    "Không thể parse Gemini nutrition-plan response: {}",
+                    exception.getOriginalMessage()
+            );
+
+            throw new AppException(
+                    ErrorCode.AI_RESPONSE_INVALID
+            );
+        }
+    }
+
+
+    @Override
+    @Transactional
+    public void savePlanItems(
+            AiSuggestion aiSuggestion,
+            AiGeneratedPlanResponse planResponse
+    ) {
+        if (aiSuggestion == null || aiSuggestion.getId() == null || planResponse == null) {
+            throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
+        }
+
         List<AiPlanItem> items = new ArrayList<>();
         int sortOrder = 0;
 
-        if (planResponse.getBodyAnalysis() != null && !planResponse.getBodyAnalysis().isBlank()) {
+        if (hasText(planResponse.getBodyAnalysis())) {
             items.add(AiPlanItem.builder()
                     .aiSuggestion(aiSuggestion)
                     .itemType(AiPlanItemType.BODY_ANALYSIS)
-                    .title("Body Analysis")
-                    .description(planResponse.getBodyAnalysis())
+                    .title("Phân tích cơ thể")
+                    .description(planResponse.getBodyAnalysis().trim())
                     .sortOrder(sortOrder++)
                     .build());
         }
 
         if (planResponse.getWorkoutPlan() != null) {
             for (AiGeneratedWorkoutDayResponse day : planResponse.getWorkoutPlan()) {
-                String title = day.getFocus() == null || day.getFocus().isBlank()
-                        ? "Workout Day " + day.getDayNo()
-                        : day.getFocus();
+                if (day == null) {
+                    continue;
+                }
+
+                String dayTitle = hasText(day.getFocus())
+                        ? day.getFocus().trim()
+                        : "Buổi tập " + resolveDayNumber(day.getDayNo());
 
                 items.add(AiPlanItem.builder()
                         .aiSuggestion(aiSuggestion)
                         .itemType(AiPlanItemType.WORKOUT_DAY)
-                        .title(title)
-                        .description(day.getFocus())
+                        .title(dayTitle)
+                        .description(normalizeText(day.getFocus()))
                         .dayNo(day.getDayNo())
-                        .dayOfWeek(day.getDayOfWeek())
+                        .dayOfWeek(normalizeText(day.getDayOfWeek()))
                         .sortOrder(sortOrder++)
                         .build());
 
-                if (day.getExercises() != null) {
-                    for (AiGeneratedExerciseResponse exercise : day.getExercises()) {
-                        items.add(AiPlanItem.builder()
-                                .aiSuggestion(aiSuggestion)
-                                .itemType(AiPlanItemType.EXERCISE)
-                                .title(exercise.getName() == null ? "Exercise" : exercise.getName())
-                                .description(exercise.getNote())
-                                .dayNo(day.getDayNo())
-                                .dayOfWeek(day.getDayOfWeek())
-                                .exerciseName(exercise.getName())
-                                .sets(exercise.getSets())
-                                .reps(exercise.getReps())
-                                .durationMinutes(exercise.getDurationMinutes())
-                                .sortOrder(sortOrder++)
-                                .build());
+                if (day.getExercises() == null) {
+                    continue;
+                }
+
+                for (AiGeneratedExerciseResponse exercise : day.getExercises()) {
+                    if (exercise == null) {
+                        continue;
                     }
+
+                    String exerciseName = hasText(exercise.getName())
+                            ? exercise.getName().trim()
+                            : "Bài tập";
+
+                    items.add(AiPlanItem.builder()
+                            .aiSuggestion(aiSuggestion)
+                            .itemType(AiPlanItemType.EXERCISE)
+                            .title(exerciseName)
+                            .description(normalizeText(exercise.getNote()))
+                            .dayNo(day.getDayNo())
+                            .dayOfWeek(normalizeText(day.getDayOfWeek()))
+                            .exerciseName(exerciseName)
+                            .sets(exercise.getSets())
+                            .reps(normalizeText(exercise.getReps()))
+                            .restSeconds(exercise.getRestSeconds())
+                            .durationMinutes(exercise.getDurationMinutes())
+                            .sortOrder(sortOrder++)
+                            .build());
                 }
             }
         }
@@ -112,8 +170,8 @@ public class AiPlanParserServiceImpl implements AiPlanParserService {
             items.add(AiPlanItem.builder()
                     .aiSuggestion(aiSuggestion)
                     .itemType(AiPlanItemType.NUTRITION)
-                    .title("Nutrition Summary")
-                    .description("Target calories: " + nutrition.getTargetCalories())
+                    .title("Tổng quan dinh dưỡng")
+                    .description(buildNutritionDescription(nutrition))
                     .calories(nutrition.getTargetCalories())
                     .proteinGrams(nutrition.getProteinGrams())
                     .carbsGrams(nutrition.getCarbsGrams())
@@ -123,12 +181,21 @@ public class AiPlanParserServiceImpl implements AiPlanParserService {
 
             if (nutrition.getMeals() != null) {
                 for (AiGeneratedMealResponse meal : nutrition.getMeals()) {
+                    if (meal == null) {
+                        continue;
+                    }
+
+                    String mealName = hasText(meal.getMealName())
+                            ? meal.getMealName().trim()
+                            : "Bữa ăn";
+
                     items.add(AiPlanItem.builder()
                             .aiSuggestion(aiSuggestion)
                             .itemType(AiPlanItemType.MEAL)
-                            .title(meal.getMealName() == null ? "Meal" : meal.getMealName())
-                            .description(meal.getFoodItems())
-                            .mealName(meal.getMealName())
+                            .title(mealName)
+                            .description(normalizeText(meal.getFoodItems()))
+                            .mealName(mealName)
+                            .portionText(normalizeText(meal.getPortionText()))
                             .calories(meal.getCalories())
                             .proteinGrams(meal.getProteinGrams())
                             .carbsGrams(meal.getCarbsGrams())
@@ -141,11 +208,15 @@ public class AiPlanParserServiceImpl implements AiPlanParserService {
 
         if (planResponse.getWarnings() != null) {
             for (String warning : planResponse.getWarnings()) {
+                if (!hasText(warning)) {
+                    continue;
+                }
+
                 items.add(AiPlanItem.builder()
                         .aiSuggestion(aiSuggestion)
                         .itemType(AiPlanItemType.WARNING)
-                        .title("Warning")
-                        .description(warning)
+                        .title("Lưu ý")
+                        .description(warning.trim())
                         .sortOrder(sortOrder++)
                         .build());
             }
@@ -156,113 +227,689 @@ public class AiPlanParserServiceImpl implements AiPlanParserService {
         }
     }
 
-    private String cleanJson(String rawResponse) {
-        if (rawResponse == null || rawResponse.isBlank()) {
+    @Override
+    public AiGeneratedBodyAnalysisResponse parseBodyAnalysis(String rawResponse) {
+        String cleanedJson = cleanJson(rawResponse);
+
+        try {
+            AiGeneratedBodyAnalysisResponse response = objectMapper.readValue(
+                    cleanedJson,
+                    AiGeneratedBodyAnalysisResponse.class
+            );
+            normalizeBodyAnalysis(response);
+            return response;
+        } catch (JsonProcessingException exception) {
+            log.warn(
+                    "Không thể parse Gemini body-analysis response: {}",
+                    exception.getOriginalMessage()
+            );
+            throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void saveBodyAnalysisItems(
+            AiSuggestion aiSuggestion,
+            AiGeneratedBodyAnalysisResponse response
+    ) {
+        if (aiSuggestion == null || aiSuggestion.getId() == null || response == null) {
             throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
         }
 
-        String cleaned = rawResponse
-                .replace("```json", "")
-                .replace("```JSON", "")
-                .replace("```Json", "")
-                .replace("```", "")
+        List<AiPlanItem> items = new ArrayList<>();
+        int sortOrder = 0;
+
+        String description = buildBodyAnalysisDescription(response);
+        if (hasText(description)) {
+            items.add(AiPlanItem.builder()
+                    .aiSuggestion(aiSuggestion)
+                    .itemType(AiPlanItemType.BODY_ANALYSIS)
+                    .title("Phân tích chỉ số cơ thể")
+                    .description(description)
+                    .sortOrder(sortOrder++)
+                    .build());
+        }
+
+        if (response.getWarnings() != null) {
+            for (String warning : response.getWarnings()) {
+                if (!hasText(warning)) {
+                    continue;
+                }
+
+                items.add(AiPlanItem.builder()
+                        .aiSuggestion(aiSuggestion)
+                        .itemType(AiPlanItemType.WARNING)
+                        .title("Lưu ý")
+                        .description(warning.trim())
+                        .sortOrder(sortOrder++)
+                        .build());
+            }
+        }
+
+        if (!items.isEmpty()) {
+            aiPlanItemRepository.saveAll(items);
+        }
+    }
+
+    private void normalizeGeneratedPlan(
+            AiGeneratedPlanResponse response
+    ) {
+        if (response == null) {
+            throw new AppException(
+                    ErrorCode.AI_RESPONSE_INVALID
+            );
+        }
+
+        response.setSummary(
+                normalizeText(response.getSummary())
+        );
+
+        response.setBodyAnalysis(
+                normalizeText(response.getBodyAnalysis())
+        );
+
+        response.setWarnings(
+                normalizeWarnings(response.getWarnings())
+        );
+    }
+
+    private List<String> normalizeWarnings(
+            List<String> warnings
+    ) {
+        if (warnings == null) {
+            return null;
+        }
+
+        return warnings.stream()
+                .filter(this::hasText)
+                .map(String::trim)
+                .toList();
+    }
+
+    private void normalizeBodyAnalysis(
+            AiGeneratedBodyAnalysisResponse response
+    ) {
+        if (response == null) {
+            throw new AppException(
+                    ErrorCode.AI_RESPONSE_INVALID
+            );
+        }
+
+        response.setSummary(
+                defaultIfBlank(
+                        response.getSummary(),
+                        DEFAULT_BODY_ANALYSIS_SUMMARY
+                )
+        );
+
+        response.setBodyAnalysis(
+                normalizeText(
+                        response.getBodyAnalysis()
+                )
+        );
+
+        response.setBmiAssessment(
+                normalizeText(
+                        response.getBmiAssessment()
+                )
+        );
+
+        response.setBodyFatAssessment(
+                normalizeText(
+                        response.getBodyFatAssessment()
+                )
+        );
+
+        response.setMuscleAssessment(
+                normalizeText(
+                        response.getMuscleAssessment()
+                )
+        );
+
+        response.setRecommendation(
+                normalizeText(
+                        response.getRecommendation()
+                )
+        );
+
+        List<String> normalizedWarnings =
+                normalizeWarnings(
+                        response.getWarnings()
+                );
+
+        if (normalizedWarnings == null
+                || normalizedWarnings.isEmpty()) {
+            normalizedWarnings =
+                    List.of(
+                            DEFAULT_BODY_ANALYSIS_WARNING
+                    );
+        }
+
+        /*
+         * Provider đôi khi trả nhiều warning hơn contract.
+         * Chỉ giữ tối đa hai warning hợp lệ.
+         */
+        response.setWarnings(
+                normalizedWarnings.stream()
+                        .distinct()
+                        .limit(2)
+                        .toList()
+        );
+    }
+
+    private String defaultIfBlank(
+            String value,
+            String defaultValue
+    ) {
+        String normalized =
+                normalizeText(value);
+
+        return normalized == null
+                ? defaultValue
+                : normalized;
+    }
+
+    private String cleanJson(String rawResponse) {
+        if (!hasText(rawResponse)) {
+            throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
+        }
+
+        String cleaned = rawResponse.trim()
+                .replaceFirst("(?i)^```json\\s*", "")
+                .replaceFirst("^```\\s*", "")
+                .replaceFirst("\\s*```$", "")
                 .trim();
 
-        int firstBrace = cleaned.indexOf("{");
-        int lastBrace = cleaned.lastIndexOf("}");
+        int firstBrace = cleaned.indexOf('{');
+        int lastBrace = cleaned.lastIndexOf('}');
 
-        if (firstBrace < 0 || lastBrace < 0 || lastBrace <= firstBrace) {
-            System.out.println("No valid JSON object found in Gemini response");
+        if (firstBrace < 0 || lastBrace <= firstBrace) {
             throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
         }
 
         return cleaned.substring(firstBrace, lastBrace + 1).trim();
     }
 
+    private String buildNutritionDescription(
+            AiGeneratedNutritionResponse nutrition
+    ) {
+        if (nutrition.getTargetCalories() == null) {
+            return null;
+        }
+
+        return "Mục tiêu năng lượng: "
+                + nutrition.getTargetCalories()
+                + " kcal/ngày";
+    }
+
+    private String buildBodyAnalysisDescription(
+            AiGeneratedBodyAnalysisResponse response
+    ) {
+        StringBuilder description = new StringBuilder();
+
+        appendSection(description, null, response.getBodyAnalysis());
+        appendSection(description, "BMI", response.getBmiAssessment());
+        appendSection(description, "Tỷ lệ mỡ", response.getBodyFatAssessment());
+        appendSection(description, "Khối lượng cơ", response.getMuscleAssessment());
+        appendSection(description, "Gợi ý", response.getRecommendation());
+
+        return description.toString().trim();
+    }
+
+    private void appendSection(
+            StringBuilder builder,
+            String label,
+            String value
+    ) {
+        if (!hasText(value)) {
+            return;
+        }
+
+        if (!builder.isEmpty()) {
+            builder.append("\n\n");
+        }
+
+        if (hasText(label)) {
+            builder.append(label).append(": ");
+        }
+
+        builder.append(value.trim());
+    }
+
+    private int resolveDayNumber(Integer dayNo) {
+        return dayNo == null ? 1 : dayNo;
+    }
+
+    private String normalizeText(String value) {
+        return hasText(value) ? value.trim() : null;
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
     @Override
-    public AiGeneratedBodyAnalysisResponse parseBodyAnalysis(String rawResponse) {
+    public AiGeneratedWorkoutPlanResponse parseWorkoutPlan(
+            String rawResponse
+    ) {
+        String cleanedJson =
+                cleanJson(rawResponse);
+
         try {
-            System.out.println("===== RAW GEMINI BODY ANALYSIS START =====");
-            System.out.println(rawResponse);
-            System.out.println("===== RAW GEMINI BODY ANALYSIS END =====");
+            AiGeneratedWorkoutPlanResponse response =
+                    objectMapper.readValue(
+                            cleanedJson,
+                            AiGeneratedWorkoutPlanResponse.class
+                    );
 
-            String cleanedJson = cleanJson(rawResponse);
-
-            System.out.println("===== CLEANED BODY ANALYSIS JSON START =====");
-            System.out.println(cleanedJson);
-            System.out.println("===== CLEANED BODY ANALYSIS JSON END =====");
-
-            AiGeneratedBodyAnalysisResponse response = objectMapper.readValue(
-                    cleanedJson,
-                    AiGeneratedBodyAnalysisResponse.class
-            );
-
-            if (response.getSummary() == null || response.getSummary().isBlank()) {
-                response.setSummary("AI đã phân tích chỉ số cơ thể hiện tại.");
-            }
-
-            if (response.getWarnings() == null) {
-                response.setWarnings(List.of("Kết quả chỉ mang tính tham khảo."));
-            }
+            normalizeWorkoutPlan(response);
 
             return response;
-        } catch (Exception exception) {
-            System.out.println("===== AI BODY ANALYSIS PARSE ERROR =====");
-            exception.printStackTrace();
-            throw new AppException(ErrorCode.AI_RESPONSE_INVALID);
+        } catch (JsonProcessingException exception) {
+            log.warn(
+                    "Không thể parse Gemini workout-plan response: {}",
+                    exception.getOriginalMessage()
+            );
+
+            throw new AppException(
+                    ErrorCode.AI_RESPONSE_INVALID
+            );
         }
     }
 
     @Override
-    public void saveBodyAnalysisItems(
+    @Transactional
+    public void saveWorkoutPlanItems(
             AiSuggestion aiSuggestion,
-            AiGeneratedBodyAnalysisResponse response
+            AiGeneratedWorkoutPlanResponse response
     ) {
-        List<AiPlanItem> items = new ArrayList<>();
+        if (aiSuggestion == null
+                || aiSuggestion.getId() == null
+                || response == null) {
+            throw new AppException(
+                    ErrorCode.AI_RESPONSE_INVALID
+            );
+        }
+
+        List<AiPlanItem> items =
+                new ArrayList<>();
+
         int sortOrder = 0;
 
-        StringBuilder description = new StringBuilder();
-
-        if (response.getBodyAnalysis() != null && !response.getBodyAnalysis().isBlank()) {
-            description.append(response.getBodyAnalysis()).append("\n\n");
+        /*
+         * 1. Lưu phần phân tích cơ thể.
+         */
+        if (hasText(response.getBodyAnalysis())) {
+            items.add(
+                    AiPlanItem.builder()
+                            .aiSuggestion(aiSuggestion)
+                            .itemType(
+                                    AiPlanItemType.BODY_ANALYSIS
+                            )
+                            .title("Phân tích cơ thể")
+                            .description(
+                                    response
+                                            .getBodyAnalysis()
+                                            .trim()
+                            )
+                            .sortOrder(sortOrder++)
+                            .build()
+            );
         }
 
-        if (response.getBmiAssessment() != null && !response.getBmiAssessment().isBlank()) {
-            description.append("BMI: ").append(response.getBmiAssessment()).append("\n\n");
-        }
+        /*
+         * 2. Lưu từng ngày tập.
+         */
+        if (response.getWorkoutPlan() != null) {
+            for (AiGeneratedWorkoutDayResponse day :
+                    response.getWorkoutPlan()) {
 
-        if (response.getBodyFatAssessment() != null && !response.getBodyFatAssessment().isBlank()) {
-            description.append("Tỷ lệ mỡ: ").append(response.getBodyFatAssessment()).append("\n\n");
-        }
+                if (day == null) {
+                    continue;
+                }
 
-        if (response.getMuscleAssessment() != null && !response.getMuscleAssessment().isBlank()) {
-            description.append("Khối lượng cơ: ").append(response.getMuscleAssessment()).append("\n\n");
-        }
+                String dayTitle =
+                        hasText(day.getFocus())
+                                ? day.getFocus().trim()
+                                : "Buổi tập "
+                                + resolveDayNumber(
+                                day.getDayNo()
+                        );
 
-        if (response.getRecommendation() != null && !response.getRecommendation().isBlank()) {
-            description.append("Gợi ý: ").append(response.getRecommendation());
-        }
+                items.add(
+                        AiPlanItem.builder()
+                                .aiSuggestion(aiSuggestion)
+                                .itemType(
+                                        AiPlanItemType.WORKOUT_DAY
+                                )
+                                .title(dayTitle)
+                                .description(
+                                        normalizeText(
+                                                day.getFocus()
+                                        )
+                                )
+                                .dayNo(day.getDayNo())
+                                .dayOfWeek(
+                                        normalizeText(
+                                                day.getDayOfWeek()
+                                        )
+                                )
+                                .sortOrder(sortOrder++)
+                                .build()
+                );
 
-        items.add(AiPlanItem.builder()
-                .aiSuggestion(aiSuggestion)
-                .itemType(AiPlanItemType.BODY_ANALYSIS)
-                .title("Phân tích chỉ số cơ thể")
-                .description(description.toString())
-                .sortOrder(sortOrder++)
-                .build());
+                if (day.getExercises() == null) {
+                    continue;
+                }
 
-        if (response.getWarnings() != null) {
-            for (String warning : response.getWarnings()) {
-                items.add(AiPlanItem.builder()
-                        .aiSuggestion(aiSuggestion)
-                        .itemType(AiPlanItemType.WARNING)
-                        .title("Lưu ý")
-                        .description(warning)
-                        .sortOrder(sortOrder++)
-                        .build());
+                /*
+                 * 3. Lưu từng bài tập.
+                 */
+                for (AiGeneratedExerciseResponse exercise :
+                        day.getExercises()) {
+
+                    if (exercise == null) {
+                        continue;
+                    }
+
+                    String exerciseName =
+                            hasText(exercise.getName())
+                                    ? exercise
+                                    .getName()
+                                    .trim()
+                                    : "Bài tập";
+
+                    items.add(
+                            AiPlanItem.builder()
+                                    .aiSuggestion(aiSuggestion)
+                                    .itemType(
+                                            AiPlanItemType.EXERCISE
+                                    )
+                                    .title(exerciseName)
+                                    .description(
+                                            normalizeText(
+                                                    exercise.getNote()
+                                            )
+                                    )
+                                    .dayNo(day.getDayNo())
+                                    .dayOfWeek(
+                                            normalizeText(
+                                                    day.getDayOfWeek()
+                                            )
+                                    )
+                                    .exerciseName(
+                                            exerciseName
+                                    )
+                                    .sets(
+                                            exercise.getSets()
+                                    )
+                                    .reps(
+                                            normalizeText(
+                                                    exercise.getReps()
+                                            )
+                                    )
+                                    .restSeconds(
+                                            exercise
+                                                    .getRestSeconds()
+                                    )
+                                    .durationMinutes(
+                                            exercise
+                                                    .getDurationMinutes()
+                                    )
+                                    .sortOrder(sortOrder++)
+                                    .build()
+                    );
+                }
             }
         }
 
-        aiPlanItemRepository.saveAll(items);
+        /*
+         * 4. Lưu warning.
+         */
+        if (response.getWarnings() != null) {
+            for (String warning :
+                    response.getWarnings()) {
+
+                if (!hasText(warning)) {
+                    continue;
+                }
+
+                items.add(
+                        AiPlanItem.builder()
+                                .aiSuggestion(aiSuggestion)
+                                .itemType(
+                                        AiPlanItemType.WARNING
+                                )
+                                .title("Lưu ý")
+                                .description(warning.trim())
+                                .sortOrder(sortOrder++)
+                                .build()
+                );
+            }
+        }
+
+        if (!items.isEmpty()) {
+            aiPlanItemRepository.saveAll(items);
+        }
+    }
+
+    private void normalizeWorkoutPlan(
+            AiGeneratedWorkoutPlanResponse response
+    ) {
+        if (response == null) {
+            throw new AppException(
+                    ErrorCode.AI_RESPONSE_INVALID
+            );
+        }
+
+        if (!hasText(response.getSummary())) {
+            response.setSummary(
+                    DEFAULT_PLAN_SUMMARY
+            );
+        } else {
+            response.setSummary(
+                    response.getSummary().trim()
+            );
+        }
+
+        if (response.getWarnings() == null
+                || response.getWarnings()
+                .stream()
+                .noneMatch(this::hasText)) {
+            response.setWarnings(
+                    List.of(DEFAULT_PLAN_WARNING)
+            );
+        }
+    }
+
+
+    @Override
+    @Transactional
+    public void saveNutritionPlanItems(
+            AiSuggestion aiSuggestion,
+            AiGeneratedNutritionPlanResponse response
+    ) {
+        if (aiSuggestion == null
+                || aiSuggestion.getId() == null
+                || response == null) {
+            throw new AppException(
+                    ErrorCode.AI_RESPONSE_INVALID
+            );
+        }
+
+        List<AiPlanItem> items =
+                new ArrayList<>();
+
+        int sortOrder = 0;
+
+        /*
+         * 1. Lưu phần phân tích cơ thể.
+         */
+        if (hasText(response.getBodyAnalysis())) {
+            items.add(
+                    AiPlanItem.builder()
+                            .aiSuggestion(aiSuggestion)
+                            .itemType(
+                                    AiPlanItemType.BODY_ANALYSIS
+                            )
+                            .title("Phân tích cơ thể")
+                            .description(
+                                    response
+                                            .getBodyAnalysis()
+                                            .trim()
+                            )
+                            .sortOrder(sortOrder++)
+                            .build()
+            );
+        }
+
+        /*
+         * 2. Lưu tổng quan dinh dưỡng.
+         */
+        AiGeneratedNutritionResponse nutrition =
+                response.getNutritionPlan();
+
+        if (nutrition != null) {
+            items.add(
+                    AiPlanItem.builder()
+                            .aiSuggestion(aiSuggestion)
+                            .itemType(
+                                    AiPlanItemType.NUTRITION
+                            )
+                            .title("Tổng quan dinh dưỡng")
+                            .description(
+                                    buildNutritionDescription(
+                                            nutrition
+                                    )
+                            )
+                            .calories(
+                                    nutrition.getTargetCalories()
+                            )
+                            .proteinGrams(
+                                    nutrition.getProteinGrams()
+                            )
+                            .carbsGrams(
+                                    nutrition.getCarbsGrams()
+                            )
+                            .fatGrams(
+                                    nutrition.getFatGrams()
+                            )
+                            .sortOrder(sortOrder++)
+                            .build()
+            );
+
+            /*
+             * 3. Lưu từng bữa ăn.
+             */
+            if (nutrition.getMeals() != null) {
+                for (AiGeneratedMealResponse meal :
+                        nutrition.getMeals()) {
+
+                    if (meal == null) {
+                        continue;
+                    }
+
+                    String mealName =
+                            hasText(meal.getMealName())
+                                    ? meal.getMealName().trim()
+                                    : "Bữa ăn";
+
+                    items.add(
+                            AiPlanItem.builder()
+                                    .aiSuggestion(aiSuggestion)
+                                    .itemType(
+                                            AiPlanItemType.MEAL
+                                    )
+                                    .title(mealName)
+                                    .description(
+                                            normalizeText(
+                                                    meal.getFoodItems()
+                                            )
+                                    )
+                                    .mealName(mealName)
+                                    .portionText(
+                                            normalizeText(
+                                                    meal.getPortionText()
+                                            )
+                                    )
+                                    .calories(
+                                            meal.getCalories()
+                                    )
+                                    .proteinGrams(
+                                            meal.getProteinGrams()
+                                    )
+                                    .carbsGrams(
+                                            meal.getCarbsGrams()
+                                    )
+                                    .fatGrams(
+                                            meal.getFatGrams()
+                                    )
+                                    .sortOrder(sortOrder++)
+                                    .build()
+                    );
+                }
+            }
+        }
+
+        /*
+         * 4. Lưu warning.
+         */
+        if (response.getWarnings() != null) {
+            for (String warning :
+                    response.getWarnings()) {
+
+                if (!hasText(warning)) {
+                    continue;
+                }
+
+                items.add(
+                        AiPlanItem.builder()
+                                .aiSuggestion(aiSuggestion)
+                                .itemType(
+                                        AiPlanItemType.WARNING
+                                )
+                                .title("Lưu ý")
+                                .description(warning.trim())
+                                .sortOrder(sortOrder++)
+                                .build()
+                );
+            }
+        }
+
+        if (!items.isEmpty()) {
+            aiPlanItemRepository.saveAll(items);
+        }
+    }
+
+    private void normalizeNutritionPlan(
+            AiGeneratedNutritionPlanResponse response
+    ) {
+        if (response == null) {
+            throw new AppException(
+                    ErrorCode.AI_RESPONSE_INVALID
+            );
+        }
+
+        if (!hasText(response.getSummary())) {
+            response.setSummary(
+                    DEFAULT_NUTRITION_PLAN_SUMMARY
+            );
+        } else {
+            response.setSummary(
+                    response.getSummary().trim()
+            );
+        }
+
+        if (response.getWarnings() == null
+                || response.getWarnings()
+                .stream()
+                .noneMatch(this::hasText)) {
+            response.setWarnings(
+                    List.of(
+                            DEFAULT_NUTRITION_PLAN_WARNING
+                    )
+            );
+        }
     }
 }

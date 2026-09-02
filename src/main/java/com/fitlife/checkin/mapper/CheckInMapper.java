@@ -1,7 +1,9 @@
 package com.fitlife.checkin.mapper;
 
+import com.fitlife.checkin.dto.AdminCheckInQrResponse;
 import com.fitlife.checkin.dto.CheckInResponse;
 import com.fitlife.checkin.entity.CheckIn;
+import com.fitlife.checkin.entity.CheckInQr;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -17,7 +19,13 @@ public interface CheckInMapper {
     @Mapping(target = "packageName", source = "subscription.gymPackage.name")
     @Mapping(target = "checkedInBy", source = "checkedInBy.id")
     @Mapping(target = "checkedInByName", source = "checkedInBy.fullName")
+    @Mapping(target = "isInside", expression = "java(checkIn.getCheckOutTime() == null && com.fitlife.checkin.enums.CheckInStatus.SUCCESS.equals(checkIn.getStatus()))")
     CheckInResponse toResponse(CheckIn checkIn);
 
     List<CheckInResponse> toResponseList(List<CheckIn> checkIns);
+
+    @Mapping(target = "active", source = "isActive")
+    AdminCheckInQrResponse toQrResponse(CheckInQr checkInQr);
+
+    List<AdminCheckInQrResponse> toQrResponseList(List<CheckInQr> checkInQrs);
 }

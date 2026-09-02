@@ -1,0 +1,34 @@
+server:
+  forward-headers-strategy: framework
+
+spring:
+  datasource:
+    hikari:
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
+
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:false}
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:false}
+
+fitlife:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
+ai:
+  qdrant:
+    fail-fast: ${QDRANT_FAIL_FAST:false}
+
+logging:
+  level:
+    root: ${ROOT_LOG_LEVEL:INFO}
+    com.fitlife: ${FITLIFE_LOG_LEVEL:INFO}
+    org.springframework.security: ${SECURITY_LOG_LEVEL:WARN}

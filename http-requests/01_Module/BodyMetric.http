@@ -1,0 +1,221 @@
+### =====================================================
+### BODY METRIC MODULE - SMOKE TEST
+### Chạy Auth.http trước để lấy memberToken/adminToken
+### =====================================================
+
+@baseUrl = http://localhost:8080/api/v1
+
+@memberId = 1
+@bodyMetricId = 1
+
+
+#########################################################
+### MEMBER
+#########################################################
+
+### 1. Tạo Body Metric đầu tiên
+### Lần đầu phải có heightCm
+POST {{baseUrl}}/body-metrics/me
+Authorization: Bearer {{memberToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "weightKg": 61.5,
+  "heightCm": 165,
+  "bodyFatPercent": 18.5,
+  "muscleMassKg": 47.2,
+  "note": "Chỉ số đầu tuần",
+  "recordedAt": "2026-08-04T16:00:00"
+}
+
+> {%
+    client.test("Create body metric thành công", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+
+        client.assert(
+            response.body.data,
+            "Missing response data"
+        );
+
+        client.assert(
+            response.body.data.bmi,
+            "Missing backend-calculated BMI"
+        );
+
+        client.global.set(
+            "bodyMetricId",
+            response.body.data.id
+        );
+    });
+%}
+
+###
+
+### 2. Tạo Body Metric tiếp theo
+### Có thể bỏ heightCm, backend lấy height latest
+POST {{baseUrl}}/body-metrics/me
+Authorization: Bearer {{memberToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "weightKg": 60.9,
+  "bodyFatPercent": 18.1,
+  "muscleMassKg": 47.4,
+  "note": "Chỉ số mới nhất"
+}
+
+###
+
+### 3. Danh sách Body Metric của tôi
+GET {{baseUrl}}/body-metrics/me?page=0&size=10&sort=recordedAt,desc
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+###
+
+### 4. Latest Body Metric
+GET {{baseUrl}}/body-metrics/me/latest
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+> {%
+    client.test("Latest metric thành công", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+
+        client.assert(
+            response.body.data,
+            "Missing latest body metric"
+        );
+    });
+%}
+
+###
+
+### 5. Chi tiết Body Metric của tôi
+GET {{baseUrl}}/body-metrics/me/{{bodyMetricId}}
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+###
+
+### 6. History dùng cho biểu đồ
+GET {{baseUrl}}/body-metrics/me/history?from=2026-01-01T00:00:00&to=2026-08-04T23:59:59
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+
+#########################################################
+### ADMIN / STAFF
+#########################################################
+
+### 7. Admin tạo Body Metric cho Member
+POST {{baseUrl}}/admin/body-metrics
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "memberId": {{memberId}},
+  "weightKg": 60.7,
+  "heightCm": 165,
+  "bodyFatPercent": 17.9,
+  "muscleMassKg": 47.6,
+  "note": "Admin ghi nhận tại phòng gym"
+}
+
+###
+
+### 8. Admin tìm tất cả Body Metric
+GET {{baseUrl}}/admin/body-metrics?page=0&size=10&sort=recordedAt,desc
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+###
+
+### 9. Admin lọc theo Member
+GET {{baseUrl}}/admin/body-metrics?memberId={{memberId}}&page=0&size=10
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+###
+
+### 10. Danh sách Body Metric của Member
+GET {{baseUrl}}/admin/body-metrics/member/{{memberId}}?page=0&size=10
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+###
+
+### 11. Latest của Member
+GET {{baseUrl}}/admin/body-metrics/member/{{memberId}}/latest
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+###
+
+### 12. Admin cập nhật Body Metric
+PUT {{baseUrl}}/admin/body-metrics/{{bodyMetricId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "weightKg": 60.5,
+  "bodyFatPercent": 17.8,
+  "muscleMassKg": 47.8,
+  "note": "Đã hiệu chỉnh số đo"
+}
+
+###
+
+### 13. Admin xóa mềm Body Metric
+DELETE {{baseUrl}}/admin/body-metrics/{{bodyMetricId}}
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+
+#########################################################
+### NEGATIVE TEST
+#########################################################
+
+### 14. recordedAt ở tương lai
+### Expected: 400
+POST {{baseUrl}}/body-metrics/me
+Authorization: Bearer {{memberToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "weightKg": 61,
+  "heightCm": 165,
+  "recordedAt": "2030-01-01T00:00:00"
+}
+
+###
+
+### 15. Cân nặng ngoài phạm vi
+### Expected: 400
+POST {{baseUrl}}/body-metrics/me
+Authorization: Bearer {{memberToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "weightKg": 5,
+  "heightCm": 165
+}
+
+###
+
+### 16. Không có token
+### Expected: 401
+GET {{baseUrl}}/body-metrics/me/latest
+Accept: application/json

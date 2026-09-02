@@ -1,6 +1,6 @@
 package com.fitlife.payment.controller;
 
-import com.fitlife.common.dto.ApiResponse;
+import com.fitlife.common.response.ApiResponse;
 import com.fitlife.payment.dto.request.VnpayCreateUrlRequest;
 import com.fitlife.payment.dto.response.VnpayCreateUrlResponse;
 import com.fitlife.payment.service.VnpayService;

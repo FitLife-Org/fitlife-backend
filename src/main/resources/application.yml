@@ -1,7 +1,14 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
+
   servlet:
     context-path: /api/v1
+
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
 
 spring:
   application:
@@ -11,77 +18,206 @@ spring:
     active: ${SPRING_PROFILES_ACTIVE:local}
 
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/fitlife_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+    hikari:
+      pool-name: FitLifeHikariPool
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT_MS:30000}
+      validation-timeout: ${DB_VALIDATION_TIMEOUT_MS:5000}
+      idle-timeout: ${DB_IDLE_TIMEOUT_MS:600000}
+      max-lifetime: ${DB_POOL_MAX_LIFETIME_MS:1800000}
 
   jpa:
+    open-in-view: false
+
     hibernate:
       ddl-auto: validate
-    show-sql: ${JPA_SHOW_SQL:true}
+
     properties:
       hibernate:
-        format_sql: ${HIBERNATE_FORMAT_SQL:true}
+        format_sql: ${HIBERNATE_FORMAT_SQL:false}
+
+        jdbc:
+          time_zone: Asia/Ho_Chi_Minh
 
   flyway:
     enabled: true
-    baseline-on-migrate: true
     locations: classpath:db/migration
+    baseline-on-migrate: false
+    validate-on-migrate: true
+    clean-disabled: true
+
+  jackson:
+    time-zone: Asia/Ho_Chi_Minh
+
+    serialization:
+      write-dates-as-timestamps: false
 
   mail:
     host: ${MAIL_HOST:sandbox.smtp.mailtrap.io}
     port: ${MAIL_PORT:2525}
-    username: ${MAIL_USERNAME:demo}
-    password: ${MAIL_PASSWORD:demo}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+
     properties:
       mail:
         smtp:
-          auth: true
+          auth: ${MAIL_SMTP_AUTH:true}
+
           starttls:
-            enable: true
+            enable: ${MAIL_STARTTLS_ENABLE:true}
+            required: ${MAIL_STARTTLS_REQUIRED:true}
+
+  servlet:
+    multipart:
+      max-file-size: ${MAX_FILE_SIZE:10MB}
+      max-request-size: ${MAX_REQUEST_SIZE:10MB}
 
 springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:false}
+    path: /v3/api-docs
+
   swagger-ui:
+    enabled: ${SWAGGER_ENABLED:false}
     path: /swagger-ui.html
     operations-sorter: method
     tags-sorter: alpha
-  api-docs:
-    path: /v3/api-docs
+    display-request-duration: true
+
+# =========================================================
+# FITLIFE
+# =========================================================
 
 fitlife:
+  # -------------------------------------------------------
+  # CORS
+  # -------------------------------------------------------
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+    allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,PATCH,DELETE,OPTIONS}
+    allowed-headers: ${CORS_ALLOWED_HEADERS:Authorization,Content-Type,Accept,Origin,X-Requested-With}
+    exposed-headers: ${CORS_EXPOSED_HEADERS:Authorization}
+    allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
+    max-age-seconds: ${CORS_MAX_AGE_SECONDS:3600}
+
+  # -------------------------------------------------------
+  # AUTH
+  # -------------------------------------------------------
+  auth:
+    refresh-token-expiration-days: ${REFRESH_TOKEN_EXPIRATION_DAYS:7}
+    email-verification-expiration-hours: ${EMAIL_VERIFICATION_EXPIRATION_HOURS:24}
+
+    # Production/deployment nên truyền bằng ENV.
+    # Local sẽ override trong application-local.yml.
+    frontend-verification-url: ${FRONTEND_VERIFICATION_URL:http://localhost:5173/verify-email}
+
+  # -------------------------------------------------------
+  # MAIL
+  # -------------------------------------------------------
+  mail:
+    from: ${MAIL_FROM:no-reply@fitlife.local}
+
+  # -------------------------------------------------------
+  # AI
+  # -------------------------------------------------------
   ai:
     gemini:
       enabled: ${GEMINI_ENABLED:false}
-      api-key: ${GEMINI_API_KEY:demo}
-      model: ${GEMINI_MODEL:gemini-3.5-flash}
+      api-key: ${GEMINI_API_KEY:}
+      model: ${GEMINI_MODEL:gemini-3.1-flash-lite}
       base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
-      temperature: ${GEMINI_TEMPERATURE:0.4}
-      max-output-tokens: ${GEMINI_MAX_OUTPUT_TOKENS:4096}
+      temperature: ${GEMINI_TEMPERATURE:0.3}
+      max-output-tokens: ${GEMINI_MAX_OUTPUT_TOKENS:8192}
+      connect-timeout: ${GEMINI_CONNECT_TIMEOUT:10s}
+      read-timeout: ${GEMINI_READ_TIMEOUT:30s}
+
+    embedding:
+      enabled: ${AI_EMBEDDING_ENABLED:false}
+      api-key: ${AI_EMBEDDING_API_KEY:${GEMINI_API_KEY:}}
+      base-url: ${AI_EMBEDDING_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
+      model: ${AI_EMBEDDING_MODEL:gemini-embedding-001}
+      output-dimensionality: ${AI_EMBEDDING_DIMENSION:768}
+      connect-timeout: ${AI_EMBEDDING_CONNECT_TIMEOUT:10s}
+      read-timeout: ${AI_EMBEDDING_READ_TIMEOUT:30s}
+
+    qdrant:
+      enabled: ${QDRANT_ENABLED:false}
+      initialize-collection: ${QDRANT_INITIALIZE_COLLECTION:false}
+      fail-fast: ${QDRANT_FAIL_FAST:false}
+      base-url: ${QDRANT_BASE_URL:http://localhost:6333}
+      api-key: ${QDRANT_API_KEY:}
+      collection-name: ${QDRANT_COLLECTION_NAME:fitlife_knowledge}
+      vector-size: ${QDRANT_VECTOR_SIZE:768}
+      distance: ${QDRANT_DISTANCE:Cosine}
+      on-disk-payload: ${QDRANT_ON_DISK_PAYLOAD:true}
+      connect-timeout: ${QDRANT_CONNECT_TIMEOUT:5s}
+      read-timeout: ${QDRANT_READ_TIMEOUT:15s}
+
+    knowledge-index:
+      enabled: ${AI_KNOWLEDGE_INDEX_ENABLED:false}
+      reindex-on-startup: ${AI_KNOWLEDGE_REINDEX_ON_STARTUP:false}
+      continue-on-error: ${AI_KNOWLEDGE_CONTINUE_ON_ERROR:true}
+
+# =========================================================
+# CLOUDINARY
+# =========================================================
 
 cloudinary:
-  cloud-name: ${CLOUDINARY_CLOUD_NAME:demo}
-  api-key: ${CLOUDINARY_API_KEY:demo}
-  api-secret: ${CLOUDINARY_API_SECRET:demo}
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+  api-key: ${CLOUDINARY_API_KEY:}
+  api-secret: ${CLOUDINARY_API_SECRET:}
+
+# =========================================================
+# GOOGLE
+# =========================================================
+
+google:
+  enabled: ${GOOGLE_ENABLED:false}
+  client-id: ${GOOGLE_CLIENT_ID:}
+
+# =========================================================
+# VNPAY
+# =========================================================
 
 vnpay:
+  enabled: ${VNPAY_ENABLED:false}
   pay-url: ${VNPAY_PAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
-  return-url: ${VNPAY_RETURN_URL:http://localhost:8080/api/v1/payments/vnpay/return}
-  ipn-url: ${VNPAY_IPN_URL:http://localhost:8080/api/v1/payments/vnpay/ipn}
+
+  return-url: ${VNPAY_RETURN_URL}
+  ipn-url: ${VNPAY_IPN_URL}
+
   tmn-code: ${VNPAY_TMN_CODE:}
   hash-secret: ${VNPAY_HASH_SECRET:}
+
   version: ${VNPAY_VERSION:2.1.0}
   command: ${VNPAY_COMMAND:pay}
   order-type: ${VNPAY_ORDER_TYPE:other}
   locale: ${VNPAY_LOCALE:vn}
-  frontend-result-url: ${VNPAY_FRONTEND_RESULT_URL:http://localhost:5173/member/payment/result}
 
-google:
-  enabled: ${GOOGLE_ENABLED:false}
-  client-id: ${GOOGLE_CLIENT_ID:demo}
+  frontend-result-url: ${VNPAY_FRONTEND_RESULT_URL}
+
+# =========================================================
+# SECURITY
+# =========================================================
 
 application:
   security:
     jwt:
-      secret: ${JWT_SECRET:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZg==}
-      expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+      secret: ${JWT_SECRET}
+      expiration-ms: ${JWT_EXPIRATION_MS:1800000}
+
+# =========================================================
+# LOGGING
+# =========================================================
+
+logging:
+  level:
+    root: ${ROOT_LOG_LEVEL:INFO}
+    com.fitlife: ${FITLIFE_LOG_LEVEL:INFO}
+    org.springframework.security: ${SECURITY_LOG_LEVEL:INFO}

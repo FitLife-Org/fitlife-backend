@@ -3,7 +3,7 @@ package com.fitlife.bodymetric.service;
 import com.fitlife.bodymetric.dto.request.BodyMetricCreateRequest;
 import com.fitlife.bodymetric.dto.request.BodyMetricUpdateRequest;
 import com.fitlife.bodymetric.dto.response.BodyMetricResponse;
-import com.fitlife.common.dto.PageResponse;
+import com.fitlife.common.response.PageResponse;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
@@ -15,9 +15,12 @@ public interface BodyMetricService {
     // Admin / Staff
     // =========================
 
-    BodyMetricResponse createByAdmin(BodyMetricCreateRequest request);
+    BodyMetricResponse createByAdmin(
+            BodyMetricCreateRequest request
+    );
 
-    PageResponse<BodyMetricResponse> getBodyMetricsForAdmin(
+    PageResponse<BodyMetricResponse>
+    getBodyMetricsForAdmin(
             Long memberId,
             String keyword,
             LocalDateTime from,
@@ -25,30 +28,54 @@ public interface BodyMetricService {
             Pageable pageable
     );
 
-    BodyMetricResponse getBodyMetricDetailForAdmin(Long id);
+    BodyMetricResponse
+    getBodyMetricDetailForAdmin(
+            Long id
+    );
 
-    PageResponse<BodyMetricResponse> getBodyMetricsByMemberForAdmin(
+    PageResponse<BodyMetricResponse>
+    getBodyMetricsByMemberForAdmin(
             Long memberId,
             Pageable pageable
     );
 
-    BodyMetricResponse getLatestBodyMetricByMemberForAdmin(Long memberId);
+    BodyMetricResponse
+    getLatestBodyMetricByMemberForAdmin(
+            Long memberId
+    );
 
-    BodyMetricResponse updateByAdmin(Long id, BodyMetricUpdateRequest request);
+    BodyMetricResponse updateByAdmin(
+            Long id,
+            BodyMetricUpdateRequest request
+    );
 
-    void deleteByAdmin(Long id);
+    void deleteByAdmin(
+            Long id
+    );
 
     // =========================
-    // Member - My Body Metric
+    // Current Member
     // =========================
 
-    PageResponse<BodyMetricResponse> getMyBodyMetrics(Pageable pageable);
+    BodyMetricResponse createMyBodyMetric(
+            BodyMetricCreateRequest request
+    );
 
-    BodyMetricResponse getMyBodyMetricDetail(Long id);
+    PageResponse<BodyMetricResponse>
+    getMyBodyMetrics(
+            Pageable pageable
+    );
 
-    BodyMetricResponse getLatestMyBodyMetric();
+    BodyMetricResponse
+    getMyBodyMetricDetail(
+            Long id
+    );
 
-    List<BodyMetricResponse> getMyBodyMetricHistory(
+    BodyMetricResponse
+    getLatestMyBodyMetric();
+
+    List<BodyMetricResponse>
+    getMyBodyMetricHistory(
             LocalDateTime from,
             LocalDateTime to
     );

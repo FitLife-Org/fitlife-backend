@@ -2,7 +2,7 @@ package com.fitlife.gympackage.service.impl;
 
 import com.fitlife.common.exception.AppException;
 import com.fitlife.common.exception.ErrorCode;
-import com.fitlife.common.dto.PageResponse;
+import com.fitlife.common.response.PageResponse;
 import com.fitlife.gympackage.dto.GymPackageCreateRequest;
 import com.fitlife.gympackage.dto.GymPackageResponse;
 import com.fitlife.gympackage.dto.GymPackageUpdateRequest;
@@ -11,6 +11,8 @@ import com.fitlife.gympackage.entity.GymPackage;
 import com.fitlife.gympackage.mapper.GymPackageMapper;
 import com.fitlife.gympackage.repository.GymPackageRepository;
 import com.fitlife.gympackage.service.GymPackageService;
+import com.fitlife.subscription.repository.SubscriptionRepository;
+import com.fitlife.subscription.enums.SubscriptionStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,13 +21,14 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
 public class GymPackageServiceImpl implements GymPackageService {
 
     private final GymPackageRepository gymPackageRepository;
+    private final SubscriptionRepository subscriptionRepository;
     private final GymPackageMapper gymPackageMapper;
 
     @Override
@@ -75,18 +78,59 @@ public class GymPackageServiceImpl implements GymPackageService {
         return gymPackageMapper.toResponse(pkg);
     }
 
+    private String generateSlug(String input) {
+        if (input == null || input.isBlank()) {
+            return "PKG-" + System.currentTimeMillis();
+        }
+        String temp = java.text.Normalizer.normalize(input, java.text.Normalizer.Form.NFD);
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
+        String result = pattern.matcher(temp).replaceAll("")
+                .toLowerCase()
+                .replaceAll("[^a-z0-9\\s-]", "")
+                .replaceAll("\\s+", "-")
+                .replaceAll("-+", "-")
+                .trim();
+        if (result.isBlank()) {
+            return "PKG-" + System.currentTimeMillis();
+        }
+        return result.toUpperCase();
+    }
+
     @Override
     @Transactional
     public GymPackageResponse createPackage(GymPackageCreateRequest request) {
-        if (gymPackageRepository.existsByCodeAndIsDeletedFalse(request.getCode())) {
+        String name = request.getName() != null && !request.getName().isBlank() ? request.getName() : request.getPackageName();
+        if (name == null || name.isBlank()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "packageName cannot be blank");
+        }
+
+        if (gymPackageRepository.existsByNameAndIsDeletedFalse(name.trim())) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Package name already exists");
+        }
+
+        String code = request.getCode();
+        if (code == null || code.isBlank()) {
+            code = generateSlug(name);
+        }
+
+        if (gymPackageRepository.existsByCodeAndIsDeletedFalse(code)) {
             throw new AppException(ErrorCode.PACKAGE_CODE_ALREADY_EXISTS);
         }
 
-        GymPackage pkg = gymPackageMapper.toEntity(request);
-        pkg.setIsDeleted(false);
-        if (pkg.getStatus() == null || pkg.getStatus().isBlank()) {
-            pkg.setStatus("ACTIVE");
-        }
+        GymPackage pkg = GymPackage.builder()
+                .code(code)
+                .name(name.trim())
+                .packageType(request.getPackageType() != null ? request.getPackageType() : "BASIC")
+                .basePrice(request.getBasePrice() != null ? request.getBasePrice() : BigDecimal.ZERO)
+                .hasAiWorkoutPlan(request.getHasAiWorkoutPlan() != null ? request.getHasAiWorkoutPlan() : false)
+                .hasNutritionPlan(request.getHasNutritionPlan() != null ? request.getHasNutritionPlan() : false)
+                .ptSessionsPerMonth(request.getPtSessionsPerMonth() != null ? request.getPtSessionsPerMonth() : 0)
+                .description(request.getDescription())
+                .benefits(request.getBenefits())
+                .thumbnailUrl(request.getThumbnailUrl())
+                .status(request.getStatus() != null ? request.getStatus() : "ACTIVE")
+                .isDeleted(false)
+                .build();
 
         GymPackage saved = gymPackageRepository.save(pkg);
         return gymPackageMapper.toResponse(saved);
@@ -96,12 +140,42 @@ public class GymPackageServiceImpl implements GymPackageService {
     @Transactional
     public GymPackageResponse updatePackage(Long id, GymPackageUpdateRequest request) {
         GymPackage pkg = gymPackageRepository.findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() -> new AppException(ErrorCode.PACKAGE_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCode.PACKAGE_NOT_FOUND, "Package not found"));
 
-        gymPackageMapper.updateEntityFromRequest(request, pkg);
+        String newName = request.getName() != null && !request.getName().isBlank() ? request.getName() : request.getPackageName();
+        if (newName != null && !newName.isBlank() && !newName.trim().equalsIgnoreCase(pkg.getName())) {
+            if (gymPackageRepository.existsByNameAndIsDeletedFalse(newName.trim())) {
+                throw new AppException(ErrorCode.INVALID_REQUEST, "Package name already exists");
+            }
+            pkg.setName(newName.trim());
+        }
 
-        if (pkg.getStatus() == null || pkg.getStatus().isBlank()) {
-            pkg.setStatus("ACTIVE");
+        if (request.getPackageType() != null) {
+            pkg.setPackageType(request.getPackageType());
+        }
+        if (request.getBasePrice() != null) {
+            pkg.setBasePrice(request.getBasePrice());
+        }
+        if (request.getHasAiWorkoutPlan() != null) {
+            pkg.setHasAiWorkoutPlan(request.getHasAiWorkoutPlan());
+        }
+        if (request.getHasNutritionPlan() != null) {
+            pkg.setHasNutritionPlan(request.getHasNutritionPlan());
+        }
+        if (request.getPtSessionsPerMonth() != null) {
+            pkg.setPtSessionsPerMonth(request.getPtSessionsPerMonth());
+        }
+        if (request.getDescription() != null) {
+            pkg.setDescription(request.getDescription());
+        }
+        if (request.getBenefits() != null) {
+            pkg.setBenefits(request.getBenefits());
+        }
+        if (request.getThumbnailUrl() != null) {
+            pkg.setThumbnailUrl(request.getThumbnailUrl());
+        }
+        if (request.getStatus() != null) {
+            pkg.setStatus(request.getStatus().toUpperCase());
         }
 
         GymPackage saved = gymPackageRepository.save(pkg);
@@ -112,9 +186,14 @@ public class GymPackageServiceImpl implements GymPackageService {
     @Transactional
     public GymPackageResponse updateVisibility(Long id, GymPackageVisibilityRequest request) {
         GymPackage pkg = gymPackageRepository.findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() -> new AppException(ErrorCode.PACKAGE_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCode.PACKAGE_NOT_FOUND, "Package not found"));
 
-        pkg.setStatus(request.getStatus().toUpperCase());
+        String status = request.getStatus();
+        if (status == null || status.isBlank()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Trạng thái không được để trống");
+        }
+
+        pkg.setStatus(status.toUpperCase());
         GymPackage saved = gymPackageRepository.save(pkg);
         return gymPackageMapper.toResponse(saved);
     }
@@ -123,7 +202,15 @@ public class GymPackageServiceImpl implements GymPackageService {
     @Transactional
     public void deletePackage(Long id) {
         GymPackage pkg = gymPackageRepository.findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() -> new AppException(ErrorCode.PACKAGE_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCode.PACKAGE_NOT_FOUND, "Package not found"));
+
+        boolean hasActiveOrPending = subscriptionRepository.existsByGymPackageIdAndStatus(id, SubscriptionStatus.ACTIVE)
+                || subscriptionRepository.existsByGymPackageIdAndStatus(id, SubscriptionStatus.PENDING_PAYMENT)
+                || subscriptionRepository.existsByGymPackageIdAndStatus(id, SubscriptionStatus.PAUSED)
+                || subscriptionRepository.existsByGymPackageIdAndStatus(id, SubscriptionStatus.SUSPENDED);
+        if (hasActiveOrPending) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Không thể xóa gói tập đang có người đăng ký hoạt động hoặc chờ thanh toán");
+        }
 
         pkg.setIsDeleted(true);
         gymPackageRepository.save(pkg);

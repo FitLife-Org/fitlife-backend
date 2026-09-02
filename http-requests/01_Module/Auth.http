@@ -1,0 +1,188 @@
+### =====================================================
+### AUTH MODULE - MEMBER + ADMIN LOGIN
+### =====================================================
+
+@baseUrl = http://localhost:8080/api/v1
+
+### Tài khoản seed
+@memberIdentifier = member01
+@memberPassword = 123456
+
+@adminIdentifier = admin
+@adminPassword = 123456
+
+
+#########################################################
+### MEMBER LOGIN
+#########################################################
+
+### 1. Đăng nhập Member
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "identifier": "{{memberIdentifier}}",
+  "password": "{{memberPassword}}"
+}
+
+> {%
+    client.test("Member login thành công", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+
+        client.assert(
+            response.body.data.accessToken,
+            "Missing accessToken"
+        );
+
+        client.assert(
+            response.body.data.refreshToken,
+            "Missing refreshToken"
+        );
+
+        client.assert(
+            response.body.data.roles.includes("ROLE_MEMBER"),
+            "Expected ROLE_MEMBER"
+        );
+    });
+
+    client.global.set(
+        "memberToken",
+        response.body.data.accessToken
+    );
+
+    client.global.set(
+        "memberRefreshToken",
+        response.body.data.refreshToken
+    );
+%}
+
+
+#########################################################
+### ADMIN LOGIN
+#########################################################
+
+### 2. Đăng nhập Admin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "identifier": "{{adminIdentifier}}",
+  "password": "{{adminPassword}}"
+}
+
+> {%
+    client.test("Admin login thành công", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+
+        client.assert(
+            response.body.data.accessToken,
+            "Missing accessToken"
+        );
+
+        client.assert(
+            response.body.data.refreshToken,
+            "Missing refreshToken"
+        );
+
+        client.assert(
+            response.body.data.roles.includes("ROLE_ADMIN"),
+            "Expected ROLE_ADMIN"
+        );
+    });
+
+    client.global.set(
+        "adminToken",
+        response.body.data.accessToken
+    );
+
+    client.global.set(
+        "adminRefreshToken",
+        response.body.data.refreshToken
+    );
+%}
+
+
+#########################################################
+### VERIFY TOKENS
+#########################################################
+
+### 3. Kiểm tra token Member
+GET {{baseUrl}}/members/me
+Authorization: Bearer {{memberToken}}
+Accept: application/json
+
+
+### 4. Kiểm tra token Admin
+GET {{baseUrl}}/admin/users?page=0&size=5
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+
+#########################################################
+### REFRESH TOKEN
+#########################################################
+
+### 5. Refresh token Member
+POST {{baseUrl}}/auth/refresh-token
+Content-Type: application/json
+Accept: application/json
+
+{
+  "refreshToken": "{{memberRefreshToken}}"
+}
+
+> {%
+    client.test("Refresh Member token thành công", function () {
+        client.assert(
+            response.status === 200,
+            "Expected HTTP 200"
+        );
+
+        client.assert(
+            response.body.data.accessToken,
+            "Missing new accessToken"
+        );
+    });
+
+    client.global.set(
+        "memberToken",
+        response.body.data.accessToken
+    );
+
+    if (response.body.data.refreshToken) {
+        client.global.set(
+            "memberRefreshToken",
+            response.body.data.refreshToken
+        );
+    }
+%}
+
+
+#########################################################
+### NEGATIVE TEST
+#########################################################
+
+### 6. Sai mật khẩu
+### Expected: 400 hoặc 401
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "identifier": "{{memberIdentifier}}",
+  "password": "wrong-password"
+}
+
+
+### 7. Không gửi token
+### Expected: 401
+GET {{baseUrl}}/members/me
+Accept: application/json

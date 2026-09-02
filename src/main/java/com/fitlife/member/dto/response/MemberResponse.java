@@ -28,6 +28,8 @@ public class MemberResponse {
     private String email;
     private String avatarUrl;
 
+    private Boolean emailVerified;
+
     private Gender gender;
     private LocalDate dateOfBirth;
     private String address;

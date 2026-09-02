@@ -20,9 +20,6 @@ public class MyMemberUpdateRequest {
     @Pattern(regexp = "^(0|\\+84)[0-9]{9,10}$", message = "INVALID_PHONE")
     private String phone;
 
-    @Size(max = 500, message = "AVATAR_URL_TOO_LONG")
-    private String avatarUrl;
-
     private Gender gender;
 
     @Past(message = "DATE_OF_BIRTH_MUST_BE_IN_PAST")

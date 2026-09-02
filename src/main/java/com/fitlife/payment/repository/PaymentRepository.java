@@ -3,44 +3,203 @@ package com.fitlife.payment.repository;
 import com.fitlife.payment.entity.Payment;
 import com.fitlife.payment.enums.PaymentMethod;
 import com.fitlife.payment.enums.PaymentStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
-public interface PaymentRepository extends JpaRepository<Payment, Long> {
+public interface PaymentRepository
+        extends JpaRepository<Payment, Long> {
 
-    Optional<Payment> findByPaymentCode(String paymentCode);
+    @EntityGraph(
+            attributePaths = {
+                    "invoice",
+                    "subscription",
+                    "member",
+                    "member.user",
+                    "confirmedBy",
+                    "refundedBy"
+            }
+    )
+    Optional<Payment> findByPaymentCode(
+            String paymentCode
+    );
 
-    Page<Payment> findByMemberId(Long memberId, Pageable pageable);
+    @EntityGraph(
+            attributePaths = {
+                    "invoice",
+                    "subscription",
+                    "member",
+                    "member.user",
+                    "confirmedBy",
+                    "refundedBy"
+            }
+    )
+    Page<Payment> findByMemberId(
+            Long memberId,
+            Pageable pageable
+    );
 
-    Page<Payment> findByInvoiceId(Long invoiceId, Pageable pageable);
+    @EntityGraph(
+            attributePaths = {
+                    "invoice",
+                    "subscription",
+                    "member",
+                    "member.user",
+                    "confirmedBy",
+                    "refundedBy"
+            }
+    )
+    Page<Payment> findByInvoiceId(
+            Long invoiceId,
+            Pageable pageable
+    );
 
-    Page<Payment> findByPaymentStatus(PaymentStatus paymentStatus, Pageable pageable);
+    @EntityGraph(
+            attributePaths = {
+                    "invoice",
+                    "subscription",
+                    "member",
+                    "member.user",
+                    "confirmedBy",
+                    "refundedBy"
+            }
+    )
+    Page<Payment> findByPaymentStatus(
+            PaymentStatus paymentStatus,
+            Pageable pageable
+    );
 
     boolean existsByInvoiceIdAndPaymentStatus(
             Long invoiceId,
             PaymentStatus paymentStatus
     );
 
+    /**
+     * Lấy payment SUCCESS gần nhất để refund.
+     */
+    @EntityGraph(
+            attributePaths = {
+                    "invoice",
+                    "subscription",
+                    "member",
+                    "member.user",
+                    "confirmedBy",
+                    "refundedBy"
+            }
+    )
+    Optional<Payment>
+    findFirstByInvoiceIdAndPaymentStatusOrderByPaidAtDesc(
+            Long invoiceId,
+            PaymentStatus paymentStatus
+    );
+
     @Query("""
-            SELECT p
-            FROM Payment p
-            WHERE (:status IS NULL OR p.paymentStatus = :status)
-              AND (:method IS NULL OR p.paymentMethod = :method)
-              AND (:memberId IS NULL OR p.member.id = :memberId)
-              AND (:invoiceId IS NULL OR p.invoice.id = :invoiceId)
+            SELECT payment
+            FROM Payment payment
+            WHERE
+                (
+                    :status IS NULL
+                    OR payment.paymentStatus = :status
+                )
+                AND (
+                    :method IS NULL
+                    OR payment.paymentMethod = :method
+                )
+                AND (
+                    :memberId IS NULL
+                    OR payment.member.id = :memberId
+                )
+                AND (
+                    :invoiceId IS NULL
+                    OR payment.invoice.id = :invoiceId
+                )
+                AND (
+                    :fromDate IS NULL
+                    OR payment.createdAt >= :fromDate
+                )
+                AND (
+                    :toDate IS NULL
+                    OR payment.createdAt <= :toDate
+                )
             """)
     Page<Payment> searchAdminPayments(
-            @Param("status") PaymentStatus status,
-            @Param("method") PaymentMethod method,
-            @Param("memberId") Long memberId,
-            @Param("invoiceId") Long invoiceId,
+            @Param("status")
+            PaymentStatus status,
+
+            @Param("method")
+            PaymentMethod method,
+
+            @Param("memberId")
+            Long memberId,
+
+            @Param("invoiceId")
+            Long invoiceId,
+
+            @Param("fromDate")
+            LocalDateTime fromDate,
+
+            @Param("toDate")
+            LocalDateTime toDate,
+
             Pageable pageable
     );
 
-    Optional<Payment> findByVnpTxnRef(String vnpTxnRef);
+    @EntityGraph(
+            attributePaths = {
+                    "invoice",
+                    "subscription",
+                    "member",
+                    "member.user",
+                    "confirmedBy",
+                    "refundedBy"
+            }
+    )
+    Optional<Payment> findByVnpTxnRef(
+            String vnpTxnRef
+    );
+    @EntityGraph(
+            attributePaths = {
+                    "invoice",
+                    "subscription",
+                    "member",
+                    "member.user"
+            }
+    )
+    java.util.List<Payment> findBySubscriptionIdAndPaymentStatus(
+            Long subscriptionId,
+            PaymentStatus paymentStatus
+    );
+
+    @EntityGraph(
+            attributePaths = {
+                    "invoice",
+                    "subscription",
+                    "member",
+                    "member.user"
+            }
+    )
+    Optional<Payment> findFirstByInvoiceIdAndPaymentStatusOrderByCreatedAtDesc(
+            Long invoiceId,
+            PaymentStatus paymentStatus
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT payment
+        FROM Payment payment
+        WHERE payment.vnpTxnRef = :txnRef
+        """)
+    Optional<Payment> findByVnpTxnRefForUpdate(
+            @Param("txnRef")
+            String txnRef
+    );
+
 }

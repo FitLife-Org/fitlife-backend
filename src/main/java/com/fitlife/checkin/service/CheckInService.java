@@ -1,19 +1,42 @@
 package com.fitlife.checkin.service;
 
 import com.fitlife.checkin.dto.*;
-import com.fitlife.common.dto.PageResponse;
+import com.fitlife.common.response.PageResponse;
 
 import java.time.LocalDate;
+import java.util.List;
 
 public interface CheckInService {
 
+    // Member Self-Service Methods
+    CheckInResponse memberCheckIn(MemberCheckInRequest request, String memberUsername);
+
+    CheckInResponse memberCheckOut(MemberCheckOutRequest request, String memberUsername);
+
+    CheckInResponse getMemberCurrentStatus(String memberUsername);
+
+    PageResponse<CheckInResponse> getMemberHistory(
+            String memberUsername,
+            LocalDate fromDate,
+            LocalDate toDate,
+            int page,
+            int size
+    );
+
+    MemberQrResponse getMemberQr(String memberUsername);
+
+    // Staff/Admin Support Desk Methods
     CheckInLookupResponse lookupMember(String keyword);
 
-    CheckInResponse checkInManual(CheckInManualRequest request, String actorUsername);
+    CheckInResponse staffCheckInMemberQr(StaffMemberQrCheckInRequest request, String staffUsername);
 
-    CheckInResponse checkInQr(CheckInQrRequest request, String actorUsername);
+    CheckInResponse staffCheckInManual(StaffManualCheckInRequest request, String staffUsername);
 
-    PageResponse<CheckInResponse> getCheckInList(
+    CheckInResponse staffCheckOutMember(Long id, String staffUsername);
+
+    PageResponse<CheckInResponse> getMembersCurrentlyInside(int page, int size);
+
+    PageResponse<CheckInResponse> getAllCheckInHistory(
             String keyword,
             Long memberId,
             LocalDate fromDate,
@@ -24,19 +47,26 @@ public interface CheckInService {
             String sort
     );
 
-    CheckInResponse getCheckInDetail(Long id);
+    CheckInResponse getDetail(Long id);
 
     CheckInResponse cancelCheckIn(Long id, CheckInCancelRequest request);
 
     void deleteCheckIn(Long id);
 
-    PageResponse<CheckInResponse> getMyCheckInHistory(
-            String username,
-            LocalDate fromDate,
-            LocalDate toDate,
-            int page,
-            int size
-    );
-
     CheckInTodayStatisticsResponse getTodayStatistics();
+
+    // Admin QR Management Methods
+    AdminCheckInQrResponse createGymQr(AdminCheckInQrRequest request, String adminUsername);
+
+    List<AdminCheckInQrResponse> getAllGymQrs();
+
+    AdminCheckInQrResponse getGymQrDetail(Long id);
+
+    AdminCheckInQrResponse regenerateGymQrToken(Long id);
+
+    AdminCheckInQrResponse toggleGymQrStatus(Long id, Boolean active);
+
+    List<CheckInResponse> getTodayCheckIns();
+
+    CheckInResponse getLatestCheckIn(String memberUsername);
 }
