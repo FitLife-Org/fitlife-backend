@@ -178,7 +178,7 @@ cloudinary:
 # =========================================================
 
 google:
-  enabled: ${GOOGLE_ENABLED:false}
+  enabled: ${GOOGLE_ENABLED:true}
   client-id: ${GOOGLE_CLIENT_ID:}
 
 # =========================================================
